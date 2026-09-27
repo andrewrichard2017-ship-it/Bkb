@@ -32,7 +32,7 @@
   g.twoPlayer = BK.settings.players === 2;
   g.ref = new BK.Referee();
 
-  const setState = s => { g.state = s; g.stateT = 0; };
+  const setState = s => { g.state = s; g.stateT = 0; BK.ui.focusPt = null; g.showControls = false; };
   // Freeze-frame on impact: the world holds for a few frames so hits land with weight.
   g.hitstop = d => { g.stop = Math.max(g.stop, d); };
   const IDLE = { mx: 0, my: 0 };
@@ -106,7 +106,8 @@
     beginRound();
   };
   g.pause = () => { if (['fight', 'knockdown', 'roundIntro'].includes(g.state) && !BK.replay.active) { g.paused = true; BK.input.releaseAll(); } };
-  g.resume = () => { g.paused = false; };
+  g.resume = () => { g.paused = false; g.showControls = false; BK.ui.focusPt = null; };
+  g.togglePause = () => { if (g.paused) g.resume(); else { g.pause(); BK.ui.focusPt = null; } };
   document.addEventListener('visibilitychange', () => { if (document.hidden) g.pause(); });
 
   // ---------- knockdowns ----------
@@ -422,7 +423,7 @@
     BK.audio.init();
     if (BK.replay.active) { BK.replay.skip(); return; }
     if (g.state === 'walkout') { BK.walkout.skip(); return; }
-    if (k === 'escape' || k === 'p') { if (g.paused) g.resume(); else g.pause(); return; }
+    if (k === 'escape' || k === 'p') { if (g.showControls && !g.paused) { g.showControls = false; return; } g.togglePause(); return; }
     if (g.paused) { if (k === 'enter') g.resume(); return; }
     if (g.state === 'knockdown' && (k === ' ' || k === 'enter')) { BK.getup.tap(0, 0, true); return; }
     if (g.state === 'cornerGame') { BK.corner.key(k); return; }
@@ -530,6 +531,7 @@
       }
     }
     if (g.paused) { BK.ui.begin(); hud.pause(g); }
+    BK.ui.drawCursor();
     if (BK.pad.toast > 0) {
       ctx.save(); ctx.globalAlpha = Math.min(1, BK.pad.toast * 2);
       BK.draw.rr(W / 2 - 260, 120, 520, 56, 14); ctx.fillStyle = 'rgba(16,12,11,0.92)'; ctx.fill(); ctx.strokeStyle = BK.PAL.brass; ctx.lineWidth = 2; ctx.stroke();

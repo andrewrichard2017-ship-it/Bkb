@@ -16,7 +16,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 
 ## Controls
 
-**Controller** (PS5 DualSense / PS4 DualShock over Bluetooth or USB, or any standard pad): left stick or D-pad moves; ✕ jab, ○ cross, □ hook, △ uppercut; L1 sway/duck/combo; R1 clinch; hold L2 block, hold R2 body shot; R3 (or L1+R1) super punch; Options pauses; any face button skips replays and the walkout. On the menu the D-pad picks your fighter and L1/R1 the CPU's; ✕ starts a quick fight, △ a tournament. In the corner ✕ / ○ / □ pick diesel / slaps / beer. Hits rumble the pad.
+**Controller** (PS5 DualSense / PS4 DualShock over Bluetooth or USB, or any standard pad): left stick or D-pad moves; ✕ jab, ○ cross, □ hook, △ uppercut; L1 clinch; hold R1 for a body shot; L2 sway/duck/combo; hold R2 to block; R3 super punch; Options opens the pause menu (resume, controls, sound, rumble, quit); any face button skips replays and the walkout. Every menu works with the D-pad or stick (a gold cursor moves over the buttons), ✕ selects and ○ goes back; on the title screen L1/R1 cycle the red/blue fighter and △ starts a tournament. Hits rumble the pad. The keyboard's arrow keys and Enter drive the menus the same way.
 
 **Two players:** set PLAYERS to 2 on the menu. With two controllers, pad 1 is the red corner and pad 2 the blue; with one, the pad takes the blue corner and the touch screen / keyboard the red. Each player picks their own fighter (D-pad on their own pad), plays their own get-up orbs and corner scene, and gets rumble on their own pad. Keyboard player 2: arrows move, 1-4 jab/cross/hook/upper, 5 sway, 6 clinch, hold 7 body, hold 8 block, 9 super. Tournaments are always one player against the CPU, and two-player results don't count toward your record.
 

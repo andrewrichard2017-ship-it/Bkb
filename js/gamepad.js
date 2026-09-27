@@ -1,13 +1,13 @@
 // Controller support (Gamepad API), up to two pads. Built around a DualSense / DualShock on
 // Android Chrome, which reports the standard layout; any standard-mapping pad works the same way.
 //
-//   Left stick / D-pad  move            L1  sway / duck / combo     L2 (hold)  block
-//   Cross  jab                          R1  clinch                  R2 (hold)  body shot
-//   Circle cross                        R3 (or L1+R1)  super punch
-//   Square hook                         Options  pause             Share  skip replay / walkout
+//   Left stick / D-pad  move            L1  clinch                  L2  sway / duck / combo
+//   Cross  jab                          R1 (hold)  body shot        R2 (hold)  block
+//   Circle cross                        R3  super punch
+//   Square hook                         Options  pause menu        Share  skip replay / walkout
 //   Triangle uppercut
-//   Menus: Cross confirm, Circle back/skip, D-pad left/right = your fighter, L1/R1 = the other,
-//          Triangle = tournament. Corner: Cross / Circle / Square pick diesel / slaps / beer.
+//   Menus: D-pad / stick moves a cursor over the buttons, Cross selects, Circle goes back.
+//          Title shortcuts: L1 / R1 cycle the red / blue fighter, Triangle = tournament.
 //
 // Who drives what: one player -> any pad is player 1. Two players -> with two pads, the first is
 // the red corner and the second the blue; with one pad, the pad takes the blue corner and the
@@ -66,7 +66,11 @@
       if (held.left) mx -= 1; if (held.right) mx += 1; if (held.up) my -= 1; if (held.down) my += 1;
       const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
       s.mx = mx; s.my = my; s.held = held;
-      if (pressed.l1 && held.r1 || pressed.r1 && held.l1) { pressed.r3 = true; delete pressed.l1; delete pressed.r1; } // bumpers together = super
+      // stick flicks count as D-pad presses in menus
+      const fx = mx > 0.6 ? 1 : mx < -0.6 ? -1 : 0, fy = my > 0.6 ? 1 : my < -0.6 ? -1 : 0;
+      if (fx && fx !== s.flickX) pressed[fx > 0 ? 'right' : 'left'] = true;
+      if (fy && fy !== s.flickY) pressed[fy > 0 ? 'down' : 'up'] = true;
+      s.flickX = fx; s.flickY = fy;
       s.pressed = Object.assign(s.pressed, pressed); // edges accumulate until the fight input reads them
       if (m > 0 || Object.keys(pressed).length) GP.lastUse = t;
       GP.menu(pressed, i);
@@ -78,13 +82,13 @@
     const slot = GP.slotFor(side), s = GP.pads[slot];
     if (slot < 0 || !s) return null;
     const h = s.held, e = s.pressed;
-    const inp = { mx: s.mx, my: s.my, block: !!h.l2, body: !!h.r2 };
+    const inp = { mx: s.mx, my: s.my, block: !!h.r2, body: !!h.r1 };
     if (e.cross) inp.jab = true;
     if (e.circle) inp.cross = true;
     if (e.square) inp.hook = true;
     if (e.triangle) inp.upper = true;
-    if (e.l1) inp.slip = true;
-    if (e.r1) inp.clinch = true;
+    if (e.l2) inp.slip = true;
+    if (e.l1) inp.clinch = true;
     if (e.r3) inp.ko = true;
     s.pressed = {};
     return inp;
@@ -97,34 +101,29 @@
     const two = g.twoPlayer, mySide = two ? (GP.count >= 2 ? slot : 1) : 0;
     const any = e.cross || e.circle || e.square || e.triangle || e.options || e.share;
     if (BK.replay.active || g.state === 'walkout') { if (any) g.onKey('enter'); return; }
-    if (e.options) { g.onKey('escape'); return; }
-    if (g.paused) { if (e.cross) g.onKey('enter'); return; }
-    switch (g.state) {
-      case 'title':
-        if (e.left || e.right) g.cycleFighter(mySide === 1 && two ? 'cpu' : 'player');
-        if (e.l1 || e.r1) g.cycleFighter(mySide === 1 && two ? 'player' : 'cpu');
-        if (e.square) g.togglePlayers();
-        if (e.cross) g.toTape();
-        if (e.triangle) g.startTournament();
-        break;
-      case 'knockdown':
-        if (e.cross && g.kd && g.kd.victim.side === mySide) BK.getup.tap(0, 0, true);
-        break;
-      case 'cornerGame':
-        if (two && BK.corner.fighter && BK.corner.fighter.side !== mySide) break; // not your corner
-        if (e.cross || e.up) BK.corner.key('1');
-        if (e.circle || e.right) BK.corner.key('2');
-        if (e.square || e.down) BK.corner.key('3');
-        if (BK.corner.applied && (e.cross || e.options)) BK.corner.key('enter');
-        break;
-      case 'corner':
-        if (e.cross) g.workCorner();
-        if (e.circle) g.nextRound();
-        break;
-      case 'fight':
-        break; // handled by GP.fight
-      default:
-        if (e.cross) g.onKey('enter');
+    if (e.options) { // pause menu (in a fight), or closes the controls screen elsewhere
+      if (g.paused || ['fight', 'knockdown', 'roundIntro'].includes(g.state)) g.togglePause();
+      else if (g.showControls) g.showControls = false;
+      return;
+    }
+    if (g.state === 'knockdown' && !g.paused) { if (e.cross && g.kd && g.kd.victim.side === mySide) BK.getup.tap(0, 0, true); return; }
+    if (g.state === 'fight' && !g.paused) return; // handled by GP.fight
+    if (g.state === 'cornerGame' && two && BK.corner.fighter && BK.corner.fighter.side !== mySide) return; // not your corner
+    // every other screen: cursor over the buttons
+    if (e.up) BK.ui.nav(0, -1);
+    if (e.down) BK.ui.nav(0, 1);
+    if (e.left) BK.ui.nav(-1, 0);
+    if (e.right) BK.ui.nav(1, 0);
+    if (e.cross) { if (!BK.ui.activate()) g.onKey('enter'); }
+    if (e.circle) { // back
+      if (g.showControls) g.showControls = false;
+      else if (g.paused) g.resume();
+      else if (g.state === 'corner') g.nextRound();
+      else if (g.state === 'tape' || g.state === 'ladder') g.toTitle();
+    }
+    if (g.state === 'title' && !g.showControls) { // shortcuts
+      if (e.l1 || e.r1) g.cycleFighter(e.l1 ? 'player' : 'cpu');
+      if (e.triangle) g.startTournament();
     }
   };
 

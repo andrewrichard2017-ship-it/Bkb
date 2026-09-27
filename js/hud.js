@@ -8,16 +8,69 @@
   const UI = BK.ui = { buttons: [] };
   UI.begin = () => { UI.buttons = []; };
   UI.tap = (x, y) => {
+    UI.cursorOn = false; // a touch hides the controller cursor
     for (let i = UI.buttons.length - 1; i >= 0; i--) {
       const b = UI.buttons[i];
       if (x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h) { b.onTap(); BK.audio.tick(true); return true; }
     }
     return false;
   };
+
+  // ---------- cursor for controllers and keyboards ----------
+  // Buttons are re-registered every frame, so the cursor remembers a point and snaps to the
+  // button nearest it. D-pad / stick / arrows move it to the best button in that direction.
+  UI.focusPt = null; UI.cursorOn = false;
+  const centre = b => ({ x: b.x + b.w / 2, y: b.y + b.h / 2 });
+  const navigable = () => UI.buttons.filter(b => b.w < BK.W * 2);
+  UI.focused = () => {
+    const bs = navigable();
+    if (!bs.length) return null;
+    if (UI.focusPt) {
+      let best = null, bd = 1e9;
+      for (const b of bs) { const c = centre(b), d = Math.hypot(c.x - UI.focusPt.x, c.y - UI.focusPt.y); if (d < bd) { bd = d; best = b; } }
+      if (bd < 80) return best;
+    }
+    return bs.find(b => b.primary) || bs[0];
+  };
+  UI.nav = (dx, dy) => {
+    UI.cursorOn = true;
+    const cur = UI.focused();
+    if (!cur) return;
+    const c = centre(cur);
+    UI.focusPt = c; // reveal on the current button, then move from it
+    let best = null, bs = 1e9;
+    for (const b of navigable()) {
+      if (b === cur) continue;
+      const o = centre(b), vx = o.x - c.x, vy = o.y - c.y;
+      const along = vx * dx + vy * dy; // must lie in the pressed direction
+      if (along < 20) continue;
+      const across = Math.abs(vx * dy) + Math.abs(vy * dx);
+      const score = along + across * 2.2;
+      if (score < bs) { bs = score; best = b; }
+    }
+    if (best) { UI.focusPt = centre(best); BK.audio.tick(true); }
+  };
+  UI.activate = () => {
+    const b = UI.focused();
+    if (!b) return false;
+    UI.cursorOn = true; UI.focusPt = centre(b);
+    b.onTap(); BK.audio.tick(true);
+    return true;
+  };
+  UI.drawCursor = () => {
+    if (!UI.cursorOn) return;
+    const b = UI.focused();
+    if (!b) return;
+    const pulse = 0.7 + Math.sin(performance.now() / 160) * 0.3;
+    ctx.save(); ctx.globalAlpha = pulse;
+    ctx.strokeStyle = '#f0c75a'; ctx.lineWidth = 5; ctx.lineJoin = 'round';
+    D.rr(b.x - 2, b.y - 2, b.w + 4, b.h + 4, 12); ctx.stroke();
+    ctx.restore();
+  };
   // style: 'primary' | 'secondary'
   UI.button = (cx, cy, w, h, label, onTap, style = 'secondary', sub = null) => {
     const x = cx - w / 2, y = cy - h / 2;
-    UI.buttons.push({ x: x - 6, y: y - 6, w: w + 12, h: h + 12, onTap });
+    UI.buttons.push({ x: x - 6, y: y - 6, w: w + 12, h: h + 12, onTap, primary: style === 'primary' });
     D.slant(x, y, w - 14, h, 14);
     if (style === 'primary') {
       const g = ctx.createLinearGradient(0, y, 0, y + h);
@@ -158,8 +211,10 @@
     pick(g.p2, W / 2 + 290, two ? 'PLAYER 2  ·  BLUE CORNER' : 'CPU  ·  BLUE CORNER', 'cpu');
     D.text('VS', W / 2, 332, F.display(48), PAL.blood);
 
+    if (g.showControls) { BK.hud.controls(g); return; }
     UI.button(W / 2 - 230, 470, 420, 100, 'QUICK FIGHT', () => g.toTape(), 'primary');
     UI.button(W / 2 + 230, 470, 420, 100, 'TOURNAMENT', () => g.startTournament(), 'primary', 'BEAT EVERYONE');
+    UI.button(W / 2 + 660, 470, 300, 100, 'CONTROLS', () => { g.showControls = true; });
     const s = BK.settings;
     const row = [
       ['PLAYERS', s.players === 2 ? '2' : '1', () => g.togglePlayers()],
@@ -175,7 +230,7 @@
     }
     const r = BK.record;
     D.text((r.w + r.l + r.d ? `YOUR RECORD  ${r.w}-${r.l}-${r.d}  (${r.ko} KO)` : 'YOUR FIRST FIGHT') + (r.champs ? `  ·  ${r.champs}x TOURNAMENT CHAMPION` : ''), W / 2, 735, F.ui(30), PAL.bone);
-    if (BK.pad.connected) D.text('Controller: stick moves  ·  ✕ jab  ○ cross  □ hook  △ upper  ·  L1 sway  R1 clinch  L2 block  R2 body  R3 super  ·  D-pad picks your fighter, L1/R1 the CPU', W / 2, 800, F.ui(22, 500), 'rgba(239,230,210,0.75)');
+    if (BK.pad.connected) D.text('Controller: stick moves  ·  ✕ jab  ○ cross  □ hook  △ upper  ·  L1 clinch  R1 body  L2 sway  R2 block  R3 super  ·  D-pad + ✕ works the menus', W / 2, 800, F.ui(22, 500), 'rgba(239,230,210,0.75)');
     else D.text('Left thumb moves  ·  Right thumb punches, blocks and slips  ·  Keys: WASD, J K U I, hold B body, L block, Space sway, C clinch  ·  PS5 / PS4 controllers work too', W / 2, 800, F.ui(22, 500), 'rgba(239,230,210,0.65)');
   };
 
@@ -339,10 +394,32 @@
   };
 
   BK.hud.pause = g => {
+    if (g.showControls) { BK.hud.controls(g); return; }
     dim(0.7);
-    strokeText('PAUSED', W / 2, 280, F.display(110), PAL.bone, 12);
-    UI.button(W / 2, 440, 420, 96, 'RESUME', () => g.resume(), 'primary');
-    UI.button(W / 2, 560, 420, 86, BK.settings.sound ? 'SOUND: ON' : 'SOUND: OFF', () => { BK.settings.sound = !BK.settings.sound; BK.audio.setEnabled(BK.settings.sound); BK.saveSettings(); });
-    UI.button(W / 2, 670, 420, 86, 'QUIT FIGHT', () => g.toTitle());
+    strokeText('PAUSED', W / 2, 210, F.display(110), PAL.bone, 12);
+    D.text(`ROUND ${g.round} OF ${g.totalRounds}  ·  ${g.p1.look.name} vs ${g.p2.look.name}`, W / 2, 290, F.ui(26), PAL.brass);
+    UI.button(W / 2, 400, 460, 92, 'RESUME', () => g.resume(), 'primary');
+    UI.button(W / 2 - 240, 520, 440, 84, 'CONTROLS', () => { g.showControls = true; });
+    UI.button(W / 2 + 240, 520, 440, 84, BK.settings.sound ? 'SOUND: ON' : 'SOUND: OFF', () => { BK.settings.sound = !BK.settings.sound; BK.audio.setEnabled(BK.settings.sound); BK.saveSettings(); });
+    UI.button(W / 2 - 240, 630, 440, 84, BK.settings.vibrate ? 'RUMBLE: ON' : 'RUMBLE: OFF', () => { BK.settings.vibrate = !BK.settings.vibrate; BK.saveSettings(); });
+    UI.button(W / 2 + 240, 630, 440, 84, 'QUIT FIGHT', () => g.toTitle());
+    D.text('Options resumes  ·  ○ back', W / 2, 720, F.ui(22), 'rgba(239,230,210,0.6)');
+  };
+
+  // Button assignments, reachable from the pause menu and the title screen.
+  BK.hud.controls = g => {
+    dim(0.8);
+    D.text('CONTROLS', W / 2, 80, F.display(64), PAL.brass);
+    const col = (x, title, rows) => {
+      D.text(title, x, 150, F.ui(26), PAL.brass);
+      rows.forEach(([k, v], i) => {
+        D.text(k, x - 16, 196 + i * 40, F.display(26), PAL.bone, 'right');
+        D.text(v, x + 16, 196 + i * 40, F.ui(26, 500), 'rgba(239,230,210,0.85)', 'left');
+      });
+    };
+    col(330, 'CONTROLLER', [['Left stick / D-pad', 'Move'], ['✕', 'Jab'], ['○', 'Cross'], ['□', 'Hook'], ['△', 'Uppercut'], ['L1', 'Clinch'], ['R1 (hold)', 'Body shot'], ['L2', 'Sway / duck / combo'], ['R2 (hold)', 'Block'], ['R3', 'Super punch'], ['Options', 'Pause'], ['D-pad + ✕', 'Menus (○ back)']]);
+    col(900, 'TOUCH', [['Left half', 'Drag to move'], ['JAB CROSS HOOK UPPER', 'Punches'], ['CLINCH', 'Clinch'], ['BODY (hold)', 'Body shot'], ['SWAY / DUCK / COMBO', 'Sway'], ['BLOCK (hold)', 'Block'], ['SUPER / DUSTER', 'Super punch'], ['⏸ under the clock', 'Pause']]);
+    col(1440, 'KEYBOARD', [['WASD', 'Move'], ['J K U I', 'Punches'], ['C', 'Clinch'], ['B (hold)', 'Body shot'], ['Space', 'Sway'], ['L (hold)', 'Block'], ['O', 'Super punch'], ['P / Esc', 'Pause'], ['Player 2', 'Arrows, 1-9']]);
+    UI.button(W / 2, 790, 360, 80, 'BACK', () => { g.showControls = false; }, 'primary');
   };
 })();

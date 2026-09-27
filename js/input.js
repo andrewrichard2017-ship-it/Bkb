@@ -43,6 +43,11 @@
     if (!IN.keys[k]) IN.pressed[k] = true;
     IN.keys[k] = true;
     if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+    if (!BK.game.controlsActive() && !e.repeat && BK.game.state !== 'knockdown' && !(BK.game.twoPlayer && BK.game.state === 'fight')) {
+      const d = { arrowup: [0, -1], arrowdown: [0, 1], arrowleft: [-1, 0], arrowright: [1, 0] }[k];
+      if (d) { BK.ui.nav(d[0], d[1]); return; }
+      if (k === 'enter' && BK.ui.cursorOn && BK.ui.activate()) return;
+    }
     BK.game.onKey(k);
   });
   window.addEventListener('keyup', e => { IN.keys[e.key.toLowerCase()] = false; });
@@ -139,7 +144,7 @@
   // Compact button legend while a controller is in use (screen space, bottom right).
   IN.drawPadHint = player => {
     const sc = BK.screen, L = player.look;
-    const rows = [['✕ Jab', '○ Cross', '□ Hook', '△ Upper'], [`L1 ${L.sway === 'duck' ? 'Duck' : L.sway === 'combo' ? 'Combo' : L.sway === 'none' ? '—' : 'Sway'}`, L.noClinch ? 'R1 —' : 'R1 Clinch', 'L2 Block', 'R2 Body']];
+    const rows = [['✕ Jab', '○ Cross', '□ Hook', '△ Upper'], [L.noClinch ? 'L1 —' : 'L1 Clinch', 'R1 Body', `L2 ${L.sway === 'duck' ? 'Duck' : L.sway === 'combo' ? 'Combo' : L.sway === 'none' ? '—' : 'Sway'}`, 'R2 Block']];
     if (BK.game.koReady()) rows.push([`R3  ${L.super === 'duster' ? 'KNUCKLE DUSTER' : 'SUPER PUNCH'}  ▶`]);
     ctx.save(); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.globalAlpha = 0.75;
     let y = sc.h - sc.safe.b - 14;
