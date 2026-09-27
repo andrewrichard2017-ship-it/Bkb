@@ -42,11 +42,15 @@
     g.totalRounds = BK.settings.rounds; g.round = 1; g.roundLog = []; g.result = null; g.recorded = false;
     g.p1.resetFight(); g.p2.resetFight(); g.ai.reset(); BK.fx.clear();
     BK.replay.clear(); g.pendingReplay = null;
-    beginRound();
+    g.ref.reset();
+    setState('walkout');
+    BK.walkout.start(g);
   };
+  g.beginRound = () => beginRound();
   function beginRound() {
     g.p1.resetRound(); g.p2.resetRound(); g.ref.reset();
     g.clock = BK.ROUND_LEN; g.kd = null; g.clapped = false; g.pendingReplay = null;
+    g.refTalkT = BK.rnd(12, 22); g.ref.bubble = null;
     BK.replay.clear();
     for (const f of [g.p1, g.p2]) f.sweat *= 0.6; // towelled off in the corner
     BK.input.releaseAll();
@@ -95,7 +99,8 @@
     if (tko) g.ref.waveOff(); else g.ref.mode = 'count';
     if (victim === g.p2) {
       // CPU: always beats the first two counts; after that it's a bonus
-      const chance = victim.kdTotal <= 2 ? 1 : 0.35 * [0.8, 1, 1.15][BK.settings.difficulty];
+      const later = [0.75, 0.5, 0.3, 0.15][Math.min(3, victim.kdTotal - 3)];
+      const chance = victim.kdTotal <= 2 ? 1 : later * [0.85, 1, 1.12][BK.settings.difficulty];
       g.kd.getUpAt = Math.random() < chance ? Math.floor(BK.rnd(3, 9.99)) : 99;
     }
     setState('knockdown');
@@ -141,6 +146,39 @@
     BK.audio.bell(4); BK.audio.roar(1);
     finish({ winner: w, method, detail: `${how}  ·  ROUND ${g.round}  ·  ${BK.fmtClock(BK.ROUND_LEN - g.clock)}` });
     setState('fightOver');
+  }
+
+  // ---------- referee chatter ----------
+  const REF_LINES = [
+    ['Come on boys, fair knock!', 'Come on boys. Fair knock.'],
+    ['Come on boys, few shlaaaps and then few pints later!', 'Come on boys. Few shlaaaaps. And then, few pints later.'],
+    ['Come on boys, call it a draw now!', 'Come on boys. Call it a draw now.'],
+  ];
+  function refChatter(dt) {
+    const r = g.ref;
+    if (r.bubble) { r.bubble.t -= dt; if (r.bubble.t <= 0) r.bubble = null; }
+    g.refTalkT -= dt;
+    if (g.refTalkT > 0 || g.p1.clinch) return;
+    const [text, spoken] = BK.pick(REF_LINES);
+    BK.audio.sayRef(spoken);
+    r.bubble = { text, t: 3.2 };
+    g.refTalkT = BK.rnd(18, 32);
+  }
+  function drawRefBubble() {
+    const r = g.ref, b = r.bubble;
+    if (!b || g.state !== 'fight' || BK.replay.active) return;
+    // world -> screen (HUD) position of the referee's head, kept below the health bars
+    const c = BK.cam, z = c.zoom + c.kick;
+    const x = W / 2 + (r.sx - c.x) * z, y = Math.max(250, H / 2 + (r.sy - 270 * r.fs - c.y) * z);
+    const a = Math.min(1, b.t * 3, (3.2 - b.t) * 6);
+    ctx.save(); ctx.globalAlpha = a;
+    ctx.font = BK.FONT.ui(28); const w = ctx.measureText(b.text).width + 40;
+    const bx = clamp(x - w / 2, 20, W - w - 20);
+    BK.draw.rr(bx, y - 64, w, 52, 14); BK.draw.fillOut('#f7f3ea', 3);
+    ctx.fillStyle = '#f7f3ea'; ctx.beginPath(); ctx.moveTo(x - 10, y - 13); ctx.lineTo(x + 6, y - 13); ctx.lineTo(x, y + 6); ctx.closePath(); ctx.fill();
+    ctx.strokeStyle = BK.PAL.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 10, y - 12); ctx.lineTo(x, y + 6); ctx.lineTo(x + 6, y - 12); ctx.stroke();
+    BK.draw.text(b.text, bx + w / 2, y - 37, BK.FONT.ui(28), BK.PAL.ink);
+    ctx.restore();
   }
 
   // ---------- rounds & scoring (10-point must system) ----------
@@ -268,6 +306,9 @@
       case 'tape':
         p1.update(dt, IDLE, p2); p2.update(dt, IDLE, p1);
         break;
+      case 'walkout':
+        BK.walkout.update(dt);
+        break;
       case 'roundIntro':
         p1.update(dt, IDLE, p2); p2.update(dt, IDLE, p1); ref.update(dt, p1, p2);
         BK.input.player();
@@ -283,6 +324,7 @@
         ref.update(dt, p1, p2);
         if (g.state !== 'fight') break;
         g.clock -= dt;
+        refChatter(dt);
         if (g.clock <= 10 && !g.clapped) { g.clapped = true; BK.audio.tick(false); setTimeout(() => BK.audio.tick(false), 150); setTimeout(() => BK.audio.tick(false), 300); }
         if (g.clock <= 0) { g.clock = 0; endRound(); }
         break;
@@ -319,6 +361,7 @@
     const c = BK.cam, { p1, p2 } = g;
     const s = g.state;
     if (s === 'title' || s === 'tape') { c.tx = W / 2; c.ty = 520; c.tz = 1.12 + Math.sin(g.t * 0.25) * 0.04; }
+    else if (s === 'walkout') BK.walkout.camera(c);
     else if (s === 'knockdown' && g.kd) {
       const v = g.kd.victim;
       c.tx = v.sx - v.dir * 100 * v.fs; c.ty = v.sy - 120; c.tz = g.kd.t < 1.4 ? 1.5 : 1.25;
@@ -346,6 +389,7 @@
   g.onTap = (x, y) => {
     BK.audio.init();
     if (BK.replay.active) { BK.replay.skip(); return true; }
+    if (g.state === 'walkout') { BK.walkout.skip(); return true; }
     if (g.state === 'title') goFullscreen();
     if (BK.ui.tap(x, y)) return true;
     if (g.state === 'knockdown' && !g.paused) { BK.getup.tap(x, y, false); return true; }
@@ -355,6 +399,7 @@
   g.onKey = k => {
     BK.audio.init();
     if (BK.replay.active) { BK.replay.skip(); return; }
+    if (g.state === 'walkout') { BK.walkout.skip(); return; }
     if (k === 'escape' || k === 'p') { if (g.paused) g.resume(); else g.pause(); return; }
     if (g.paused) { if (k === 'enter') g.resume(); return; }
     if (g.state === 'knockdown' && (k === ' ' || k === 'enter')) { BK.getup.tap(0, 0, true); return; }
@@ -398,10 +443,11 @@
     ctx.translate(v.ox, v.oy); ctx.scale(v.s, v.s);
 
     const ex = BK.audio.excitement;
-    const stage = drawEnts => {
+    const stage = (drawEnts, drawBehind) => {
       BK.arena.drawBackdrop(g.t, ex);
       BK.arena.drawRing();
       BK.fx.drawDecals();
+      if (drawBehind) drawBehind();
       BK.arena.drawBackRopes();
       drawEnts();
       BK.arena.drawFrontRopes();
@@ -418,14 +464,15 @@
     }
     ctx.save();
     BK.applyCamera();
+    const ents = [g.p1, g.p2];
+    if (!['title', 'tape'].includes(g.state)) ents.push(g.ref);
+    const card = cardWalker();
+    const snaps = ents.map(e => (e.snapshot ? e.snapshot() : e)).concat(card ? [card] : []).sort((a, b) => a.z - b.z);
     stage(() => {
-      const ents = [g.p1, g.p2];
-      if (!['title', 'tape'].includes(g.state)) ents.push(g.ref);
-      const card = cardWalker();
-      ents.map(e => (e.snapshot ? e.snapshot() : e)).concat(card ? [card] : [])
-        .sort((a, b) => a.z - b.z).forEach(e => BK.drawFigure(e));
+      snaps.filter(e => e.z >= 0).forEach(e => BK.drawFigure(e));
       BK.fx.drawParticles();
-    });
+    }, () => snaps.filter(e => e.z < 0).forEach(e => BK.drawFigure(e))); // walking the aisle, behind the ropes
+    if (g.state === 'walkout') BK.walkout.drawWorld();
     BK.fx.drawPopups();
     ctx.restore();
 
@@ -433,13 +480,15 @@
     if (g.flashT > 0) { ctx.fillStyle = `rgba(255,250,235,${g.flashT * 3})`; ctx.fillRect(-W, -H, W * 3, H * 3); }
     BK.ui.begin();
     const s = g.state, T = g.stateT;
-    if (s === 'title') hud.title(g);
+    if (s === 'walkout') BK.walkout.drawHud();
+    else if (s === 'title') hud.title(g);
     else if (s === 'tape') hud.tape(g);
     else if (s === 'corner') hud.corner(g);
     else if (s === 'cornerGame') BK.corner.draw(g);
     else if (s === 'result') hud.result(g);
     else {
       hud.draw(g);
+      drawRefBubble();
       // from round 2 the card walker announces the round first, then the banner lands
       const bannerT = g.round > 1 ? T - (CARD_WALK - 0.3) : T;
       if (s === 'roundIntro' && bannerT > 0) hud.banner(g.round === g.totalRounds && g.round > 1 ? 'FINAL ROUND' : `ROUND ${g.round}`, g.round === 1 ? 'PROTECT YOURSELF AT ALL TIMES' : null, Math.min(1, bannerT * 4));

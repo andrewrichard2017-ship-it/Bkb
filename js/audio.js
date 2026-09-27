@@ -10,7 +10,9 @@
     try { A.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { A.ctx = null; return; }
     const c = A.ctx;
     A.master = c.createGain(); A.master.gain.value = BK.settings.sound ? 0.9 : 0;
-    A.master.connect(c.destination);
+    const lim = c.createDynamicsCompressor();
+    lim.threshold.value = -10; lim.knee.value = 6; lim.ratio.value = 8; lim.attack.value = 0.003; lim.release.value = 0.15;
+    A.master.connect(lim).connect(c.destination);
 
     // Crowd bed: looping noise through two band filters, level follows excitement.
     const len = c.sampleRate * 3, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
@@ -111,8 +113,8 @@
     const len = len0 * BK.rnd(0.9, 1.15), pitch = v.pitch * BK.rnd(0.94, 1.06), breath = breath0 * (0.6 + v.breath);
     const out = c.createGain();
     out.gain.setValueAtTime(0.0001, t);
-    out.gain.exponentialRampToValueAtTime(loud * 0.5, t + 0.018);
-    out.gain.setValueAtTime(loud * 0.5, t + len * 0.35);
+    out.gain.exponentialRampToValueAtTime(loud * 1.5, t + 0.018);
+    out.gain.setValueAtTime(loud * 1.5, t + len * 0.35);
     out.gain.exponentialRampToValueAtTime(0.0001, t + len);
     out.connect(A.master);
     // voiced part
@@ -137,15 +139,42 @@
 
   A.tick = (good) => { if (A.ctx) tone(good ? 880 : 220, good ? 1320 : 160, 0.12, 0.35, good ? 'triangle' : 'square'); };
 
-  A.say = text => {
+  let maleVoice;
+  function pickVoice() {
+    if (maleVoice !== undefined) return maleVoice;
+    try {
+      const vs = window.speechSynthesis.getVoices().filter(v => /^en/i.test(v.lang));
+      if (!vs.length) return null;
+      maleVoice = vs.find(v => /male|daniel|george|arthur|oliver|james|david|guy|ryan/i.test(v.name) && !/female/i.test(v.name))
+        || vs.find(v => /en-(GB|IE)/i.test(v.lang)) || vs[0];
+    } catch (e) { maleVoice = null; }
+    return maleVoice;
+  }
+  function speak(text, rate, pitch, interrupt) {
     if (!BK.settings.sound) return;
     try {
       const ss = window.speechSynthesis;
       if (!ss) return;
+      if (interrupt) ss.cancel();
       const u = new SpeechSynthesisUtterance(text);
-      u.rate = 1.15; u.pitch = 0.75; u.volume = 1;
+      u.rate = rate; u.pitch = pitch; u.volume = 1;
+      const v = pickVoice(); if (v) u.voice = v;
       ss.speak(u);
     } catch (e) { /* speech is optional */ }
+  }
+  A.say = text => speak(text, 1.15, 0.75);
+  A.sayRef = text => { try { if (window.speechSynthesis && window.speechSynthesis.speaking) return false; } catch (e) { /* optional */ } speak(text, 0.88, 0.2); return true; };
+  A.announce = text => speak(text, 0.82, 0.35, true);
+  // Walkout beat: kick, snare and a low bass line for a few bars.
+  A.walkoutBeat = bars => {
+    if (!A.ctx) return;
+    const step = 0.26;
+    for (let i = 0; i < bars * 8; i++) {
+      const t0 = i * step;
+      if (i % 4 === 0 || i % 8 === 6) tone(110, 40, 0.18, 0.7, 'sine', t0);
+      if (i % 4 === 2) noiseBurst(0.1, 1800, 'bandpass', 0.35, t0);
+      if (i % 2 === 0) tone([55, 55, 65, 49][Math.floor(i / 8) % 4], [55, 55, 65, 49][Math.floor(i / 8) % 4] * 0.99, 0.22, 0.25, 'triangle', t0);
+    }
   };
   A.hush = () => { try { window.speechSynthesis && window.speechSynthesis.cancel(); } catch (e) { /* optional */ } };
 })();

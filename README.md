@@ -28,12 +28,15 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 
 ## How a fight works
 
+- **Walkout.** Each fighter walks the aisle under a spotlight, ducks through the ropes and parades while the announcer calls him. The referee brings them to the centre to touch gloves, but one of them may refuse. Tap to skip.
+- **The referee** chips in during the fight: "Come on boys, fair knock", "Come on boys, few shlaaaps and then few pints later", "Come on boys, call it a draw now" (spoken where the phone supports it, and always shown in a speech bubble).
+
 - **Stamina.** Every punch costs stamina; missing costs more. A tired fighter punches slower and weaker and his hands drop.
-- **Defence.** Blocking stops most of a jab or cross, but hooks and uppercuts partly break the guard. Sway a punch to open a counter window. Leaning back and ducking both avoid head shots; a duck-and-roll sets up a bigger counter but walks straight into an uppercut. Neither gets you out of the way of a body shot.
+- **Defence.** Blocking stops most of a jab or cross, but hooks and uppercuts partly break the guard. Swaying costs 15 stamina (more than any punch) and always comes back with a punch: a cross off the lean-back, a hook out of the duck-and-roll. If the sway made him miss, that punch lands as a counter. Leaning back and ducking both avoid head shots; a duck-and-roll sets up a bigger counter but walks straight into an uppercut. Neither gets you out of the way of a body shot.
 - **Counters.** Land a punch while your opponent is mid-punch, or straight after a slip, for 1.6× damage.
 - **Body shots.** Hold BODY and throw any punch to go to the ribs. Little damage to health, but they drain stamina hard, get through a high guard more easily, and every one slows the opponent's stamina recovery for the rest of the fight.
 - **Clinch.** Tap CLINCH up close to grab. The reach-in can be **blocked** (you're pushed off) or **slipped** ("swayed", and he gets a counter). Locked up, punches become short body digs that do light damage and **can never knock anyone down**. Hold BLOCK in the clinch to tie his arms up and smother the digs. The grabber gets his breath back; the referee breaks it after a few seconds.
-- **Super punch.** When your opponent drops under 5% health a glowing **SUPER** button appears. It throws a loaded overhand that can't be blocked (but can be slipped or missed); if it lands it's a guaranteed knockdown, and the count decides the rest. The CPU always beats the count the first two times it goes down; after that it's a bonus.
+- **Super punch.** When your opponent drops under 5% health a glowing **SUPER** button appears. It throws a loaded overhand that can't be blocked (but can be slipped or missed); if it lands it's a guaranteed knockdown, and the count decides the rest. The CPU always beats the count the first two times it goes down; after that the odds fall (about 75%, 50%, 30%, then 15%). Three knockdowns in one round is still a TKO.
 - **Replays.** Every knockdown and knockout is replayed TV-style: slow motion through the impact, a tilted close-up camera, letterbox bars. Tap to skip.
 - **Hurt.** A fighter below ~28 HP can be staggered by power shots and becomes easier to finish.
 - **Knockdowns.** At 0 HP a fighter goes down and the referee counts. To beat the count, **tap each orb as the closing ring meets it**. Perfect or good timing lifts you up; mistimed taps knock you back a step. Each knockdown needs more orbs and gives you less time, and lowers your maximum health for the rest of the fight. **Three knockdowns in one round is a TKO.**
@@ -68,6 +71,7 @@ Timing: every punch runs wind-up, then a fast snap to full extension, a held fol
 | `js/replay.js` | Records the last few seconds and plays back knockdowns in slow motion |
 | `js/ai.js` | CPU opponent (Easy / Normal / Hard) |
 | `js/getup.js` | Get-up orb minigame |
+| `js/walkout.js` | Walkouts, announcer and touching gloves before round 1 |
 | `js/corner.js` | Between-rounds corner scene: diesel, slaps or a beer |
 | `js/arena.js` | Crowd, lighting rig, ring, ropes |
 | `js/fx.js` | Sweat, blood, sparks, callouts |

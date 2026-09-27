@@ -33,6 +33,8 @@
   def('tired', { fX: 52, fY: -76, rX: 32, rY: -80, lean: 12, head: 8, py: 9 });
   def('block', { fX: 40, fY: -124, fB: 0.8, rX: 34, rY: -116, rB: 0.7, head: 12, lean: 12, py: 10, fZ: 1.1, rZ: 1.05 });
   def('duck', { lean: 34, px: 6, py: 42, head: 22, fX: 46, fY: -112, fB: 0.8, rX: 32, rY: -114, rB: 0.8 });
+  def('touch', { fX: 104, fY: -104, fB: 0.1, fZ: 1.1, rX: 34, rY: -108, lean: 10, px: 6, head: 4 });
+  def('refuse', { fX: 34, fY: -66, fB: 1, rX: 20, rY: -62, rB: 1, lean: -6, head: -14, px: -4 });
   def('slip', { lean: -24, px: -18, py: 16, head: -8, fX: 36, fY: -100, rX: 24, rY: -104 });
   def('hurt', { lean: -18, head: -26, px: -14, py: 6, fX: 42, fY: -82, fB: 0.9, rX: 22, rY: -86 });
   def('hurtUp', { lean: -22, head: -40, px: -12, py: 2, fX: 40, fY: -78, fB: 0.9, rX: 18, rY: -84 });

@@ -44,6 +44,7 @@
       this.down = false; this.downT = 0; this.lift = 0; this.liftTarget = 0; this.rising = false;
       this.celebrate = false; this.regenDelay = 0; this.dripT = 0;
       this.grab = null; this.clinch = null;
+      this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make();
       this.blockW = 0; this.hurtW = 0; this.hurtKind = 'head'; this.sq = 0; this.sqV = 0;
@@ -110,7 +111,7 @@
 
       // recovery
       const bodyF = clamp(1 - this.bodyDmg / 220, 0.5, 1);
-      if (!this.punch) this.stamina = Math.min(100, this.stamina + (this.blocking ? 6 : 15) / this.stamMul * bodyF * dt);
+      if (!this.punch && !this.slip) this.stamina = Math.min(100, this.stamina + (this.blocking ? 6 : 15) / this.stamMul * bodyF * dt);
       this.regenDelay -= dt;
       if (this.regenDelay <= 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + 0.5 * dt);
 
@@ -120,7 +121,13 @@
       const dx = opp.sx - this.sx;
       if (Math.abs(dx) > 8 && !this.celebrate) this.dir = Math.sign(dx);
 
-      if (this.slip) { this.slip.t += dt; if (this.slip.t >= this.slip.dur) this.slip = null; }
+      if (this.slip) {
+        this.slip.t += dt;
+        if (this.slip.t >= this.slip.dur) { // come back with a punch: a cross off the lean, a hook out of the roll
+          const kind = this.slip.kind; this.slip = null;
+          if (!this.punch && this.stagger <= 0 && !this.clinch) this.throwPunch(kind === 'duck' ? 'hook' : 'cross', { auto: true });
+        }
+      }
       const staggered = this.stagger > 0;
       if (staggered) this.stagger -= dt;
 
@@ -144,7 +151,7 @@
       if (input.slip && !this.punch && !this.slip && !staggered && this.stamina > 4) {
         const duck = this.look.sway === 'duck';
         this.slip = { t: 0, dur: duck ? 0.5 : 0.4, kind: duck ? 'duck' : 'lean' };
-        this.stamina -= 5 * this.stamMul;
+        this.stamina = Math.max(0, this.stamina - 15 * this.stamMul); // sway + the punch that comes back
       }
       // clinch attempt: a visible reach-in the other fighter can block or sway away from
       if (this.grab) {
@@ -210,7 +217,7 @@
       const sp = (this.speedMul * 0.5 + 0.5) * (opt.clinch ? 1.35 : 1);
       this.punch = { type, ...d, dur: d.dur * tired / sp, hitAt: d.hitAt * tired / sp, t: 0, resolved: false, body: !!opt.body, clinch: !!opt.clinch };
       if (opt.clinch) { this.punch.dmg = d.dmg * 0.28; this.punch.reach = 999; }
-      this.stamina = Math.max(0, this.stamina - d.cost * this.stamMul * (opt.clinch ? 0.5 : 1));
+      if (!opt.auto) this.stamina = Math.max(0, this.stamina - d.cost * this.stamMul * (opt.clinch ? 0.5 : 1));
       this.stats.thrown++; if (d.power) this.stats.pthrown++;
       if (type === 'ko') this.grunt('effortHuge', true);
       else if (opt.clinch) { if (Math.random() < 0.5) this.grunt('effortSmall'); }
@@ -379,6 +386,8 @@
         R.mixInto(T, this.tmp, Math.min(1, this.stagger * 3), U);
       }
       if (this.hurtW > 0.01) R.mixInto(T, this.hurtKind === 'up' ? PO.hurtUp : this.hurtKind === 'body' ? PO.hurtBody : PO.hurt, Math.min(1, this.hurtW), U);
+      if (this.ropeDuck) R.mixInto(T, PO.duck, this.ropeDuck, U);
+      if (this.extraPose) R.mixInto(T, PO[this.extraPose], this.extraW == null ? 1 : this.extraW, U);
       if (this.celebrate && !this.down) {
         R.mix(this.tmp, PO.victoryA, PO.victoryB, (Math.sin(this.t * 7) + 1) / 2, U);
         R.mixInto(T, this.tmp, 1, U);
