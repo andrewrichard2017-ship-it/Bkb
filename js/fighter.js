@@ -371,7 +371,7 @@
         this.grunt(p.clinch ? 'hurtSmall' : p.body ? 'hurtBody' : p.power || counter ? 'hurtBig' : 'hurt', p.power);
         if (this.damage > 0.5 && !p.body) from.blood = Math.min(1, from.blood + 0.012); // his blood on your hands and vest
         BK.audio.excite(dmg / 40);
-        if (this.side === 0) BK.vibrate(p.power ? 45 : 20);
+        BK.vibrate(p.power ? 45 : 20, this.side);
         if (!p.clinch && this.hp > 0 && this.hp < 28 && p.power && this.stagger <= 0 && Math.random() < 0.45) {
           this.stagger = 1.1;
           BK.fx.popup('HURT!', this.headX, this.headY - 90, BK.PAL.blood, 40);

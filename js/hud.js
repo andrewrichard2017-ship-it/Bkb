@@ -79,7 +79,7 @@
     D.slant(left ? sx : sx + sw - sv, sy, sv, 10, sk * 0.3);
     ctx.fillStyle = f.stamina < 25 ? '#c98a2e' : PAL.teal; ctx.fill();
     // name + knockdown pips
-    D.text(f.look.name, left ? x : x + bw, sy + 32, F.display(28), PAL.bone, left ? 'left' : 'right');
+    D.text(f.look.name + (BK.game.twoPlayer ? (left ? '  ·  P1' : '  ·  P2') : ''), left ? x : x + bw, sy + 32, F.display(28), PAL.bone, left ? 'left' : 'right');
     for (let i = 0; i < f.kdTotal; i++) {
       const cx = left ? x + bw - 14 - i * 26 : x + 14 + i * 26;
       D.circle(cx, sy + 32, 9); ctx.fillStyle = PAL.blood; ctx.fill(); ctx.strokeStyle = PAL.bone; ctx.lineWidth = 2; ctx.stroke();
@@ -99,10 +99,12 @@
     D.text(`ROUND ${g.round} / ${g.totalRounds}`, W / 2, 38, F.ui(22), PAL.brass);
     const low = g.clock <= 10 && g.state === 'fight';
     D.text(BK.fmtClock(g.clock), W / 2, 84, F.display(56), low ? '#e2584f' : PAL.bone);
-    if (g.koReady() && !(g.p1.punch && BK.PUNCHES[g.p1.punch.type].super)) {
+    for (const f of [g.p1, g.p2]) {
+      if (!g.koReadyFor(f) || (f.punch && BK.PUNCHES[f.punch.type].super)) continue;
       const a = 0.6 + Math.sin(performance.now() / 110) * 0.4;
       ctx.save(); ctx.globalAlpha = a;
-      BK.strokeText(`HE'S OUT ON HIS FEET  ·  ${g.p1.look.super === 'duster' ? 'KNUCKLE DUSTER' : 'SUPER PUNCH'} READY`, W / 2, 210, F.display(40), PAL.brass, 8);
+      const who = g.twoPlayer ? `${f.side ? 'BLUE' : 'RED'}: ` : '';
+      BK.strokeText(`${who}HE'S OUT ON HIS FEET  ·  ${f.look.super === 'duster' ? 'KNUCKLE DUSTER' : 'SUPER PUNCH'} READY`, W / 2, 210 + f.side * 50, F.display(40), PAL.brass, 8);
       ctx.restore();
     }
     // pause button
@@ -151,20 +153,26 @@
       f.drawPortrait(x + (which === 'player' ? -250 : 250), 342, 1.6, which !== 'player');
       ctx.restore();
     };
-    pick(g.p1, W / 2 - 290, 'YOU  ·  RED CORNER', 'player');
-    pick(g.p2, W / 2 + 290, 'CPU  ·  BLUE CORNER', 'cpu');
+    const two = BK.settings.players === 2;
+    pick(g.p1, W / 2 - 290, two ? 'PLAYER 1  ·  RED CORNER' : 'YOU  ·  RED CORNER', 'player');
+    pick(g.p2, W / 2 + 290, two ? 'PLAYER 2  ·  BLUE CORNER' : 'CPU  ·  BLUE CORNER', 'cpu');
     D.text('VS', W / 2, 332, F.display(48), PAL.blood);
 
     UI.button(W / 2 - 230, 470, 420, 100, 'QUICK FIGHT', () => g.toTape(), 'primary');
     UI.button(W / 2 + 230, 470, 420, 100, 'TOURNAMENT', () => g.startTournament(), 'primary', 'BEAT EVERYONE');
     const s = BK.settings;
     const row = [
+      ['PLAYERS', s.players === 2 ? '2' : '1', () => g.togglePlayers()],
       ['DIFFICULTY', BK.DIFFS[s.difficulty], () => { s.difficulty = (s.difficulty + 1) % 3; }],
       ['ROUNDS', String(s.rounds), () => { s.rounds = BK.ROUND_OPTS[(BK.ROUND_OPTS.indexOf(s.rounds) + 1) % BK.ROUND_OPTS.length]; }],
       ['SOUND', s.sound ? 'ON' : 'OFF', () => { s.sound = !s.sound; BK.audio.setEnabled(s.sound); }],
       ['VIBRATION', s.vibrate ? 'ON' : 'OFF', () => { s.vibrate = !s.vibrate; BK.vibrate(40); }],
     ];
-    row.forEach(([sub, val, fn], i) => UI.button(W / 2 + (i - 1.5) * 300, 620, 270, 92, val, () => { fn(); BK.saveSettings(); }, 'secondary', sub));
+    row.forEach(([sub, val, fn], i) => UI.button(W / 2 + (i - 2) * 250, 620, 228, 92, val, () => { fn(); BK.saveSettings(); }, 'secondary', sub));
+    if (two) {
+      const n = BK.pad.count, msg = n >= 2 ? 'Two controllers connected: pad 1 is red, pad 2 is blue' : n === 1 ? 'One controller: it takes the blue corner, touch screen / keyboard the red' : 'Connect a controller for player 2 (or use arrows + 1-9 on a keyboard)';
+      D.text(msg, W / 2, 690, F.ui(22), PAL.brass);
+    }
     const r = BK.record;
     D.text((r.w + r.l + r.d ? `YOUR RECORD  ${r.w}-${r.l}-${r.d}  (${r.ko} KO)` : 'YOUR FIRST FIGHT') + (r.champs ? `  ·  ${r.champs}x TOURNAMENT CHAMPION` : ''), W / 2, 735, F.ui(30), PAL.bone);
     if (BK.pad.connected) D.text('Controller: stick moves  ·  ✕ jab  ○ cross  □ hook  △ upper  ·  L1 sway  R1 clinch  L2 block  R2 body  R3 super  ·  D-pad picks your fighter, L1/R1 the CPU', W / 2, 800, F.ui(22, 500), 'rgba(239,230,210,0.75)');

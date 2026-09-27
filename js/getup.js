@@ -71,7 +71,8 @@
     if (!G.active) return;
     // progress meter
     const mw = 460, mx = BK.W / 2 - mw / 2, my = 250;
-    BK.strokeText('TAP THE ORBS TO GET UP', BK.W / 2, my - 28, BK.FONT.ui(32), BK.PAL.bone, 6);
+    const who = BK.game.twoPlayer ? `${G.fighter.side ? 'BLUE' : 'RED'} CORNER: ` : '';
+    BK.strokeText(who + 'TAP THE ORBS TO GET UP' + (BK.pad.slotFor(G.fighter.side) >= 0 ? '  (✕ ON YOUR PAD)' : ''), BK.W / 2, my - 28, BK.FONT.ui(32), BK.PAL.bone, 6);
     const seg = mw / G.needed;
     for (let i = 0; i < G.needed; i++) {
       D.slant(mx + i * seg + 4, my, seg - 8, 18, 6);

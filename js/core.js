@@ -97,7 +97,7 @@
   // ---------- persistence (per-device only, always optional) ----------
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ? Object.assign({}, d, v) : d; } catch (e) { return d; } };
   const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } };
-  BK.settings = load('bkb.settings', { difficulty: 1, rounds: 3, sound: true, vibrate: true, player: 'michael', cpu: 'johnjoe' });
+  BK.settings = load('bkb.settings', { difficulty: 1, rounds: 3, sound: true, vibrate: true, player: 'michael', cpu: 'johnjoe', players: 1 });
   BK.record = load('bkb.record', { w: 0, l: 0, d: 0, ko: 0 });
   BK.saveSettings = () => save('bkb.settings', BK.settings);
   BK.saveRecord = () => save('bkb.record', BK.record);
@@ -105,7 +105,8 @@
   BK.ROUND_OPTS = [1, 3, 5];
   BK.ROUND_LEN = 90;
 
-  BK.vibrate = ms => { if (!BK.settings.vibrate) return; try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { /* unsupported */ } if (BK.pad) BK.pad.rumble(ms); };
+  // side: 0 = red corner (the phone itself buzzes for them), 1 = blue (their pad rumbles)
+  BK.vibrate = (ms, side = 0) => { if (!BK.settings.vibrate) return; if (side === 0) { try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { /* unsupported */ } } if (BK.pad) BK.pad.rumble(ms, side); };
 
   // ---------- drawing helpers (all take the shared ctx) ----------
   const D = BK.draw = {};

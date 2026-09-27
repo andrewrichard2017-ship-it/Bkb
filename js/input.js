@@ -94,21 +94,40 @@
 
   IN.releaseAll = () => { IN.pointers.clear(); IN.stick = null; IN.vec = { x: 0, y: 0 }; IN.held = {}; IN.pressed = {}; };
 
-  IN.player = () => {
+  // Player 2 on the keyboard (two-player mode): arrows move, 1-4 jab/cross/hook/upper,
+  // 5 sway, 6 clinch, hold 7 body, hold 8 block, 9 super.
+  const KEYMAP2 = { 1: 'jab', 2: 'cross', 3: 'hook', 4: 'upper', 5: 'slip', 6: 'clinch', 9: 'ko' };
+  IN.player2 = () => {
     const K = IN.keys;
+    let mx = 0, my = 0;
+    if (K.arrowleft) mx -= 1; if (K.arrowright) mx += 1; if (K.arrowup) my -= 1; if (K.arrowdown) my += 1;
+    const inp = { mx, my, block: !!K['8'], body: !!K['7'] };
+    for (const [key, act] of Object.entries(KEYMAP2)) if (IN.pressed[key]) { inp[act] = true; delete IN.pressed[key]; }
+    const pd = BK.pad.fight(1);
+    if (pd) {
+      if (Math.hypot(pd.mx, pd.my) > 0) { inp.mx = pd.mx; inp.my = pd.my; }
+      for (const k of ['jab', 'cross', 'hook', 'upper', 'slip', 'clinch', 'ko']) if (pd[k]) inp[k] = true;
+      inp.block = inp.block || pd.block; inp.body = inp.body || pd.body;
+    }
+    return inp;
+  };
+
+  IN.player = () => {
+    const K = IN.keys, two = BK.game.twoPlayer;
     let mx = IN.vec.x, my = IN.vec.y;
-    if (K.a || K.arrowleft) mx -= 1;
-    if (K.d || K.arrowright) mx += 1;
-    if (K.w || K.arrowup) my -= 1;
-    if (K.s || K.arrowdown) my += 1;
+    if (K.a || (K.arrowleft && !two)) mx -= 1;
+    if (K.d || (K.arrowright && !two)) mx += 1;
+    if (K.w || (K.arrowup && !two)) my -= 1;
+    if (K.s || (K.arrowdown && !two)) my += 1;
     const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
     const inp = { mx, my, block: !!(K.l || IN.held.block), body: !!(K.b || IN.held.body) };
     for (const [key, act] of Object.entries(KEYMAP)) if (IN.pressed[key]) inp[act] = true;
     for (const b of BTNS) if (IN.pressed['btn_' + b.id]) inp[b.id] = true;
     if (IN.pressed.btn_ko) inp.ko = true;
-    IN.pressed = {};
-    if (BK.pad.connected) { // controller: merge sticks and buttons
-      const pd = BK.pad.fight();
+    // consume our keys; in two-player leave player 2's (digits) for their reader
+    if (two) { for (const k of Object.keys(IN.pressed)) if (!/^[0-9]$/.test(k)) delete IN.pressed[k]; } else IN.pressed = {};
+    const pd = BK.pad.fight(0);
+    if (pd) { // controller: merge sticks and buttons
       if (Math.hypot(pd.mx, pd.my) > 0) { mx = pd.mx; my = pd.my; }
       inp.mx = mx; inp.my = my;
       for (const k of ['jab', 'cross', 'hook', 'upper', 'slip', 'clinch', 'ko']) if (pd[k]) inp[k] = true;

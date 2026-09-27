@@ -19,12 +19,17 @@
     g.p2 = new BK.Fighter(ck, 1, ck === s.player);
     g.ai = new BK.AI(g.p2, g.p1);
   };
+  // Two players: blue corner is a person on a second controller (or the keyboard) instead of the CPU.
+  g.twoPlayer = false;
+  g.togglePlayers = () => { BK.settings.players = BK.settings.players === 2 ? 1 : 2; BK.saveSettings(); g.twoPlayer = BK.settings.players === 2; };
+  g.isHuman = f => f.side === 0 || g.twoPlayer;
   g.cycleFighter = which => {
     const o = BK.FIGHTER_ORDER, s = BK.settings;
     s[which] = o[(o.indexOf(s[which]) + 1) % o.length];
     BK.saveSettings(); g.setupFighters();
   };
   g.setupFighters();
+  g.twoPlayer = BK.settings.players === 2;
   g.ref = new BK.Referee();
 
   const setState = s => { g.state = s; g.stateT = 0; };
@@ -34,15 +39,16 @@
 
   // ---------- transitions ----------
   g.toTitle = () => {
-    g.paused = false; BK.getup.stop(); BK.audio.hush(); g.tour = null;
+    g.paused = false; BK.getup.stop(); BK.audio.hush(); g.tour = null; g.twoPlayer = BK.settings.players === 2;
     g.setupFighters(); g.p1.resetFight(); g.p2.resetFight(); g.ref.reset(); BK.fx.clear();
     setState('title');
   };
-  g.toTape = () => { g.setupFighters(g.tour ? g.tour.order[g.tour.index] : null); BK.fx.clear(); g.result = null; setState('tape'); };
+  g.toTape = () => { g.twoPlayer = BK.settings.players === 2 && !g.tour; g.setupFighters(g.tour ? g.tour.order[g.tour.index] : null); BK.fx.clear(); g.result = null; setState('tape'); };
 
   // ---------- tournament ----------
   // Fight everyone else in turn. Health carries over between fights, +10 after each win. Lose and you're out.
   g.startTournament = () => {
+    g.twoPlayer = false; // tournaments are you against the field
     const me = BK.settings.player;
     g.tour = { order: BK.TOUR_ORDER.filter(k => k !== me), index: 0, hp: 100 };
     setState('ladder');
@@ -81,15 +87,20 @@
     f.stamina = 100; f.damage = Math.max(0, f.damage - 0.08);
   };
   g.workCorner = () => {
-    g.cpuBoost = BK.pick(Object.keys(BK.CORNER_BOOSTS)); // the CPU's corner decides too
-    BK.corner.start(g.p1, g.p2, g.cpuBoost, () => g.nextRound());
+    if (g.twoPlayer) { // red corner picks, then blue
+      g.cpuBoost = null;
+      BK.corner.start(g.p1, g.p2, null, () => { BK.corner.start(g.p2, g.p1, null, () => g.nextRound()); });
+    } else {
+      g.cpuBoost = BK.pick(Object.keys(BK.CORNER_BOOSTS)); // the CPU's corner decides too
+      BK.corner.start(g.p1, g.p2, g.cpuBoost, () => g.nextRound());
+    }
     setState('cornerGame');
   };
   g.nextRound = () => {
-    if (g.state === 'corner') g.cpuBoost = BK.pick(Object.keys(BK.CORNER_BOOSTS)); // skipped the scene
+    if (g.state === 'corner' && !g.twoPlayer) g.cpuBoost = BK.pick(Object.keys(BK.CORNER_BOOSTS)); // skipped the scene
     if (g.cpuBoost) BK.applyBoost(g.p2, g.cpuBoost);
     recover(g.p1, 22);
-    recover(g.p2, 22 * [0.85, 1, 1.15][BK.settings.difficulty]);
+    recover(g.p2, g.twoPlayer ? 22 : 22 * [0.85, 1, 1.15][BK.settings.difficulty]);
     g.cpuBoost = null; BK.corner.active = false;
     g.round++;
     beginRound();
@@ -113,11 +124,11 @@
     g.slowmo = 1.1;
     BK.cam.shake = superHit ? 30 : 22;
     BK.audio.thump(); BK.audio.roar(0.9);
-    BK.vibrate(victim === g.p1 ? [80, 40, 120] : 60);
+    BK.vibrate([80, 40, 120], victim.side);
     BK.fx.popup(tko ? 'THIRD KNOCKDOWN!' : 'DOWN!', victim.sx, victim.sy - 330 * victim.fs, BK.PAL.blood, 64);
     g.ref.victim = victim;
     if (tko) g.ref.waveOff(); else g.ref.mode = 'count';
-    if (victim === g.p2) {
+    if (!g.isHuman(victim)) {
       // CPU: always beats the first two counts; after that it's a bonus
       const later = [0.75, 0.5, 0.3, 0.15][Math.min(3, victim.kdTotal - 3)];
       const chance = victim.kdTotal <= 2 ? 1 : later * [0.85, 1, 1.12][BK.settings.difficulty];
@@ -145,8 +156,8 @@
         kd.next += 1.05; kd.count++;
         g.ref.countGesture();
         BK.audio.say(String(kd.count));
-        if (kd.count === 1 && v === g.p1) BK.getup.start(v, rise);
-        if (v === g.p2 && kd.count === kd.getUpAt) rise();
+        if (kd.count === 1 && g.isHuman(v)) BK.getup.start(v, rise);
+        if (!g.isHuman(v) && kd.count === kd.getUpAt) rise();
         if (kd.count >= 10 && !kd.rising) { stoppage('KNOCKOUT', 'Counted out'); return; }
       }
     } else if (kd.t >= kd.resumeAt) {
@@ -209,7 +220,8 @@
     return log;
   }
   // Super punch: offered when the CPU is under 5% health. It forces a knockdown (with a count).
-  g.koReady = () => g.state === 'fight' && !g.paused && !g.p1.down && !g.p1.clinch && g.p1.superAvailable(g.p2);
+  g.koReadyFor = f => { const o = f === g.p1 ? g.p2 : g.p1; return g.state === 'fight' && !g.paused && g.isHuman(f) && !f.down && !f.clinch && f.superAvailable(o); };
+  g.koReady = () => g.koReadyFor(g.p1);
   g.onKoPunch = (f, type) => {
     g.slowmo = Math.max(g.slowmo, 0.55);
     BK.cam.kick = 0.08;
@@ -287,7 +299,7 @@
 
   function finish(result) {
     g.result = result;
-    if (g.recorded) return;
+    if (g.recorded || g.twoPlayer) return;
     g.recorded = true;
     const r = BK.record;
     if (!result.winner) r.d++;
@@ -321,13 +333,13 @@
         break;
       case 'roundIntro':
         p1.update(dt, IDLE, p2); p2.update(dt, IDLE, p1); ref.update(dt, p1, p2);
-        BK.input.player();
-        const len = introLen();
+        BK.input.player(); if (g.twoPlayer) BK.input.player2();
+        const len = introLn();
         if (g.stateT > len - 0.3 && !g.rang) { g.rang = true; BK.audio.bell(1); }
         if (g.stateT > len) { g.rang = false; setState('fight'); g.ai.reset(); }
         break;
       case 'fight': {
-        const i1 = BK.input.player(), i2 = g.ai.input(dt);
+        const i1 = BK.input.player(), i2 = g.twoPlayer ? BK.input.player2() : g.ai.input(dt);
         p1.update(dt, i1, p2);
         if (g.state === 'fight') p2.update(dt, i2, p1);
         if (p1.clinch) updateClinch(dt); else separate(p1, p2);
@@ -340,7 +352,7 @@
         break;
       }
       case 'knockdown':
-        BK.input.player();
+        BK.input.player(); if (g.twoPlayer) BK.input.player2();
         updateKnockdown(dt);
         break;
       case 'roundEnd': {
@@ -426,7 +438,7 @@
 
   // ---------- ring card walker (from round 2) ----------
   const CARD_WALK = 2.6;
-  const introLen = () => (g.round > 1 ? CARD_WALK + 0.6 : 1.6);
+  const introLn = () => (g.round > 1 ? CARD_WALK + 0.6 : 1.6);
   const cardPose = BK.rig.make();
   function cardWalker() {
     if (g.state !== 'roundIntro' || g.round < 2 || g.stateT > CARD_WALK) return null;
@@ -512,7 +524,7 @@
       if (s === 'knockdown' && g.kd) {
         const kd = g.kd;
         if (kd.tko) hud.banner('STOPPED!', 'THE REFEREE WAVES IT OFF', Math.min(1, kd.t * 3), '#e2584f', 130);
-        else if (kd.count > 0 && !kd.rising) hud.count(kd.count, kd.victim === g.p2 ? `${kd.victim.look.short} IS DOWN` : null);
+        else if (kd.count > 0 && !kd.rising) hud.count(kd.count, g.isHuman(kd.victim) ? null : `${kd.victim.look.short} IS DOWN`);
         else if (kd.count === 0) hud.banner('KNOCKDOWN!', null, Math.min(1, kd.t * 4), '#e2584f', 120);
         BK.getup.draw();
       }
@@ -521,7 +533,7 @@
     if (BK.pad.toast > 0) {
       ctx.save(); ctx.globalAlpha = Math.min(1, BK.pad.toast * 2);
       BK.draw.rr(W / 2 - 260, 120, 520, 56, 14); ctx.fillStyle = 'rgba(16,12,11,0.92)'; ctx.fill(); ctx.strokeStyle = BK.PAL.brass; ctx.lineWidth = 2; ctx.stroke();
-      BK.draw.text(BK.pad.connected ? '🎮  CONTROLLER CONNECTED' : 'CONTROLLER DISCONNECTED', W / 2, 149, BK.FONT.ui(26), BK.PAL.bone);
+      BK.draw.text(BK.pad.toastText, W / 2, 149, BK.FONT.ui(26), BK.PAL.bone);
       ctx.restore();
     }
     ctx.restore();

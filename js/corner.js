@@ -224,7 +224,7 @@
     }
 
     // header + countdown
-    D.text('YOUR CORNER', 560, 118, F.display(52), PAL.bone);
+    D.text(g.twoPlayer ? `${f.corner}  ·  ${f.look.short}` : 'YOUR CORNER', 560, 118, F.display(52), PAL.bone);
     D.text(`BETWEEN ROUNDS ${g.round} AND ${g.round + 1}  ·  PICK ONE`, 560, 162, F.ui(24), PAL.brass);
     const left = Math.max(0, SCENE - C.t);
     ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(239,230,210,0.15)'; D.circle(1390, 128, 40); ctx.stroke();
