@@ -40,6 +40,20 @@
       else if (dist > want + 25) inp.mx = Math.sign(dx) * (foeHurt ? 1 : 0.85);
       else if (dist < want - 55) inp.mx = -Math.sign(dx) * 0.5;
 
+      // clinch: tie him up when hurt or gassed, and throw short digs once locked
+      if (me.clinch) {
+        this.cool -= dt;
+        if (this.cool <= 0 && Math.random() < 0.5) { inp[BK.pick(['hook', 'upper', 'jab'])] = true; this.cool = BK.rnd(0.35, 0.8); }
+        return inp;
+      }
+      this.clinchCool = (this.clinchCool || 0) - dt;
+      if ((hurt || tired) && this.clinchCool <= 0 && !me.grab && dist < 150 * me.fs && Math.abs(dz) < 0.1 && Math.random() < dt * 0.6) {
+        inp.clinch = true; this.clinchCool = 3.5; return inp;
+      }
+      if (foe.grab && foe.grab !== this.seenGrab) {
+        this.seenGrab = foe.grab;
+        if (Math.random() < lv.react + 0.1) { if (Math.random() < 0.5) inp.slip = true; else this.blockT = 0.5; }
+      }
       // defence: read a punch the moment it starts
       const fp = foe.punch;
       if (fp && fp !== this.seenPunch) {
@@ -64,6 +78,7 @@
           else this.queue = [Math.random() < 0.55 ? 'jab' : BK.pick(['cross', 'hook', 'upper'])];
           inp[this.queue.shift()] = true;
           this.cool = BK.rnd(0.5, 1.2) / lv.rate;
+          if (Math.random() < (foe.blockW > 0.5 ? 0.6 : 0.2)) inp.body = true; // go downstairs against a high guard
         }
       }
       if (!inRange && dist > 260 * me.fs) this.queue = [];

@@ -46,6 +46,17 @@
   def('hookX', { fX: 76, fY: -110, fB: -0.85, fZ: 1.35, lean: 15, px: 8, head: 6, rX: 34, rY: -108 });
   def('upperA', { rX: 8, rY: -46, rB: 1, py: 18, lean: -9, px: -6, head: -4 });
   def('upperX', { rX: 74, rY: -118, rB: 1, rZ: 1.25, rsh: 12, py: -4, lean: 8, px: 10, head: -8 });
+  // body shot reaction and the clinch
+  def('hurtBody', { lean: 24, head: 18, px: -6, py: 14, fX: 40, fY: -44, fB: 1, rX: 26, rY: -38, rB: 1 });
+  def('grab', { fX: 100, fY: -96, fB: 0.3, rX: 92, rY: -86, rB: 0.3, lean: 18, px: 10, head: 8 });
+  def('clinchHold', { fX: 104, fY: -102, fB: 0.8, rX: 96, rY: -80, rB: 0.8, lean: 24, px: 14, head: 18 });
+  def('clinchHeld', { fX: 72, fY: -84, fB: 0.9, rX: 62, rY: -70, rB: 0.9, lean: 18, px: 8, head: 12 });
+  // corner stool
+  def('sit', { px: -4, py: 58, lean: 4, head: 2, ffX: 56, ffY: 0, rfX: 40, rfY: 0, fX: 54, fY: -22, fB: 1, rX: 42, rY: -18, rB: 1 });
+  def('cmStand', { fX: 20, fY: -8, fB: 1, rX: -6, rY: -8, rB: 1, lean: 4, py: 2, ffX: 22, rfX: -22 });
+  def('cmHold', { fX: 96, fY: -56, fB: 0.3, rX: -6, rY: -8, rB: 1, lean: 12, py: 4, ffX: 26, rfX: -22 });
+  def('cmSlapBack', { fX: -24, fY: -96, fB: 0.6, rX: 20, rY: -40, rB: 1, lean: -6, py: 2, ffX: 26, rfX: -24 });
+  def('cmSlapThru', { fX: 118, fY: -62, fB: 0.1, rX: 20, rY: -40, rB: 1, lean: 14, py: 4, ffX: 30, rfX: -24 });
   // KO punch: a looping overhand haymaker, loaded way back
   def('koA', { rX: -46, rY: -126, rB: -0.6, rsh: -10, lean: -16, px: -14, py: 10, head: -6, fX: 40, fY: -112 });
   def('koX', { rX: 120, rY: -100, rB: 0.05, rZ: 1.6, rsh: 26, lean: 26, px: 26, py: 12, head: 10, fX: 22, fY: -96, fB: 1 });
@@ -291,7 +302,7 @@
         ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(10, -86); ctx.lineTo(22, -92); ctx.lineTo(22, -80); ctx.closePath(); ctx.fill();
         ctx.beginPath(); ctx.moveTo(10, -86); ctx.lineTo(-1, -92); ctx.lineTo(-1, -80); ctx.closePath(); ctx.fill();
       }
-      if (L.print) { ctx.save(); ctx.translate(8, -50); ctx.rotate(-0.05); BK.draw.text(L.print, 0, 0, BK.FONT.display(15), '#d9a441'); ctx.restore(); }
+      if (L.print) { ctx.save(); ctx.translate(8, -50); ctx.rotate(-0.05); const m = ctx.getTransform(); if (m.a * m.d - m.b * m.c < 0) ctx.scale(-1, 1); BK.draw.text(L.print, 0, 0, BK.FONT.display(15), '#d9a441'); ctx.restore(); }
     }
   }
 

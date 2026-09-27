@@ -6,22 +6,25 @@
   const { clamp } = BK;
   const IN = BK.input = { keys: {}, pressed: {}, stick: null, vec: { x: 0, y: 0 }, held: {}, pointers: new Map() };
 
-  const KEYMAP = { j: 'jab', k: 'cross', u: 'hook', i: 'upper', o: 'ko', ' ': 'slip', shift: 'slip' };
+  const KEYMAP = { j: 'jab', k: 'cross', u: 'hook', i: 'upper', o: 'ko', c: 'clinch', ' ': 'slip', shift: 'slip' };
+  // BODY and BLOCK are held; the rest are taps.
   const BTNS = [
-    { id: 'slip', label: 'SLIP', col: 0, row: 0, color: BK.PAL.teal },
-    { id: 'hook', label: 'HOOK', col: 1, row: 0, color: '#8a5a2b' },
-    { id: 'upper', label: 'UPPER', col: 2, row: 0, color: '#8a5a2b' },
-    { id: 'block', label: 'BLOCK', col: 0, row: 1, color: BK.PAL.navy },
-    { id: 'jab', label: 'JAB', col: 1, row: 1, color: '#9a6a34' },
-    { id: 'cross', label: 'CROSS', col: 2, row: 1, color: BK.PAL.blood },
+    { id: 'clinch', label: 'CLINCH', col: 0, row: 0, color: '#4f6b3a' },
+    { id: 'slip', label: 'SLIP', col: 1, row: 0, color: BK.PAL.teal },
+    { id: 'hook', label: 'HOOK', col: 2, row: 0, color: '#8a5a2b' },
+    { id: 'upper', label: 'UPPER', col: 3, row: 0, color: '#8a5a2b' },
+    { id: 'body', label: 'BODY', col: 0, row: 1, color: '#6a3f78', hold: true },
+    { id: 'block', label: 'BLOCK', col: 1, row: 1, color: BK.PAL.navy, hold: true },
+    { id: 'jab', label: 'JAB', col: 2, row: 1, color: '#9a6a34' },
+    { id: 'cross', label: 'CROSS', col: 3, row: 1, color: BK.PAL.blood },
   ];
 
   IN.layout = () => {
     const sc = BK.screen, U = Math.min(sc.w, sc.h);
-    const r = clamp(U * 0.085, 28, 54), gap = r * 2.3;
+    const r = clamp(U * 0.08, 27, 50), gap = r * 2.25;
     const right = sc.w - sc.safe.r - 18 - r, bottom = sc.h - sc.safe.b - 16 - r;
-    const buttons = BTNS.map(b => ({ ...b, x: right - (2 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
-    if (BK.game.koReady()) buttons.push({ id: 'ko', label: 'KO!', color: '#c98a1e', x: right - gap * 0.5, y: bottom - gap * 2.15, big: 1.3 });
+    const buttons = BTNS.map(b => ({ ...b, x: right - (3 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
+    if (BK.game.koReady()) buttons.push({ id: 'ko', label: 'SUPER', color: '#c98a1e', x: right - gap * 1.5, y: bottom - gap * 2.1, big: 1.3 });
     return {
       r,
       buttons,
@@ -52,7 +55,7 @@
       if (Math.hypot(e.clientX - b.x, e.clientY - b.y) < lay.r * 1.12 * (b.big || 1)) {
         IN.pointers.set(e.pointerId, { kind: 'btn', id: b.id });
         IN.held[b.id] = true;
-        if (b.id !== 'block') IN.pressed['btn_' + b.id] = true;
+        if (!b.hold) IN.pressed['btn_' + b.id] = true;
         return;
       }
     }
@@ -94,7 +97,7 @@
     if (K.w || K.arrowup) my -= 1;
     if (K.s || K.arrowdown) my += 1;
     const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
-    const inp = { mx, my, block: !!(K.l || IN.held.block) };
+    const inp = { mx, my, block: !!(K.l || IN.held.block), body: !!(K.b || IN.held.body) };
     for (const [key, act] of Object.entries(KEYMAP)) if (IN.pressed[key]) inp[act] = true;
     for (const b of BTNS) if (IN.pressed['btn_' + b.id]) inp[b.id] = true;
     if (IN.pressed.btn_ko) inp.ko = true;
@@ -123,7 +126,7 @@
       D.circle(b.x, b.y, rr); ctx.fillStyle = g; ctx.fill();
       ctx.globalAlpha = 0.9; ctx.strokeStyle = BK.PAL.bone; ctx.lineWidth = 2; ctx.stroke();
       ctx.globalAlpha = 1;
-      ctx.font = BK.FONT.display(Math.round(lay.r * (b.big ? 0.62 : b.label.length > 4 ? 0.36 : 0.42)));
+      ctx.font = BK.FONT.display(Math.round(lay.r * (b.big ? 0.5 : b.label.length > 5 ? 0.32 : b.label.length > 4 ? 0.36 : 0.42)));
       ctx.fillStyle = BK.PAL.bone; ctx.fillText(b.label, b.x, b.y + 1);
     }
     const max = lay.stickR, st = IN.stick;

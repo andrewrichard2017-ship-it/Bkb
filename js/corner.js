@@ -1,187 +1,249 @@
-// Corner minigame, played between rounds.
-//   1. CUTMAN  - cuts and swellings pop up on a close-up of your face; tap each before it bleeds.
-//   2. BREATHE - a breathing ring swells toward a target; tap as it lines up, three times.
-// The better the corner, the more health comes back and the more the swelling goes down.
+// Between-rounds corner scene: 15 seconds on the stool, pick one boost.
+//   DIESEL - dip your hands in a bucket of diesel      +5% power
+//   SLAPS  - your cornerman slaps you awake            +7% chin
+//   BEER   - a pint to settle the nerves               +10% stamina
+// Boosts stack across rounds for the rest of the fight. Baldy's corner picks one too.
 (() => {
   'use strict';
   const BK = window.BK, ctx = BK.ctx, D = BK.draw, W = BK.W, PAL = BK.PAL, F = BK.FONT;
-  const { clamp } = BK;
+  const { clamp, lerp } = BK;
+  const DEG = Math.PI / 180;
+  const SCENE = 15, ACTION = 3.2;
 
-  const FRAME = { x: 500, y: 470, r: 270 };            // close-up medallion in HUD space
-  const HEAD = { x: FRAME.x - 16, y: FRAME.y + 6 * 5.2, s: 5.2 }; // head anchor so the face sits centred
-  const RING = { x: 1130, y: 470, target: 150 };      // breathing ring
-  // spots on the face (head-local coords) where damage can show up
-  const FACE = [[18, -46], [25, -31], [21, -17], [8, -52], [11, -36], [28, -42], [3, -26], [15, -6], [-4, -44], [0, -12]];
-  const toHud = (hx, hy) => ({ x: HEAD.x + (hx - 4) * HEAD.s, y: HEAD.y - 8 * HEAD.s + (hy + 30) * HEAD.s });
+  BK.CORNER_BOOSTS = {
+    diesel: { stat: 'power', amt: 5, title: 'DIP HANDS IN DIESEL', effect: '+5% POWER', blurb: 'Old-school hardening. Stings!' },
+    slaps: { stat: 'chin', amt: 7, title: 'TAKE A FEW SLAPS', effect: '+7% CHIN', blurb: 'Wakes you up. Harder to hurt.' },
+    beer: { stat: 'stamina', amt: 10, title: 'DRINK A BEER', effect: '+10% STAMINA', blurb: 'Settles the nerves. Longer tank.' },
+  };
+  BK.applyBoost = (f, key) => { const b = BK.CORNER_BOOSTS[key]; f.buffs[b.stat] += b.amt; f.applyAttrs(); };
 
+  const CORNERMAN = {
+    skin: '#c98f6a', skinShade: '#a8734f', hair: '#b9b5ae',
+    top: 'shirt', topColor: '#7a1f1f', topShade: '#5c1717', stains: [], bowtie: false, print: 'CORNER',
+    pants: '#2a2a30', pantsShade: '#1e1e22', pantsStripe: null, boots: '#141414', bootSole: '#050505',
+    sleeves: 'short', legs: 'trousers', shoes: 'shoe', fist: 'bare', head: 'grey',
+  };
+
+  // stage layout (HUD space)
+  const FLOOR = 720, FX = 430, CX = 800, S = 1.9;
   const C = BK.corner = { active: false };
 
-  C.start = (fighter, onDone) => {
-    const total = clamp(3 + Math.round(fighter.damage * 6), 3, 8);
-    const spots = FACE.slice().sort(() => Math.random() - 0.5).slice(0, total).map(([x, y], i) => {
-      const p = toHud(x + BK.rnd(-3, 3), y + BK.rnd(-3, 3));
-      return { x: p.x, y: p.y, at: 0.9 + i * 0.62, t: 0, state: 'wait' };
-    });
+  C.start = (fighter, cpu, cpuBoost, onDone) => {
     Object.assign(C, {
-      active: true, fighter, onDone, phase: 'cuts', t: 0,
-      spots, total, cleaned: 0, life: 1.3 - 0.12 * BK.settings.difficulty,
-      breaths: [], breath: null, splashes: [], result: null,
+      active: true, fighter, cpu, cpuBoost, onDone, t: 0, choice: null, actT: 0, applied: false,
+      pose: BK.rig.make(), cmPose: BK.rig.make(), cmX: CX, pops: [], slapHit: 0, headKick: 0, oiled: false, level: 1, bubbles: [],
     });
   };
 
-  function nextBreath() {
-    if (C.breaths.length >= 3) { finish(); return; }
-    C.breath = { t: 0, judged: false };
+  function choose(key) {
+    if (C.choice || C.t >= SCENE) return;
+    C.choice = key; C.actT = 0;
+    BK.audio.tick(true);
   }
-  const INHALE = 1.3, EXHALE = 0.8;
-  const breathR = b => b.t < INHALE ? 50 + 180 * BK.easeInOut(b.t / INHALE) : 230 - 180 * BK.easeInOut((b.t - INHALE) / EXHALE);
+  function finish() { if (!C.active) return; C.active = false; C.onDone(); }
 
-  function finish() {
-    const f = C.fighter, c = C.cleaned / C.total;
-    const b = C.breaths.reduce((s, v) => s + v, 0) / 3;
-    const score = c * 0.6 + b * 0.4;
-    const hp = Math.round(12 + 16 * c + 12 * b);
-    f.hp = Math.min(f.maxHp, f.hp + hp); f.ghostHp = f.hp;
-    f.maxHp = Math.min(100, f.maxHp + Math.round(5 * c));
-    f.damage = Math.max(0, f.damage - (0.05 + 0.15 * c));
-    f.stamina = 100;
-    const grade = score >= 0.85 ? 'GREAT CORNER' : score >= 0.6 ? 'GOOD WORK' : score >= 0.35 ? 'DECENT' : 'SLOPPY';
-    C.result = { hp, grade, score, c, b };
-    C.phase = 'done'; C.breath = null;
-    BK.audio.roar(score * 0.4);
-    C.onDone(C.result);
+  C.key = k => {
+    if (k === '1') choose('diesel');
+    else if (k === '2') choose('slaps');
+    else if (k === '3') choose('beer');
+    else if ((k === 'enter' || k === ' ') && (C.applied || C.t >= SCENE)) finish();
+  };
+  C.tap = () => true; // cards and buttons are canvas buttons; swallow everything else
+
+  // torso-space point -> fighter-space point, for pinning props to hands
+  function fromTorso(p, x, y) {
+    const a = p.lean * DEG, px = p.px, py = -120 + p.py;
+    return { x: px + x * Math.cos(a) - y * Math.sin(a), y: py + x * Math.sin(a) + y * Math.cos(a) };
   }
+  const pop = (text, x, y, color = PAL.brass, size = 44) => C.pops.push({ text, x, y, color, size, t: 0 });
 
   C.update = dt => {
     if (!C.active) return;
     C.t += dt;
-    for (const s of C.splashes) s.t += dt;
-    C.splashes = C.splashes.filter(s => s.t < 0.6);
-    if (C.phase === 'cuts') {
-      let open = 0;
-      for (const s of C.spots) {
-        if (s.state === 'wait' && C.t >= s.at) s.state = 'live';
-        if (s.state === 'live') {
-          s.t += dt;
-          if (s.t > C.life) { s.state = 'missed'; s.mt = 0; BK.audio.tick(false); }
+    for (const p of C.pops) p.t += dt;
+    C.pops = C.pops.filter(p => p.t < 1);
+    for (const b of C.bubbles) { b.y -= 40 * dt; b.t += dt; }
+    C.bubbles = C.bubbles.filter(b => b.t < 0.8);
+    C.headKick *= Math.pow(0.02, dt);
+
+    const R = BK.rig, PO = BK.POSES, T = C.pose, M = C.cmPose;
+    R.copy(PO.sit, T); R.copy(PO.cmStand, M);
+    T.py += Math.sin(C.t * 3) * 1.5; T.lean += Math.sin(C.t * 3) * 1.5; // heavy breathing
+
+    // the cornerman steps in to slap or hand over the pint, then steps back
+    const near = C.choice === 'slaps' ? 690 : C.choice === 'beer' ? 730 : CX;
+    const stepIn = C.choice && C.actT < ACTION - 0.3 ? near : CX;
+    C.cmX += (stepIn - C.cmX) * Math.min(1, dt * 6);
+    if (C.choice) {
+      C.actT += dt;
+      const t = C.actT;
+      if (C.choice === 'diesel') {
+        const k = t < 0.5 ? BK.easeInOut(t / 0.5) : t < 2.4 ? 1 : 1 - BK.easeInOut((t - 2.4) / 0.6);
+        const dip = { lean: 38, head: 20, fX: 80, fY: -22 + Math.sin(t * 12) * 3, fB: 1, rX: 72, rY: -18 + Math.cos(t * 12) * 3, rB: 1 };
+        for (const key in dip) T[key] = lerp(T[key], dip[key], k);
+        if (t > 0.5 && t < 2.4) {
+          if (Math.random() < dt * 14) C.bubbles.push({ x: FX + BK.rnd(110, 170), y: FLOOR - 70, t: 0 });
+          if (Math.random() < dt * 2) BK.audio.tick(false);
         }
-        if (s.state === 'missed') s.mt += dt;
-        if (s.state !== 'cleaned' && s.state !== 'missed') open++;
+        if (t > 0.6) C.oiled = true;
+        if (t > 1.2 && t - dt <= 1.2) pop('STINGS!', FX + 60, FLOOR - 330, PAL.bone, 40);
+      } else if (C.choice === 'slaps') {
+        // three slaps: wind up, crack, recover
+        for (const at of [0.4, 1.2, 2.0]) {
+          const u = (t - at) / 0.22;
+          if (u > -1.4 && u < 0) R.mix(M, M, PO.cmSlapBack, BK.easeOut(u + 1.4 > 1 ? 1 : u + 1.4));
+          if (u >= 0 && u < 1.6) R.mix(M, PO.cmSlapThru, PO.cmStand, clamp((u - 0.6) / 1, 0, 1));
+          if (t >= at && t - dt < at) {
+            C.headKick = 1; BK.audio.slap(); BK.vibrate(20);
+            pop('SLAP!', FX + 70, FLOOR - 360, PAL.bone, 52);
+          }
+        }
+        T.head -= 34 * C.headKick; T.lean -= 8 * C.headKick;
+      } else if (C.choice === 'beer') {
+        if (t < 0.7) R.mix(M, M, PO.cmHold, BK.easeOut(t / 0.35));
+        else R.mix(M, PO.cmHold, PO.cmStand, clamp((t - 0.7) / 0.4, 0, 1));
+        const k = t < 0.7 ? 0 : t < 1.0 ? BK.easeInOut((t - 0.7) / 0.3) : t < 2.6 ? 1 : 1 - BK.easeInOut((t - 2.6) / 0.5);
+        const drink = { rX: 36, rY: -100, rB: 1, head: -30, lean: -8 };
+        if (t > 0.7) { T.rX = lerp(PO.sit.rX + 30, drink.rX, k); T.rY = lerp(-60, drink.rY, k); }
+        T.head = lerp(T.head, drink.head, k); T.lean = lerp(T.lean, drink.lean, k);
+        if (t > 1.0 && t < 2.6) C.level = Math.max(0, 1 - (t - 1.0) / 1.5);
+        for (const at of [1.3, 1.8, 2.3]) if (t >= at && t - dt < at) { BK.audio.glug(); pop('GLUG', FX + 40, FLOOR - 380, '#e8b64a', 34); }
       }
-      if (!open && C.spots.every(s => s.state === 'cleaned' || s.mt > 0.5)) { C.phase = 'breatheIntro'; C.t = 0; }
-    } else if (C.phase === 'breatheIntro') {
-      if (C.t > 1.1) { C.phase = 'breathe'; nextBreath(); }
-    } else if (C.phase === 'breathe' && C.breath) {
-      const b = C.breath;
-      b.t += dt;
-      if (!b.judged && b.t > INHALE) judge(null);
-      if (b.t > INHALE + EXHALE) nextBreath();
+      if (!C.applied && t >= ACTION) {
+        C.applied = true;
+        BK.applyBoost(C.fighter, C.choice);
+        BK.audio.roar(0.3);
+      }
     }
+    if (C.t >= SCENE) finish();
   };
 
-  function judge(r) {
-    const b = C.breath;
-    b.judged = true;
-    const d = r === null ? 999 : Math.abs(r - RING.target);
-    const v = d < 14 ? 1 : d < 30 ? 0.6 : 0;
-    C.breaths.push(v);
-    b.label = v === 1 ? 'PERFECT' : v ? 'GOOD' : r === null ? 'MISSED' : r < RING.target ? 'TOO EARLY' : 'TOO LATE';
-    b.good = v > 0;
-    BK.audio.tick(v > 0);
-    if (v) BK.vibrate(15);
+  // ---------- drawing ----------
+  function drawBucket(x, y) {
+    ctx.save(); ctx.translate(x, y);
+    D.poly([[-44, -86], [44, -86], [36, 0], [-36, 0]]); D.fillOut('#1d1d20', 5);
+    ctx.fillStyle = '#2b2a28'; ctx.beginPath(); ctx.ellipse(0, -86, 44, 12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    const g = ctx.createLinearGradient(-30, 0, 30, 0); // oily rainbow sheen
+    g.addColorStop(0, 'rgba(120,60,160,0.5)'); g.addColorStop(0.5, 'rgba(60,160,120,0.5)'); g.addColorStop(1, 'rgba(200,160,40,0.5)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(0, -84, 34, 8, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.save(); ctx.translate(0, -44); ctx.rotate(-0.04);
+    D.text('DIESEL', 0, 0, F.display(24), '#c9302c');
+    ctx.restore();
+    ctx.restore();
   }
-
-  // Returns true when the tap was used by the minigame.
-  C.tap = (x, y, keyboard) => {
-    if (!C.active) return false;
-    if (C.phase === 'cuts') {
-      const live = C.spots.filter(s => s.state === 'live');
-      let best = null, bd = 1e9;
-      for (const s of live) { const d = keyboard ? s.t : Math.hypot(x - s.x, y - s.y); if (d < bd) { bd = d; best = s; } }
-      if (best && (keyboard || bd < 80)) {
-        best.state = 'cleaned'; C.cleaned++;
-        C.fighter.damage = Math.max(0, C.fighter.damage - 0.025); // swelling visibly goes down
-        C.splashes.push({ x: best.x, y: best.y, t: 0 });
-        BK.audio.whoosh(); BK.audio.tick(true); BK.vibrate(12);
-      }
-      return true;
-    }
-    if (C.phase === 'breathe' && C.breath && !C.breath.judged && C.breath.t < INHALE) { judge(breathR(C.breath)); return true; }
-    return C.phase !== 'done';
-  };
+  function drawPint(x, y, level, tilt) {
+    ctx.save(); ctx.translate(x, y); ctx.rotate(tilt);
+    const glass = () => D.poly([[-16, -52], [16, -52], [12, 0], [-12, 0]]);
+    ctx.save(); glass(); ctx.clip();
+    ctx.fillStyle = 'rgba(220,235,240,0.35)'; ctx.fillRect(-20, -60, 40, 64);
+    const top = lerp(0, -46, level);
+    ctx.fillStyle = '#d99a2b'; ctx.fillRect(-20, top, 40, 60);
+    if (level > 0.05) { ctx.fillStyle = '#f6eed8'; ctx.fillRect(-20, top - 8, 40, 9); }
+    ctx.fillStyle = 'rgba(255,255,255,0.4)'; ctx.fillRect(-10, -48, 4, 44);
+    ctx.restore();
+    glass(); ctx.strokeStyle = PAL.ink; ctx.lineWidth = 3; ctx.stroke();
+    ctx.restore();
+  }
+  function drawStool(x, y) {
+    ctx.save(); ctx.translate(x, y);
+    ctx.strokeStyle = PAL.ink; ctx.lineWidth = 12; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(-50, -110); ctx.lineTo(-70, 0); ctx.moveTo(50, -110); ctx.lineTo(70, 0); ctx.stroke();
+    ctx.strokeStyle = '#7a5230'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.moveTo(-50, -110); ctx.lineTo(-70, 0); ctx.moveTo(50, -110); ctx.lineTo(70, 0); ctx.stroke();
+    D.rr(-80, -128, 160, 24, 8); D.fillOut('#8b5e34', 5);
+    ctx.restore();
+  }
+  function card(key, i, cx, cy) {
+    const b = BK.CORNER_BOOSTS[key], w = 470, h = 132, x = cx - w / 2, y = cy - h / 2;
+    const chosen = C.choice === key, dimmed = C.choice && !chosen;
+    ctx.save(); ctx.globalAlpha = dimmed ? 0.3 : 1;
+    D.slant(x, y, w - 16, h, 16);
+    ctx.fillStyle = chosen ? 'rgba(120,30,34,0.95)' : 'rgba(28,21,19,0.95)'; ctx.fill();
+    ctx.strokeStyle = chosen ? PAL.bone : 'rgba(217,164,65,0.75)'; ctx.lineWidth = 2.5; ctx.stroke();
+    // icon
+    ctx.save(); ctx.translate(x + 64, cy + 4);
+    if (key === 'diesel') { ctx.scale(0.55, 0.55); drawBucket(0, 58); }
+    else if (key === 'slaps') {
+      ctx.rotate(-0.3); D.rr(-22, -30, 44, 56, 16); D.fillOut('#e3b08a', 4);
+      for (let k = 0; k < 4; k++) { D.rr(-22 + k * 11, -52, 10, 30, 5); D.fillOut('#e3b08a', 3); }
+      ctx.strokeStyle = PAL.bone; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(34, -14, 12, -1, 1); ctx.stroke(); ctx.beginPath(); ctx.arc(34, -14, 22, -0.9, 0.9); ctx.stroke();
+    } else drawPint(0, 30, 1, 0);
+    ctx.restore();
+    D.text(`${i + 1}`, x + 22, y + 24, F.ui(20), 'rgba(239,230,210,0.5)');
+    D.text(b.title, x + 124, cy - 30, F.display(29), PAL.bone, 'left');
+    D.text(b.effect, x + 124, cy + 10, F.display(30), PAL.brass, 'left');
+    D.text(b.blurb, x + 124, cy + 44, F.ui(22, 500), 'rgba(239,230,210,0.75)', 'left');
+    ctx.restore();
+    if (!C.choice) BK.ui.buttons.push({ x, y, w, h, onTap: () => choose(key) });
+  }
 
   C.draw = g => {
     if (!C.active) return;
     const f = C.fighter;
-    ctx.fillStyle = 'rgba(10,7,6,0.8)'; ctx.fillRect(-W, -900, W * 3, 2700);
-    D.slant(150, 90, 1300, 740, 24); ctx.fillStyle = PAL.panel; ctx.fill();
+    ctx.fillStyle = 'rgba(10,7,6,0.84)'; ctx.fillRect(-W, -900, W * 3, 2700);
+    D.slant(110, 60, 1380, 790, 24); ctx.fillStyle = PAL.panel; ctx.fill();
     ctx.strokeStyle = 'rgba(217,164,65,0.45)'; ctx.lineWidth = 2; ctx.stroke();
-    D.text(`IN THE CORNER  ·  BETWEEN ROUNDS ${g.round} AND ${g.round + 1}`, W / 2, 135, F.ui(26), PAL.brass);
 
-    // close-up of your fighter, breathing
-    const breathe = C.phase === 'breathe' && C.breath ? (breathR(C.breath) - 50) / 180 : Math.sin(C.t * 3) * 0.2;
+    // corner of the ring: padded post, ropes, canvas
     ctx.save();
-    D.circle(FRAME.x, FRAME.y, FRAME.r); ctx.fillStyle = '#221917'; ctx.fill();
-    ctx.lineWidth = 6; ctx.strokeStyle = f.look.cornerColor; ctx.stroke();
-    D.circle(FRAME.x, FRAME.y, FRAME.r - 6); ctx.clip();
-    const sc = HEAD.s * (1 + breathe * 0.02);
-    f.drawPortrait(HEAD.x, HEAD.y, sc, false);
+    ctx.beginPath(); ctx.rect(140, 90, 820, FLOOR - 90 + 40); ctx.clip();
+    const floor = ctx.createLinearGradient(0, FLOOR - 40, 0, FLOOR + 60);
+    floor.addColorStop(0, '#8d846f'); floor.addColorStop(1, '#bdb39b');
+    ctx.fillStyle = floor; ctx.fillRect(140, FLOOR - 30, 820, 80);
+    D.rr(186, 150, 44, FLOOR - 150, 6); D.fillOut('#1a1a1d', 4);
+    D.rr(176, 190, 64, 360, 10); D.fillOut(f.look.cornerColor, 4);
+    [['#b3202a', 560], ['#efe6d2', 440], ['#23386b', 320]].forEach(([c, y]) => {
+      ctx.strokeStyle = PAL.ink; ctx.lineWidth = 14; ctx.beginPath(); ctx.moveTo(230, y); ctx.lineTo(980, y + 30); ctx.stroke();
+      ctx.strokeStyle = c; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(230, y); ctx.lineTo(980, y + 30); ctx.stroke();
+    });
+    drawStool(FX - 10, FLOOR);
+    // fighter on the stool
+    ctx.save(); ctx.translate(FX, FLOOR); ctx.scale(S, S);
+    BK.rig.draw(f.look, C.pose, { damage: f.damage, dazed: C.headKick > 0.4, blink: (C.t % 3.3) < 0.12, sweat: f.sweat, blood: f.blood });
     ctx.restore();
-
-    if (C.phase === 'cuts') {
-      for (const s of C.spots) {
-        if (s.state === 'live') {
-          const k = s.t / C.life, pop = Math.min(1, s.t / 0.12);
-          ctx.save(); ctx.translate(s.x, s.y); ctx.scale(pop, pop);
-          const gl = ctx.createRadialGradient(0, 0, 4, 0, 0, 40);
-          gl.addColorStop(0, '#d63a3a'); gl.addColorStop(0.6, '#8e111a'); gl.addColorStop(1, 'rgba(142,17,26,0)');
-          ctx.fillStyle = gl; D.circle(0, 0, 40); ctx.fill();
-          ctx.fillStyle = 'rgba(255,220,220,0.7)'; D.circle(-8, -8, 5); ctx.fill();
-          // time left
-          ctx.strokeStyle = k > 0.7 ? '#e2584f' : PAL.brass; ctx.lineWidth = 7; ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.arc(0, 0, 50, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * (1 - k)); ctx.stroke();
-          ctx.restore();
-        } else if (s.state === 'missed' && s.mt < 0.5) {
-          ctx.strokeStyle = `rgba(160,20,28,${1 - s.mt * 2})`; ctx.lineWidth = 8; ctx.lineCap = 'round';
-          ctx.beginPath(); ctx.moveTo(s.x, s.y); ctx.lineTo(s.x + 4, s.y + 30 + s.mt * 160); ctx.stroke();
-        }
-      }
-      for (const sp of C.splashes) { // sponge splash
-        const a = 1 - sp.t / 0.6;
-        ctx.fillStyle = `rgba(190,225,240,${a})`;
-        for (let i = 0; i < 9; i++) { const ang = i / 9 * Math.PI * 2; D.circle(sp.x + Math.cos(ang) * (20 + sp.t * 160), sp.y + Math.sin(ang) * (20 + sp.t * 160), 6 * a + 2); ctx.fill(); }
-        BK.strokeText('CLEANED', sp.x, sp.y - 70 - sp.t * 40, F.display(30), PAL.bone, 6);
-      }
-      D.text('CUTMAN', RING.x, 270, F.display(64), PAL.bone);
-      ctx.font = F.ui(30, 500); ctx.fillStyle = PAL.bone; ctx.textAlign = 'center';
-      ctx.fillText('Tap each cut before it bleeds.', RING.x, 340);
-      ctx.fillText('Every one you clean heals you', RING.x, 380);
-      ctx.fillText('and brings the swelling down.', RING.x, 420);
-      D.text(`${C.cleaned} / ${C.total} CLEANED`, RING.x, 520, F.display(48), PAL.brass);
-    } else if (C.phase === 'breatheIntro' || C.phase === 'breathe') {
-      D.text('BREATHE', RING.x, 200, F.display(64), PAL.bone);
-      D.text('Tap as the ring meets the gold line', RING.x, 250, F.ui(28, 500), PAL.bone);
-      ctx.strokeStyle = PAL.brass; ctx.lineWidth = 8; D.circle(RING.x, RING.y + 60, RING.target); ctx.stroke();
-      ctx.strokeStyle = 'rgba(217,164,65,0.25)'; ctx.lineWidth = 36; D.circle(RING.x, RING.y + 60, RING.target); ctx.stroke();
-      if (C.breath) {
-        const r = breathR(C.breath), close = Math.abs(r - RING.target) < 30 && !C.breath.judged && C.breath.t < INHALE;
-        ctx.strokeStyle = close ? '#fff' : PAL.bone; ctx.lineWidth = close ? 8 : 5;
-        D.circle(RING.x, RING.y + 60, r); ctx.stroke();
-        D.text(C.breath.t < INHALE ? 'IN...' : 'OUT...', RING.x, RING.y + 60, F.display(40), 'rgba(239,230,210,0.7)');
-        if (C.breath.label) BK.strokeText(C.breath.label, RING.x, RING.y + 60 - RING.target - 50, F.display(36), C.breath.good ? PAL.brass : '#e2584f', 6);
-      }
-      for (let i = 0; i < 3; i++) {
-        const v = C.breaths[i];
-        D.circle(RING.x - 50 + i * 50, 790, 14);
-        ctx.fillStyle = v === undefined ? 'rgba(239,230,210,0.15)' : v === 1 ? PAL.brass : v ? '#b88a3a' : '#7a2a2a'; ctx.fill();
-      }
-    } else if (C.phase === 'done') {
-      const r = C.result;
-      BK.strokeText(r.grade, RING.x, 250, F.display(r.grade.length > 10 ? 64 : 76), r.score >= 0.6 ? PAL.brass : PAL.bone, 10);
-      D.text(`+${r.hp} HEALTH`, RING.x, 350, F.display(56), PAL.bone);
-      D.text(`${Math.round(r.c * 100)}% OF CUTS CLEANED  ·  BREATHING ${Math.round(r.b * 100)}%`, RING.x, 410, F.ui(26), PAL.brass);
-      D.text(r.c > 0.7 ? 'The swelling is going down.' : 'That eye is still closing.', RING.x, 460, F.ui(28, 500), PAL.bone);
-      BK.ui.button(RING.x, 700, 440, 96, `START ROUND ${g.round + 1}`, () => { C.active = false; g.nextRound(); }, 'primary');
+    if (C.choice === 'diesel') drawBucket(FX + 145, FLOOR + 8); // in front, so the hands go in
+    // hands glisten after the diesel
+    if (C.oiled) for (const [hx, hy] of [[C.pose.fX, C.pose.fY], [C.pose.rX, C.pose.rY]]) {
+      const p = fromTorso(C.pose, hx, hy);
+      ctx.fillStyle = 'rgba(40,30,20,0.35)'; D.circle(FX + p.x * S, FLOOR + p.y * S, 22); ctx.fill();
+      ctx.fillStyle = 'rgba(180,220,200,0.45)'; ctx.beginPath(); ctx.ellipse(FX + p.x * S - 6, FLOOR + p.y * S - 8, 9, 4, -0.5, 0, Math.PI * 2); ctx.fill();
     }
+    for (const b of C.bubbles) { ctx.strokeStyle = `rgba(200,220,210,${1 - b.t / 0.8})`; ctx.lineWidth = 2; D.circle(b.x, b.y, 5); ctx.stroke(); }
+    // cornerman
+    ctx.save(); ctx.translate(C.cmX, FLOOR); ctx.scale(-S, S);
+    BK.rig.draw(CORNERMAN, C.cmPose, { damage: 0, dazed: false, blink: (C.t % 2.9) < 0.12, sweat: 0 });
+    ctx.restore();
+    // the pint: in the cornerman's hand, then the fighter's
+    if (C.choice === 'beer' && C.actT < 3.1) {
+      if (C.actT < 0.85) { const p = fromTorso(C.cmPose, C.cmPose.fX, C.cmPose.fY); drawPint(C.cmX - p.x * S, FLOOR + p.y * S - 10, 1, 0); }
+      else { const p = fromTorso(C.pose, C.pose.rX, C.pose.rY); drawPint(FX + p.x * S + 10, FLOOR + p.y * S - 10, C.level, C.actT > 1 && C.actT < 2.6 ? -1.1 : -0.2); }
+    }
+    ctx.restore();
+    for (const p of C.pops) {
+      ctx.save(); ctx.globalAlpha = 1 - p.t; BK.strokeText(p.text, p.x, p.y - p.t * 50, F.display(p.size), p.color, 7); ctx.restore();
+    }
+
+    // header + countdown
+    D.text('YOUR CORNER', 560, 118, F.display(52), PAL.bone);
+    D.text(`BETWEEN ROUNDS ${g.round} AND ${g.round + 1}  ·  PICK ONE`, 560, 162, F.ui(24), PAL.brass);
+    const left = Math.max(0, SCENE - C.t);
+    ctx.lineWidth = 8; ctx.strokeStyle = 'rgba(239,230,210,0.15)'; D.circle(1390, 128, 40); ctx.stroke();
+    ctx.strokeStyle = left < 4 ? '#e2584f' : PAL.brass; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(1390, 128, 40, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * left / SCENE); ctx.stroke();
+    D.text(String(Math.ceil(left)), 1390, 131, F.display(40), PAL.bone);
+
+    // options, then the outcome
+    const keys = Object.keys(BK.CORNER_BOOSTS);
+    if (!C.applied) keys.forEach((k, i) => card(k, i, 1215, 300 + i * 160));
+    else {
+      const b = BK.CORNER_BOOSTS[C.choice], cb = BK.CORNER_BOOSTS[C.cpuBoost];
+      BK.strokeText(b.effect, 1215, 300, F.display(72), PAL.brass, 10);
+      D.text('for the rest of the fight', 1215, 360, F.ui(28, 500), PAL.bone);
+      const fb = f.buffs;
+      D.text(`TOTAL  ·  POWER +${fb.power}%  ·  CHIN +${fb.chin}%  ·  STAMINA +${fb.stamina}%`, 1215, 430, F.ui(22), 'rgba(239,230,210,0.8)');
+      if (cb) D.text(`${C.cpu.look.short}'S CORNER: ${cb.effect}`, 1215, 480, F.ui(24), '#8fa6dc');
+      BK.ui.button(1215, 640, 440, 96, `START ROUND ${g.round + 1}`, finish, 'primary');
+    }
+    if (!C.choice && C.t > SCENE - 4) BK.strokeText('CHOOSE!', 560, 230, F.display(48), '#e2584f', 8);
   };
 })();

@@ -40,20 +40,22 @@
     BK.input.releaseAll();
     setState('roundIntro');
   }
-  // Basic recovery between rounds. The corner minigame replaces this for the player.
+  // Recovery between rounds for both fighters; the corner scene adds one boost on top.
   const recover = (f, hp) => {
     f.hp = Math.min(f.maxHp, f.hp + hp); f.ghostHp = f.hp;
     f.stamina = 100; f.damage = Math.max(0, f.damage - 0.08);
   };
   g.workCorner = () => {
-    g.cornerDone = false;
-    BK.corner.start(g.p1, () => { g.cornerDone = true; });
+    g.cpuBoost = BK.pick(Object.keys(BK.CORNER_BOOSTS)); // Baldy's corner decides too
+    BK.corner.start(g.p1, g.p2, g.cpuBoost, () => g.nextRound());
     setState('cornerGame');
   };
   g.nextRound = () => {
-    if (!g.cornerDone) recover(g.p1, 14); // skipped the corner
-    recover(g.p2, 14 + BK.rnd(6, 16) * [0.7, 1, 1.25][BK.settings.difficulty]);
-    g.cornerDone = false; BK.corner.active = false;
+    if (g.state === 'corner') g.cpuBoost = BK.pick(Object.keys(BK.CORNER_BOOSTS)); // skipped the scene
+    if (g.cpuBoost) BK.applyBoost(g.p2, g.cpuBoost);
+    recover(g.p1, 22);
+    recover(g.p2, 22 * [0.85, 1, 1.15][BK.settings.difficulty]);
+    g.cpuBoost = null; BK.corner.active = false;
     g.round++;
     beginRound();
   };
@@ -66,24 +68,14 @@
   g.onKnockdown = (victim, attacker, how) => {
     if (g.state !== 'fight') return;
     const replay = { at: g.t + 1.25, tHit: g.t, v: idx(victim), a: idx(attacker) };
-    if (how === 'ko') { // KO punch: no count, it's over
-      victim.knockDown(); attacker.stats.kd++;
-      g.kd = { victim, attacker, t: 0, count: 0, tko: false };
-      g.ref.victim = victim;
-      BK.cam.shake = 30; g.flashT = 0.25;
-      BK.audio.thump(); BK.vibrate([120, 60, 200]);
-      stoppage('KNOCKOUT', 'KO punch');
-      g.slowmo = 1.3;
-      g.pendingReplay = replay;
-      return;
-    }
+    if (how === 'ko') { g.flashT = 0.25; BK.vibrate([120, 60, 200]); } // super punch: extra flash, then a normal count
     g.pendingReplay = replay;
     victim.knockDown();
     attacker.stats.kd++;
     const tko = victim.kdRound >= 3;
     g.kd = { victim, attacker, t: 0, count: 0, next: 1.5, rising: false, resumeAt: 0, tko, getUpAt: 99 };
     g.slowmo = 1.1;
-    BK.cam.shake = 22;
+    BK.cam.shake = how === 'ko' ? 30 : 22;
     BK.audio.thump(); BK.audio.roar(0.9);
     BK.vibrate(victim === g.p1 ? [80, 40, 120] : 60);
     BK.fx.popup(tko ? 'THIRD KNOCKDOWN!' : 'DOWN!', victim.sx, victim.sy - 330 * victim.fs, BK.PAL.blood, 64);
@@ -158,14 +150,46 @@
     g.roundLog.push(log);
     return log;
   }
-  // KO punch: offered when the CPU is under 5% health
-  g.koReady = () => g.state === 'fight' && !g.paused && g.p2.hp < 5 && !g.p2.down && !g.p1.down;
+  // Super punch: offered when the CPU is under 5% health. It forces a knockdown (with a count).
+  g.koReady = () => g.state === 'fight' && !g.paused && g.p2.hp < 5 && !g.p2.down && !g.p1.down && !g.p1.clinch;
   g.onKoPunch = f => {
     g.slowmo = Math.max(g.slowmo, 0.55);
     BK.cam.kick = 0.08;
     BK.audio.roar(0.7);
-    BK.fx.popup('KO PUNCH!', f.headX, f.headY - 70, BK.PAL.brass, 58);
+    BK.fx.popup('SUPER PUNCH!', f.headX, f.headY - 70, BK.PAL.brass, 58);
   };
+
+  // ---------- clinch ----------
+  const CLINCH_LEN = 2.6;
+  g.startClinch = (holder, held) => {
+    for (const f of [holder, held]) { f.punch = null; f.grab = null; f.slip = null; f.blocking = false; }
+    holder.clinch = { partner: held, role: 'holder', t: 0 };
+    held.clinch = { partner: holder, role: 'held', t: 0 };
+    g.clinchT = 0;
+    BK.fx.popup('CLINCH!', (holder.sx + held.sx) / 2, holder.headY - 60, BK.PAL.bone, 44);
+    BK.audio.punch('blocked');
+  };
+  function breakClinch() {
+    const a = g.p1, b = g.p2;
+    if (!a.clinch) return;
+    const dir = Math.sign(b.sx - a.sx) || 1;
+    a.clinch = null; b.clinch = null;
+    a.knock = -dir * 0.3; b.knock = dir * 0.3;
+    g.ref.box();
+    BK.fx.popup('BREAK!', g.ref.sx, g.ref.sy - 300 * g.ref.fs, BK.PAL.bone, 50);
+  }
+  function updateClinch(dt) {
+    const a = g.p1, b = g.p2;
+    if (!a.clinch) return;
+    g.clinchT += dt;
+    // hold them chest to chest
+    const z = (a.z + b.z) / 2, mid = (a.sx + b.sx) / 2, gap = 84 * BK.depthScale(z) * 1.38;
+    const sgn = Math.sign(b.sx - a.sx) || 1, w = BK.ringR(z) - BK.ringL(z);
+    a.z += (z - a.z) * Math.min(1, dt * 8); b.z += (z - b.z) * Math.min(1, dt * 8);
+    a.u = clamp(((mid - sgn * gap / 2) - BK.ringL(z)) / w, BK.U_MIN, BK.U_MAX);
+    b.u = clamp(((mid + sgn * gap / 2) - BK.ringL(z)) / w, BK.U_MIN, BK.U_MAX);
+    if (g.clinchT > CLINCH_LEN) breakClinch();
+  }
   g.cardTotals = () => [0, 1, 2].map(j => g.roundLog.reduce((t, r) => [t[0] + r.cards[j][0], t[1] + r.cards[j][1]], [0, 0]));
 
   function cornerTip(log) {
@@ -180,6 +204,7 @@
 
   function endRound() {
     BK.audio.bell(1);
+    g.p1.clinch = g.p2.clinch = null; g.p1.grab = g.p2.grab = null;
     const log = scoreRound();
     g.tip = cornerTip(log);
     setState('roundEnd');
@@ -242,7 +267,8 @@
         const i1 = BK.input.player(), i2 = g.ai.input(dt);
         p1.update(dt, i1, p2);
         if (g.state === 'fight') p2.update(dt, i2, p1);
-        separate(p1, p2); ref.update(dt, p1, p2);
+        if (p1.clinch) updateClinch(dt); else separate(p1, p2);
+        ref.update(dt, p1, p2);
         if (g.state !== 'fight') break;
         g.clock -= dt;
         if (g.clock <= 10 && !g.clapped) { g.clapped = true; BK.audio.tick(false); setTimeout(() => BK.audio.tick(false), 150); setTimeout(() => BK.audio.tick(false), 300); }
@@ -320,8 +346,7 @@
     if (k === 'escape' || k === 'p') { if (g.paused) g.resume(); else g.pause(); return; }
     if (g.paused) { if (k === 'enter') g.resume(); return; }
     if (g.state === 'knockdown' && (k === ' ' || k === 'enter')) { BK.getup.tap(0, 0, true); return; }
-    if (g.state === 'cornerGame' && BK.corner.phase !== 'done' && (k === ' ' || k === 'enter')) { BK.corner.tap(0, 0, true); return; }
-    if (g.state === 'cornerGame' && k === 'enter') { g.nextRound(); return; }
+    if (g.state === 'cornerGame') { BK.corner.key(k); return; }
     if (k !== 'enter' && k !== ' ') return;
     if (g.state === 'title') g.toTape();
     else if (g.state === 'tape') g.startFight();

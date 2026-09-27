@@ -85,6 +85,8 @@
       D.circle(cx, sy + 32, 9); ctx.fillStyle = PAL.blood; ctx.fill(); ctx.strokeStyle = PAL.bone; ctx.lineWidth = 2; ctx.stroke();
     }
     D.text('STA', left ? sx + sw + 12 : sx - 12, sy + 6, F.ui(16), PAL.teal, left ? 'left' : 'right');
+    const b = f.buffs, tags = [b.power && `PWR +${b.power}%`, b.chin && `CHIN +${b.chin}%`, b.stamina && `STA +${b.stamina}%`].filter(Boolean);
+    if (tags.length) D.text(tags.join('   '), left ? x : x + bw, sy + 62, F.ui(20), PAL.brass, left ? 'left' : 'right');
   }
 
   BK.hud = {};
@@ -100,7 +102,7 @@
     if (g.koReady() && !(g.p1.punch && g.p1.punch.type === 'ko')) {
       const a = 0.6 + Math.sin(performance.now() / 110) * 0.4;
       ctx.save(); ctx.globalAlpha = a;
-      BK.strokeText('HE\'S OUT ON HIS FEET  ·  KO PUNCH READY', W / 2, 210, F.display(40), PAL.brass, 8);
+      BK.strokeText('HE\'S OUT ON HIS FEET  ·  SUPER PUNCH READY', W / 2, 210, F.display(40), PAL.brass, 8);
       ctx.restore();
     }
     // pause button
@@ -157,7 +159,7 @@
     row.forEach(([sub, val, fn], i) => UI.button(W / 2 + (i - 1.5) * 300, 620, 270, 92, val, () => { fn(); BK.saveSettings(); }, 'secondary', sub));
     const r = BK.record;
     D.text(r.w + r.l + r.d ? `YOUR RECORD  ${r.w}-${r.l}-${r.d}  (${r.ko} KO)` : 'YOUR FIRST FIGHT', W / 2, 735, F.ui(30), PAL.bone);
-    D.text('Left thumb moves  ·  Right thumb punches, blocks and slips  ·  Keyboard: WASD, J K U I, L block, Space slip', W / 2, 800, F.ui(24, 500), 'rgba(239,230,210,0.65)');
+    D.text('Left thumb moves  ·  Right thumb punches, blocks and slips  ·  Keyboard: WASD, J K U I, hold B body, L block, Space slip, C clinch', W / 2, 800, F.ui(24, 500), 'rgba(239,230,210,0.65)');
   };
 
   // ---------- tale of the tape ----------
@@ -240,9 +242,9 @@
     D.text('YOUR CORNER', 1130, 500, F.ui(24), PAL.brass);
     ctx.font = F.ui(28, 500); ctx.fillStyle = PAL.bone; ctx.textAlign = 'center';
     wrap(g.tip, 1130, 545, 420, 34);
-    UI.button(W / 2 - 140, 735, 460, 90, 'WORK THE CORNER', () => g.workCorner(), 'primary');
+    UI.button(W / 2 - 140, 735, 460, 90, 'TO THE CORNER', () => g.workCorner(), 'primary');
     UI.button(W / 2 + 250, 735, 260, 80, 'SKIP', () => g.nextRound());
-    D.text('Heal more and bring the swelling down', W / 2 - 140, 796, F.ui(22, 500), 'rgba(239,230,210,0.7)');
+    D.text('Diesel, slaps or a beer: pick a boost', W / 2 - 140, 796, F.ui(22, 500), 'rgba(239,230,210,0.7)');
   };
   function wrap(text, x, y, maxW, lh) {
     const words = text.split(' '); let line = '', yy = y;

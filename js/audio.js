@@ -85,6 +85,8 @@
     g.gain.exponentialRampToValueAtTime(0.001, t + 2.6);
     s.connect(f).connect(g).connect(A.master); s.start(t); s.stop(t + 2.7);
   };
+  A.slap = () => { if (A.ctx) { noiseBurst(0.07, 2500, 'highpass', 0.9); tone(420, 180, 0.06, 0.3, 'triangle'); } };
+  A.glug = () => { if (A.ctx) { tone(160, 90, 0.12, 0.5); tone(120, 70, 0.1, 0.35, 'sine', 0.1); } };
   A.tick = (good) => { if (A.ctx) tone(good ? 880 : 220, good ? 1320 : 160, 0.12, 0.35, good ? 'triangle' : 'square'); };
 
   A.say = text => {
