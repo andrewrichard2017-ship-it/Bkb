@@ -28,7 +28,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 
 ## How a fight works
 
-- **Walkout.** Each fighter walks the aisle under a spotlight, ducks through the ropes and parades while the announcer calls him. The referee brings them to the centre to touch gloves, but one of them may refuse. Tap to skip.
+- **Walkout.** Each fighter comes out of his lit entrance arch and walks down the ramp to his corner under a spotlight, ducks through the ropes and parades while the announcer calls him. The referee brings them to the centre to touch gloves, but one of them may refuse. Tap to skip.
 - **The referee** chips in during the fight: "Come on boys, fair knock", "Come on boys, few shlaaaps and then few pints later", "Come on boys, call it a draw now" (spoken where the phone supports it, and always shown in a speech bubble).
 
 - **Stamina.** Every punch costs stamina; missing costs more. A tired fighter punches slower and weaker and his hands drop.

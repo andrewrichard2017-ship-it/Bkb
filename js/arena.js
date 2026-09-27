@@ -74,6 +74,72 @@
       ctx.fillStyle = '#16161a'; D.rr(x - 18, 90, 36, 30, 6); ctx.fill();
       ctx.fillStyle = '#fff4d8'; ctx.beginPath(); ctx.ellipse(x, 120, 13, 4, 0, 0, Math.PI * 2); ctx.fill();
     }
+    AR.drawRamps(t); // in front of the truss so the arches read clearly
+  };
+
+  // ---------- entrance ramps ----------
+  // Each corner has a raised walkway from an entrance arch up in the stands down to its back corner.
+  // The path is in ring coordinates (u across, z depth; negative z is behind the ring) so fighters can walk it.
+  BK.RAMP = { top: [-0.9, -0.72], bottom: [0.0, -0.06] };
+  const rampPts = side => {
+    const m = u => (side === 0 ? u : 1 - u);
+    const pt = (u, z) => ({ x: BK.toScreenX(m(u), z), y: BK.toScreenY(z), s: BK.depthScale(z) });
+    return [pt(...BK.RAMP.top), pt(...BK.RAMP.bottom)];
+  };
+  function drawRamp(side, t, lit) {
+    const [a, b] = rampPts(side);
+    const dx = b.x - a.x, dy = b.y - a.y, L = Math.hypot(dx, dy), px = -dy / L, py = dx / L;
+    const wa = 64 * a.s * 1.38, wb = 92 * b.s * 1.38;
+    const col = side === 0 ? '#e0404a' : '#4d74d6';
+    // side skirt (the ramp is raised)
+    ctx.fillStyle = '#0c0a09';
+    D.poly([[a.x + px * wa, a.y + py * wa], [b.x + px * wb, b.y + py * wb], [b.x + px * wb, b.y + py * wb + 26], [a.x + px * wa, a.y + py * wa + 18]]); ctx.fill();
+    // walkway
+    const g = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+    g.addColorStop(0, lit ? '#4a3f37' : '#3a322c'); g.addColorStop(1, lit ? '#6e5f52' : '#554941');
+    ctx.fillStyle = g;
+    D.poly([[a.x - px * wa, a.y - py * wa], [a.x + px * wa, a.y + py * wa], [b.x + px * wb, b.y + py * wb], [b.x - px * wb, b.y - py * wb]]); ctx.fill();
+    // deck plates
+    ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2;
+    for (let i = 1; i < 8; i++) {
+      const k = i / 8, w = lerp(wa, wb, k), x = lerp(a.x, b.x, k), y = lerp(a.y, b.y, k);
+      ctx.beginPath(); ctx.moveTo(x - px * w, y - py * w); ctx.lineTo(x + px * w, y + py * w); ctx.stroke();
+    }
+    // LED edge strips, chasing toward the ring while a fighter is walking out
+    for (const sgn of [-1, 1]) {
+      for (let i = 0; i <= 16; i++) {
+        const k = i / 16, w = lerp(wa, wb, k), x = lerp(a.x, b.x, k) + sgn * px * w, y = lerp(a.y, b.y, k) + sgn * py * w;
+        const on = lit ? (Math.sin(t * 12 - i * 0.9) > 0 ? 1 : 0.35) : 0.35;
+        ctx.fillStyle = col; ctx.globalAlpha = on;
+        D.circle(x, y, 3.2 * lerp(a.s, b.s, k) * 1.38); ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    // entrance arch at the top of the ramp
+    const aw = 120 * a.s * 1.38, ah = 190 * a.s * 1.38, ax = a.x, ay = a.y;
+    ctx.fillStyle = '#060505';
+    ctx.beginPath(); ctx.moveTo(ax - aw / 2, ay); ctx.lineTo(ax - aw / 2, ay - ah * 0.75);
+    ctx.quadraticCurveTo(ax, ay - ah * 1.05, ax + aw / 2, ay - ah * 0.75); ctx.lineTo(ax + aw / 2, ay); ctx.closePath(); ctx.fill();
+    if (lit) { // backlight and smoke pouring out of the tunnel
+      const bl = ctx.createRadialGradient(ax, ay - ah * 0.4, 5, ax, ay - ah * 0.4, ah * 0.9);
+      bl.addColorStop(0, 'rgba(255,230,190,0.55)'); bl.addColorStop(1, 'rgba(255,230,190,0)');
+      ctx.fillStyle = bl; ctx.fillRect(ax - ah, ay - ah * 1.4, ah * 2, ah * 1.6);
+      for (let i = 0; i < 5; i++) {
+        const sx = ax + Math.sin(t * 0.7 + i * 1.7) * aw * 0.6 + i * 12 * (side ? -1 : 1), sy = ay - 10 - i * 6;
+        const sm = ctx.createRadialGradient(sx, sy, 2, sx, sy, 60 * a.s * 1.38);
+        sm.addColorStop(0, 'rgba(220,215,205,0.22)'); sm.addColorStop(1, 'rgba(220,215,205,0)');
+        ctx.fillStyle = sm; ctx.fillRect(sx - 90, sy - 90, 180, 180);
+      }
+    }
+    ctx.strokeStyle = col; ctx.lineWidth = 4; ctx.globalAlpha = lit ? 1 : 0.5;
+    ctx.beginPath(); ctx.moveTo(ax - aw / 2, ay); ctx.lineTo(ax - aw / 2, ay - ah * 0.75);
+    ctx.quadraticCurveTo(ax, ay - ah * 1.05, ax + aw / 2, ay - ah * 0.75); ctx.lineTo(ax + aw / 2, ay); ctx.stroke();
+    ctx.globalAlpha = 1;
+    D.text(side === 0 ? 'RED' : 'BLUE', ax, ay - ah * 1.02, BK.FONT.display(Math.round(22 * a.s * 1.38 + 4)), lit ? col : 'rgba(239,230,210,0.35)');
+  }
+  AR.drawRamps = t => {
+    const wo = BK.walkout, lit = side => wo && wo.active && wo.phase === (side === 0 ? 'red' : 'blue');
+    drawRamp(0, t, lit(0)); drawRamp(1, t, lit(1));
   };
 
   AR.drawRing = () => {

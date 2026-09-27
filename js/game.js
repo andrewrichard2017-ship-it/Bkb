@@ -447,7 +447,7 @@
       BK.arena.drawBackdrop(g.t, ex);
       BK.arena.drawRing();
       BK.fx.drawDecals();
-      if (drawBehind) drawBehind();
+      if (typeof drawBehind === 'function') drawBehind();
       BK.arena.drawBackRopes();
       drawEnts();
       BK.arena.drawFrontRopes();

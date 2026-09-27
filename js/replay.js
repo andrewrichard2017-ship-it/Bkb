@@ -82,7 +82,7 @@
         D.circle(x, y, r); ctx.fill();
       }
       ctx.globalAlpha = 1;
-    }, gt);
+    });
     ctx.restore();
     // washed-out TV replay grade
     ctx.save();

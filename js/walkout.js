@@ -8,9 +8,9 @@
   const BK = window.BK, ctx = BK.ctx, D = BK.draw, W = BK.W, H = BK.H, PAL = BK.PAL, F = BK.FONT;
   const { lerp, clamp } = BK;
 
-  // aisle -> behind the corner post -> through the ropes -> out into the ring
-  const PATH = [[-0.2, -0.34, 0], [0.02, -0.12, 1.7], [0.08, 0.07, 0.9], [0.28, 0.46, 1.4]];
-  const ENTRANCE = 5.2, MEET = 1.4, TOUCH = 1.8, BACK = 1.3;
+  // top of the entrance ramp -> down to the corner -> through the ropes -> out into the ring
+  const PATH = [[-0.9, -0.72, 0], [0.0, -0.06, 2.8], [0.08, 0.07, 0.9], [0.28, 0.46, 1.4]];
+  const ENTRANCE = 6.2, MEET = 1.4, TOUCH = 1.8, BACK = 1.3;
 
   const WO = BK.walkout = { active: false };
 
