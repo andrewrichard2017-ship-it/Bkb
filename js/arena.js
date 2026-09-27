@@ -141,6 +141,30 @@
     for (const [col, f] of ROPES) rope(C.fl, C.fr, f, col, 7);
   };
 
+  // Ringside front row, silhouetted at the bottom corners, slapping the apron when excited.
+  const FRONT = [];
+  for (let i = 0; i < 16; i++) {
+    const left = i < 8, j = i % 8;
+    FRONT.push({ x: left ? 40 + j * 70 + BK.srand() * 20 : 1070 + j * 70 + BK.srand() * 20, r: 30 + BK.srand() * 8, ph: BK.srand() * 6, bang: BK.srand() < 0.6 });
+  }
+  AR.drawFrontRow = (t, excitement) => {
+    for (const f of FRONT) {
+      const y = 872 + Math.sin(f.ph) * 6;
+      const up = excitement > 0.3 && f.bang;
+      const slap = up ? Math.max(0, Math.sin(t * 11 + f.ph)) : 0;
+      ctx.fillStyle = '#0c0908';
+      if (up) { // arms up on the apron edge
+        ctx.strokeStyle = '#0c0908'; ctx.lineWidth = f.r * 0.5; ctx.lineCap = 'round';
+        ctx.beginPath(); ctx.moveTo(f.x - f.r * 0.8, y + f.r); ctx.lineTo(f.x - f.r * 0.9, 800 + slap * 22);
+        ctx.moveTo(f.x + f.r * 0.8, y + f.r); ctx.lineTo(f.x + f.r * 0.9, 800 + (1 - slap) * 22); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.ellipse(f.x, y + f.r * 1.9, f.r * 1.6, f.r * 1.2, 0, 0, Math.PI * 2); ctx.fill();
+      D.circle(f.x, y - slap * 6, f.r); ctx.fill();
+      ctx.fillStyle = 'rgba(255,236,190,0.12)'; // rim light from the ring
+      ctx.beginPath(); ctx.arc(f.x, y - slap * 6, f.r, Math.PI * 1.15, Math.PI * 1.85); ctx.lineTo(f.x, y - slap * 6); ctx.fill();
+    }
+  };
+
   // Light beams and haze over everything in the world layer.
   AR.drawAtmosphere = t => {
     ctx.save();

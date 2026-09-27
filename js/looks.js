@@ -42,6 +42,15 @@
     sleeves: 'short', legs: 'trousers', shoes: 'shoe', fist: 'glove', head: 'grey',
   };
 
+  // Walks the ring card round between rounds.
+  BK.CARD_LOOK = {
+    skin: '#d9a07c', skinShade: '#b47f5d', hair: '#2a1d14',
+    top: 'shirt', topColor: '#1b1b1f', topShade: '#121215', stains: [], bowtie: false, print: 'BKB',
+    pants: '#1c1c20', pantsShade: '#131316', pantsStripe: null,
+    boots: '#e8e4dc', bootSole: '#b8b2a6',
+    sleeves: 'short', legs: 'trousers', shoes: 'shoe', fist: 'bare', head: 'hair',
+  };
+
   // hand: which fist throws it. dmg is before attribute/stamina/counter modifiers.
   // through: share of damage that gets past a correct block.
   BK.PUNCHES = {
@@ -49,6 +58,8 @@
     cross: { hand: 'rear',  dur: 0.44, hitAt: 0.20, dmg: 9.5, reach: 182, cost: 8,  stun: 0.32, snap: 0.38, through: 0.14, power: true },
     hook:  { hand: 'front', dur: 0.50, hitAt: 0.23, dmg: 12,  reach: 142, cost: 10, stun: 0.40, snap: 0.50, through: 0.35, power: true },
     upper: { hand: 'rear',  dur: 0.54, hitAt: 0.25, dmg: 14,  reach: 126, cost: 12, stun: 0.42, snap: 0.55, through: 0.45, power: true },
+    // Finisher, only offered when the opponent is under 5% health. Can't be blocked, but can be slipped or missed.
+    ko:    { hand: 'rear',  dur: 0.95, hitAt: 0.55, dmg: 40,  reach: 190, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0,  power: true },
   };
   BK.PUNCH_NAMES = { jab: 'JAB', cross: 'CROSS', hook: 'HOOK', upper: 'UPPERCUT' };
 

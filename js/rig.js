@@ -46,6 +46,10 @@
   def('hookX', { fX: 76, fY: -110, fB: -0.85, fZ: 1.35, lean: 15, px: 8, head: 6, rX: 34, rY: -108 });
   def('upperA', { rX: 8, rY: -46, rB: 1, py: 18, lean: -9, px: -6, head: -4 });
   def('upperX', { rX: 74, rY: -118, rB: 1, rZ: 1.25, rsh: 12, py: -4, lean: 8, px: 10, head: -8 });
+  // KO punch: a looping overhand haymaker, loaded way back
+  def('koA', { rX: -46, rY: -126, rB: -0.6, rsh: -10, lean: -16, px: -14, py: 10, head: -6, fX: 40, fY: -112 });
+  def('koX', { rX: 120, rY: -100, rB: 0.05, rZ: 1.6, rsh: 26, lean: 26, px: 26, py: 12, head: 10, fX: 22, fY: -96, fB: 1 });
+  def('cardHold', { fX: 26, fY: -168, fB: 0.5, rX: 8, rY: -166, rB: 0.5, head: -6, lean: -2, py: 0, ffX: 22, rfX: -22 });
   // falling and getting up
   def('hurtBig', { lean: -32, head: -38, px: -26, py: 4, fX: 30, fY: -48, fB: 1, rX: -8, rY: -56, rB: 1, ffX: 44, rfX: -62 });
   def('lying', { rot: -86, rotX: -36, lean: -2, head: -14, px: -2, py: -20, fX: 40, fY: -40, fB: 1, rX: -6, rY: -30, rB: 1, ffX: 16, rfX: -8, ffY: 0, rfY: 0 });
@@ -130,6 +134,21 @@
   const ellipse = (x, y, rx, ry, r = 0) => () => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, r, 0, PI * 2); };
   const rrect = (x, y, w, h, r) => () => BK.draw.rr(x, y, w, h, r);
 
+  // Wet highlights on skin; strength grows with sweat.
+  function sheen(st, spots) {
+    if (!st.sweat || st.sweat < 0.12) return;
+    ctx.fillStyle = `rgba(255,252,240,${Math.min(0.55, st.sweat * 0.6)})`;
+    for (const [x, y, rx, ry, r] of spots) { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, r || 0, 0, PI * 2); ctx.fill(); }
+  }
+  // Blood soaking into clothes, in a fixed spatter pattern so it builds up rather than flickering.
+  const SPATTER = [[8, -60, 4, 3], [14, -44, 3, 5], [-2, -52, 5, 3], [20, -24, 3, 3], [4, -34, 2.5, 4], [-10, -64, 3, 2.5],
+    [12, -72, 2.5, 2], [-6, -20, 4, 3], [24, -50, 2, 3], [0, -8, 3, 2], [16, -12, 3.5, 2.5], [-14, -40, 2.5, 2.5]];
+  function spatter(st, color) {
+    const n = Math.floor((st.blood || 0) * SPATTER.length);
+    ctx.fillStyle = color;
+    for (let i = 0; i < n; i++) { const [x, y, rx, ry] = SPATTER[i]; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0.6, 0, PI * 2); ctx.fill(); }
+  }
+
   // ---------------- parts ----------------
   function drawLeg(L, hip, ik, front) {
     const pants = front ? L.pants : L.pantsShade;
@@ -211,7 +230,7 @@
         ctx.quadraticCurveTo(28, -86, 30, -70);
         ctx.bezierCurveTo(36, -58, 34, -42, 26, -36);
         ctx.quadraticCurveTo(23, -18, 22, 2); ctx.closePath();
-      }, L.skin);
+      }, L.skin, { detail: () => sheen(st, [[24, -74, 4, 7, 0.4], [-22, -70, 3, 6]]) });
       // vest: deep armholes, thin straps, scooped neck
       cel(() => {
         ctx.beginPath(); ctx.moveTo(-25, 4);
@@ -229,6 +248,7 @@
         ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 2; // sag folds
         ctx.beginPath(); ctx.moveTo(-18, -10); ctx.quadraticCurveTo(0, -4, 20, -12); ctx.stroke();
         if (st.sweat > 0.3) { ctx.fillStyle = `rgba(160,150,120,${(st.sweat - 0.3) * 0.5})`; ctx.beginPath(); ctx.ellipse(4, -48, 16, 22, 0, 0, PI * 2); ctx.fill(); }
+        spatter(st, 'rgba(150,18,26,0.8)');
       } });
     } else if (L.top === 'hoodie') {
       cel(ellipse(-20, -84, 23, 15, -0.3), L.topShade);
@@ -244,6 +264,12 @@
         ctx.beginPath(); ctx.moveTo(-26, -8); ctx.quadraticCurveTo(-8, -2, 4, -14); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(-28, -48); ctx.quadraticCurveTo(-14, -38, -2, -46); ctx.stroke();
         ctx.beginPath(); ctx.moveTo(-6, -84); ctx.quadraticCurveTo(-4, -70, -12, -60); ctx.stroke();
+        if (st.sweat > 0.25) { // sweat soaking through
+          ctx.fillStyle = `rgba(30,18,10,${(st.sweat - 0.25) * 0.45})`;
+          ctx.beginPath(); ctx.ellipse(8, -56, 18, 16, 0, 0, PI * 2); ctx.fill();
+          ctx.beginPath(); ctx.ellipse(-24, -60, 8, 12, 0, 0, PI * 2); ctx.fill();
+        }
+        spatter(st, 'rgba(70,10,12,0.75)');
       } });
       cel(() => { ctx.beginPath(); ctx.moveTo(2, -30); ctx.lineTo(34, -30); ctx.lineTo(36, 2); ctx.lineTo(4, 2); ctx.quadraticCurveTo(10, -14, 2, -30); ctx.closePath(); },
         BK.shade(L.topColor, 0.9), { outline: 3 });
@@ -255,13 +281,17 @@
         ctx.beginPath(); ctx.moveTo(-26, 4); ctx.lineTo(-30, -60); ctx.quadraticCurveTo(-28, -86, -8, -89);
         ctx.lineTo(14, -89); ctx.quadraticCurveTo(30, -85, 30, -64); ctx.lineTo(26, 4); ctx.closePath();
       }, L.topColor, { detail: () => {
+        if (L.bowtie === false) return;
         line(14, -86, 12, 2, 'rgba(0,0,0,0.18)', 1.5);
         ctx.fillStyle = 'rgba(0,0,0,0.25)'; for (let y = -76; y < 0; y += 16) { BK.draw.circle(16, y, 1.8); ctx.fill(); }
         ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 2;
         ctx.beginPath(); ctx.moveTo(-20, -6); ctx.quadraticCurveTo(0, -12, 22, -4); ctx.stroke();
       } });
-      ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(10, -86); ctx.lineTo(22, -92); ctx.lineTo(22, -80); ctx.closePath(); ctx.fill();
-      ctx.beginPath(); ctx.moveTo(10, -86); ctx.lineTo(-1, -92); ctx.lineTo(-1, -80); ctx.closePath(); ctx.fill();
+      if (L.bowtie !== false) {
+        ctx.fillStyle = '#111'; ctx.beginPath(); ctx.moveTo(10, -86); ctx.lineTo(22, -92); ctx.lineTo(22, -80); ctx.closePath(); ctx.fill();
+        ctx.beginPath(); ctx.moveTo(10, -86); ctx.lineTo(-1, -92); ctx.lineTo(-1, -80); ctx.closePath(); ctx.fill();
+      }
+      if (L.print) { ctx.save(); ctx.translate(8, -50); ctx.rotate(-0.05); BK.draw.text(L.print, 0, 0, BK.FONT.display(15), '#d9a441'); ctx.restore(); }
     }
   }
 
@@ -288,6 +318,7 @@
         ctx.fillStyle = `rgba(92,40,90,${Math.min(0.55, d * 0.7)})`; ctx.beginPath(); ctx.ellipse(19, -30, 8 + d * 5, 6 + d * 4, 0, 0, PI * 2); ctx.fill();
         ctx.fillStyle = `rgba(170,60,60,${Math.min(0.42, d * 0.5)})`; ctx.beginPath(); ctx.ellipse(20, -18, 8, 5, 0, 0, PI * 2); ctx.fill();
       }
+      sheen(st, [[22, -48, 4, 2.5, -0.2], [26, -24, 2, 3], [10, -8, 5, 2]]);
       if (L.head === 'bald') { // dome shine
         ctx.fillStyle = 'rgba(255,248,235,0.6)'; ctx.beginPath(); ctx.ellipse(4, -52, 12, 5, -0.25, 0, PI * 2); ctx.fill();
         ctx.fillStyle = 'rgba(255,248,235,0.35)'; ctx.beginPath(); ctx.ellipse(18, -48, 4, 2.5, -0.4, 0, PI * 2); ctx.fill();
@@ -369,6 +400,7 @@
       } else {
         cel(ellipse(2, 0, 16, 15), skin); // deltoid
         cel(limbPath(len + 2, 25, 19, 6, 3, 0.42), skin, { detail: () => {
+          sheen(st, [[len * 0.45, -7, len * 0.18, 2.5]]);
           ctx.strokeStyle = 'rgba(90,50,30,0.25)'; ctx.lineWidth = 2; // bicep/tricep split
           ctx.beginPath(); ctx.moveTo(len * 0.25, 2); ctx.quadraticCurveTo(len * 0.55, 5, len * 0.85, 2); ctx.stroke();
         } });

@@ -20,6 +20,7 @@
       this.hp = 100; this.maxHp = 100; this.ghostHp = 100; this.stamina = 100;
       this.damage = 0; this.kdTotal = 0; this.ko = false;
       this.stats = { thrown: 0, landed: 0, pthrown: 0, planded: 0, counters: 0, kd: 0 };
+      this.sweat = 0; this.blood = 0; // build up over the whole fight
       this.resetRound();
     }
     resetRound() {
@@ -33,7 +34,7 @@
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make();
       this.blockW = 0; this.hurtW = 0; this.hurtKind = 'head'; this.sq = 0; this.sqV = 0;
-      this.impact = 0; this.impactHand = 'front'; this.blinkT = BK.rnd(1, 4); this.sweat = 0;
+      this.impact = 0; this.impactHand = 'front'; this.blinkT = BK.rnd(1, 4);
     }
 
     get sx() { return BK.toScreenX(this.u, this.z); }
@@ -61,9 +62,10 @@
       if (this.ghostHp > this.hp) this.ghostHp = Math.max(this.hp, this.ghostHp - 28 * dt);
       else this.ghostHp = this.hp;
 
+      if (!this.down) this.sweat = Math.min(1, this.sweat + dt * 0.004 * (1 + this.moving));
       if (this.damage > 0.65 && !this.down) {
         this.dripT -= dt;
-        if (this.dripT <= 0) { this.dripT = BK.rnd(0.6, 1.6); BK.fx.drip(this.headX + this.dir * 10 * this.fs, this.headY + 10 * this.fs, this.sy + 4); }
+        if (this.dripT <= 0) { this.dripT = BK.rnd(0.6, 1.6); this.blood = Math.min(1, this.blood + 0.01); BK.fx.drip(this.headX + this.dir * 10 * this.fs, this.headY + 10 * this.fs, this.sy + 4); }
       }
 
       if (this.down) {
@@ -121,7 +123,8 @@
         this.stamina -= 5 * this.stamMul;
       }
       // punches
-      const want = ['jab', 'cross', 'hook', 'upper'].find(k => input[k]);
+      const koReady = input.ko && opp.hp < 5 && !opp.down;
+      const want = koReady ? 'ko' : ['jab', 'cross', 'hook', 'upper'].find(k => input[k]);
       if (want && !this.punch && !this.blocking && !this.slip && !staggered) this.throwPunch(want);
 
       if (this.punch) {
@@ -133,6 +136,7 @@
     }
 
     throwPunch(type) {
+      if (type === 'ko') BK.game.onKoPunch(this);
       const d = P[type];
       const tired = this.stamina < 25 ? 1.2 : 1;
       const sp = this.speedMul * 0.5 + 0.5;
@@ -167,7 +171,7 @@
 
     receive(p, from) {
       const facing = this.dir === -from.dir;
-      const blocked = this.blocking && facing;
+      const blocked = this.blocking && facing && p.type !== 'ko';
       const counter = !blocked && ((this.punch && !this.punch.resolved) || from.counterWindow > 0);
       const staminaF = 0.55 + 0.45 * Math.min(1, from.stamina / 60);
       let dmg = p.dmg * from.powerMul * staminaF * this.chinMul * (counter ? 1.6 : 1);
@@ -204,7 +208,10 @@
         from.stats.landed++; from.roundLanded++; from.roundDmg += dmg;
         if (p.power) from.stats.planded++;
         BK.fx.impact(hx, hy, from.dir, this.sy, 'sweat', p.power ? 1.3 : 0.8);
-        if (p.power && (this.damage > 0.3 || counter) && Math.random() < 0.7) BK.fx.blood(hx, hy + 6, from.dir, this.sy, counter ? 1.6 : 1);
+        if (p.power && (this.damage > 0.3 || counter) && Math.random() < 0.7) {
+          BK.fx.blood(hx, hy + 6, from.dir, this.sy, counter ? 1.6 : 1);
+          this.blood = Math.min(1, this.blood + 0.07);
+        }
         if (counter) {
           from.stats.counters++;
           BK.fx.popup('COUNTER!', this.headX, this.headY - 50, BK.PAL.brass, 48);
@@ -219,7 +226,7 @@
           BK.audio.roar(0.3);
         }
       }
-      if (this.hp <= 0) BK.game.onKnockdown(this, from);
+      if (this.hp <= 0) BK.game.onKnockdown(this, from, p.type);
     }
 
     knockDown() {
@@ -323,27 +330,15 @@
     // ---------------- drawing ----------------
     get lying() { return clamp(-this.pose.rot / 86, 0, 1); }
 
-    draw() {
-      const s = this.fs, ly = this.lying;
-      ctx.save();
-      ctx.translate(this.sx, this.sy);
-      ctx.fillStyle = 'rgba(40,25,10,0.3)';
-      ctx.beginPath(); ctx.ellipse(-this.dir * 130 * s * ly, 0, (64 + 120 * ly) * s, 14 * s, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.scale(s * this.dir, s);
-      BK.rig.draw(this.look, this.pose, this.drawState());
-      ctx.restore();
-
-      if (this.flash > 0) { // impact ring at the head
-        ctx.save();
-        ctx.globalAlpha = this.flash / 0.12 * 0.7;
-        ctx.strokeStyle = BK.PAL.bone; ctx.lineWidth = 4;
-        D.circle(this.headX, this.headY, 40 * this.fs * (1.4 - this.flash / 0.12 * 0.4)); ctx.stroke();
-        ctx.restore();
-      }
+    // Everything needed to draw this fighter on one frame (also what the replay records).
+    snapshot() {
+      return { look: this.look, sx: this.sx, sy: this.sy, z: this.z, fs: this.fs, dir: this.dir,
+        pose: BK.rig.copy(this.pose, {}), st: this.drawState(), flash: this.flash, headX: this.headX, headY: this.headY };
     }
+    draw() { BK.drawFigure(this.snapshot()); }
 
     drawState() {
-      return { damage: this.damage, dazed: this.stun > 0 || this.down || this.stagger > 0, blink: this.blinkT < 0, sweat: this.sweat };
+      return { damage: this.damage, dazed: this.stun > 0 || this.down || this.stagger > 0, blink: this.blinkT < 0, sweat: this.sweat, blood: this.blood };
     }
 
     drawPortrait(x, y, scale, flip) {
@@ -353,6 +348,26 @@
       ctx.restore();
     }
   }
+
+  // Draw any recorded or live figure: shadow, cutout body, impact ring.
+  BK.drawFigure = f => {
+    const s = f.fs, ly = clamp(-f.pose.rot / 86, 0, 1);
+    ctx.save();
+    ctx.translate(f.sx, f.sy);
+    ctx.fillStyle = 'rgba(40,25,10,0.3)';
+    ctx.beginPath(); ctx.ellipse(-f.dir * 130 * s * ly, 0, ((f.shadow || 64) + 120 * ly) * s, 14 * s, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.scale(s * f.dir, s);
+    BK.rig.draw(f.look, f.pose, f.st);
+    if (f.extra) f.extra();
+    ctx.restore();
+    if (f.flash > 0) {
+      ctx.save();
+      ctx.globalAlpha = f.flash / 0.12 * 0.7;
+      ctx.strokeStyle = BK.PAL.bone; ctx.lineWidth = 4;
+      D.circle(f.headX, f.headY, 40 * f.fs * (1.4 - f.flash / 0.12 * 0.4)); ctx.stroke();
+      ctx.restore();
+    }
+  };
 
   BK.Fighter = Fighter;
 })();

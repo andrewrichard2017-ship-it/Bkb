@@ -97,6 +97,12 @@
     D.text(`ROUND ${g.round} / ${g.totalRounds}`, W / 2, 38, F.ui(22), PAL.brass);
     const low = g.clock <= 10 && g.state === 'fight';
     D.text(BK.fmtClock(g.clock), W / 2, 84, F.display(56), low ? '#e2584f' : PAL.bone);
+    if (g.koReady() && !(g.p1.punch && g.p1.punch.type === 'ko')) {
+      const a = 0.6 + Math.sin(performance.now() / 110) * 0.4;
+      ctx.save(); ctx.globalAlpha = a;
+      BK.strokeText('HE\'S OUT ON HIS FEET  ·  KO PUNCH READY', W / 2, 210, F.display(40), PAL.brass, 8);
+      ctx.restore();
+    }
     // pause button
     UI.buttons.push({ x: W / 2 - 40, y: 124, w: 80, h: 60, onTap: () => g.pause() });
     D.circle(W / 2, 150, 22); ctx.fillStyle = 'rgba(16,12,11,0.85)'; ctx.fill();

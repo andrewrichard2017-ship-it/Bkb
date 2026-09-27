@@ -6,7 +6,7 @@
   const { clamp } = BK;
   const IN = BK.input = { keys: {}, pressed: {}, stick: null, vec: { x: 0, y: 0 }, held: {}, pointers: new Map() };
 
-  const KEYMAP = { j: 'jab', k: 'cross', u: 'hook', i: 'upper', ' ': 'slip', shift: 'slip' };
+  const KEYMAP = { j: 'jab', k: 'cross', u: 'hook', i: 'upper', o: 'ko', ' ': 'slip', shift: 'slip' };
   const BTNS = [
     { id: 'slip', label: 'SLIP', col: 0, row: 0, color: BK.PAL.teal },
     { id: 'hook', label: 'HOOK', col: 1, row: 0, color: '#8a5a2b' },
@@ -20,9 +20,11 @@
     const sc = BK.screen, U = Math.min(sc.w, sc.h);
     const r = clamp(U * 0.085, 28, 54), gap = r * 2.3;
     const right = sc.w - sc.safe.r - 18 - r, bottom = sc.h - sc.safe.b - 16 - r;
+    const buttons = BTNS.map(b => ({ ...b, x: right - (2 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
+    if (BK.game.koReady()) buttons.push({ id: 'ko', label: 'KO!', color: '#c98a1e', x: right - gap * 0.5, y: bottom - gap * 2.15, big: 1.3 });
     return {
       r,
-      buttons: BTNS.map(b => ({ ...b, x: right - (2 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 + (b.col === 0 ? 0 : 0) })),
+      buttons,
       stickR: clamp(U * 0.12, 40, 80),
       stickHome: { x: sc.safe.l + 30 + clamp(U * 0.12, 40, 80) * 1.3, y: sc.h - sc.safe.b - 30 - clamp(U * 0.12, 40, 80) * 1.3 },
     };
@@ -47,7 +49,7 @@
     try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* optional */ }
     const lay = IN.layout();
     for (const b of lay.buttons) {
-      if (Math.hypot(e.clientX - b.x, e.clientY - b.y) < lay.r * 1.12) {
+      if (Math.hypot(e.clientX - b.x, e.clientY - b.y) < lay.r * 1.12 * (b.big || 1)) {
         IN.pointers.set(e.pointerId, { kind: 'btn', id: b.id });
         IN.held[b.id] = true;
         if (b.id !== 'block') IN.pressed['btn_' + b.id] = true;
@@ -95,6 +97,7 @@
     const inp = { mx, my, block: !!(K.l || IN.held.block) };
     for (const [key, act] of Object.entries(KEYMAP)) if (IN.pressed[key]) inp[act] = true;
     for (const b of BTNS) if (IN.pressed['btn_' + b.id]) inp[b.id] = true;
+    if (IN.pressed.btn_ko) inp.ko = true;
     IN.pressed = {};
     return inp;
   };
@@ -107,14 +110,20 @@
       const down = IN.held[b.id];
       const cost = BK.PUNCHES[b.id] ? BK.PUNCHES[b.id].cost : 0;
       const weak = cost && player.stamina < cost * 1.5;
-      ctx.globalAlpha = down ? 0.95 : weak ? 0.3 : 0.62;
-      const rr = lay.r * (down ? 0.92 : 1);
+      ctx.globalAlpha = b.big ? 0.95 : down ? 0.95 : weak ? 0.3 : 0.62;
+      const pulse = b.big ? 1 + Math.sin(performance.now() / 90) * 0.06 : 1;
+      const rr = lay.r * (down ? 0.92 : 1) * (b.big || 1) * pulse;
+      if (b.big) { // glow
+        const gl = ctx.createRadialGradient(b.x, b.y, rr * 0.6, b.x, b.y, rr * 1.8);
+        gl.addColorStop(0, 'rgba(255,200,90,0.55)'); gl.addColorStop(1, 'rgba(255,200,90,0)');
+        ctx.fillStyle = gl; D.circle(b.x, b.y, rr * 1.8); ctx.fill();
+      }
       const g = ctx.createRadialGradient(b.x - rr * 0.3, b.y - rr * 0.4, rr * 0.1, b.x, b.y, rr);
       g.addColorStop(0, BK.shade(b.color, 1.35)); g.addColorStop(1, b.color);
       D.circle(b.x, b.y, rr); ctx.fillStyle = g; ctx.fill();
       ctx.globalAlpha = 0.9; ctx.strokeStyle = BK.PAL.bone; ctx.lineWidth = 2; ctx.stroke();
       ctx.globalAlpha = 1;
-      ctx.font = BK.FONT.display(Math.round(lay.r * (b.label.length > 4 ? 0.36 : 0.42)));
+      ctx.font = BK.FONT.display(Math.round(lay.r * (b.big ? 0.62 : b.label.length > 4 ? 0.36 : 0.42)));
       ctx.fillStyle = BK.PAL.bone; ctx.fillText(b.label, b.x, b.y + 1);
     }
     const max = lay.stickR, st = IN.stick;

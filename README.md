@@ -18,6 +18,7 @@ A bare knuckle boxing game for Android phones and tablets, inspired by Fight Nig
 | Hook / Uppercut | HOOK / UPPER | U / I |
 | Block (hold) | BLOCK | L |
 | Slip | SLIP | Space |
+| KO punch (opponent under 5% health) | KO! (appears when ready) | O |
 | Pause | ⏸ under the clock | P / Esc |
 
 ## How a fight works
@@ -25,6 +26,8 @@ A bare knuckle boxing game for Android phones and tablets, inspired by Fight Nig
 - **Stamina.** Every punch costs stamina; missing costs more. A tired fighter punches slower and weaker and his hands drop.
 - **Defence.** Blocking stops most of a jab or cross, but hooks and uppercuts partly break the guard. Slip a punch to open a counter window.
 - **Counters.** Land a punch while your opponent is mid-punch, or straight after a slip, for 1.6× damage.
+- **KO punch.** When your opponent drops under 5% health a glowing **KO!** button appears. It throws a loaded overhand that can't be blocked (but can be slipped or missed); if it lands, the fight is over, with no count.
+- **Replays.** Every knockdown and knockout is replayed TV-style: slow motion through the impact, a tilted close-up camera, letterbox bars. Tap to skip.
 - **Hurt.** A fighter below ~28 HP can be staggered by power shots and becomes easier to finish.
 - **Knockdowns.** At 0 HP a fighter goes down and the referee counts. To beat the count, **tap each orb as the closing ring meets it**. Perfect or good timing lifts you up; mistimed taps knock you back a step. Each knockdown needs more orbs and gives you less time, and lowers your maximum health for the rest of the fight. **Three knockdowns in one round is a TKO.**
 - **Rounds.** 90-second rounds (1, 3 or 5). Between rounds your corner shows fight stats, the judges' scorecards and advice.
@@ -53,6 +56,7 @@ Timing: every punch runs wind-up, then a fast snap to full extension, a held fol
 | `js/rig.js` | Cutout character rig: skeleton + IK, cel-shaded vector body parts, pose library |
 | `js/fighter.js` | Movement, punches, defence, damage, knockdowns, and the animation layer that blends poses |
 | `js/referee.js` | Referee movement, count and wave-off |
+| `js/replay.js` | Records the last few seconds and plays back knockdowns in slow motion |
 | `js/ai.js` | CPU opponent (Easy / Normal / Hard) |
 | `js/getup.js` | Get-up orb minigame |
 | `js/corner.js` | Between-rounds corner minigame (cutman + breathing) |

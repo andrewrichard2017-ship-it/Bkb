@@ -66,16 +66,11 @@
       R.mixInto(this.pose, T, 1 - Math.exp(-dt * 14));
     }
 
-    draw() {
-      const s = this.fs;
-      ctx.save();
-      ctx.translate(this.sx, this.sy);
-      ctx.fillStyle = 'rgba(40,25,10,0.25)';
-      ctx.beginPath(); ctx.ellipse(0, 0, 55 * s, 12 * s, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.scale(s * this.dir, s);
-      BK.rig.draw(BK.REF_LOOK, this.pose, { damage: 0, dazed: false, blink: (this.t % 3.7) < 0.12, sweat: 0 });
-      ctx.restore();
+    snapshot() {
+      return { look: BK.REF_LOOK, sx: this.sx, sy: this.sy, z: this.z, fs: this.fs, dir: this.dir, shadow: 55,
+        pose: BK.rig.copy(this.pose, {}), st: { damage: 0, dazed: false, blink: (this.t % 3.7) < 0.12, sweat: 0 }, flash: 0 };
     }
+    draw() { BK.drawFigure(this.snapshot()); }
   }
   BK.Referee = Referee;
 })();

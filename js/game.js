@@ -29,11 +29,14 @@
   g.startFight = () => {
     g.totalRounds = BK.settings.rounds; g.round = 1; g.roundLog = []; g.result = null; g.recorded = false;
     g.p1.resetFight(); g.p2.resetFight(); g.ai.reset(); BK.fx.clear();
+    BK.replay.clear(); g.pendingReplay = null;
     beginRound();
   };
   function beginRound() {
     g.p1.resetRound(); g.p2.resetRound(); g.ref.reset();
-    g.clock = BK.ROUND_LEN; g.kd = null; g.clapped = false;
+    g.clock = BK.ROUND_LEN; g.kd = null; g.clapped = false; g.pendingReplay = null;
+    BK.replay.clear();
+    for (const f of [g.p1, g.p2]) f.sweat *= 0.6; // towelled off in the corner
     BK.input.releaseAll();
     setState('roundIntro');
   }
@@ -54,13 +57,27 @@
     g.round++;
     beginRound();
   };
-  g.pause = () => { if (['fight', 'knockdown', 'roundIntro'].includes(g.state)) { g.paused = true; BK.input.releaseAll(); } };
+  g.pause = () => { if (['fight', 'knockdown', 'roundIntro'].includes(g.state) && !BK.replay.active) { g.paused = true; BK.input.releaseAll(); } };
   g.resume = () => { g.paused = false; };
   document.addEventListener('visibilitychange', () => { if (document.hidden) g.pause(); });
 
   // ---------- knockdowns ----------
-  g.onKnockdown = (victim, attacker) => {
+  const idx = f => (f === g.p1 ? 0 : 1);
+  g.onKnockdown = (victim, attacker, how) => {
     if (g.state !== 'fight') return;
+    const replay = { at: g.t + 1.25, tHit: g.t, v: idx(victim), a: idx(attacker) };
+    if (how === 'ko') { // KO punch: no count, it's over
+      victim.knockDown(); attacker.stats.kd++;
+      g.kd = { victim, attacker, t: 0, count: 0, tko: false };
+      g.ref.victim = victim;
+      BK.cam.shake = 30; g.flashT = 0.25;
+      BK.audio.thump(); BK.vibrate([120, 60, 200]);
+      stoppage('KNOCKOUT', 'KO punch');
+      g.slowmo = 1.3;
+      g.pendingReplay = replay;
+      return;
+    }
+    g.pendingReplay = replay;
     victim.knockDown();
     attacker.stats.kd++;
     const tko = victim.kdRound >= 3;
@@ -141,6 +158,14 @@
     g.roundLog.push(log);
     return log;
   }
+  // KO punch: offered when the CPU is under 5% health
+  g.koReady = () => g.state === 'fight' && !g.paused && g.p2.hp < 5 && !g.p2.down && !g.p1.down;
+  g.onKoPunch = f => {
+    g.slowmo = Math.max(g.slowmo, 0.55);
+    BK.cam.kick = 0.08;
+    BK.audio.roar(0.7);
+    BK.fx.popup('KO PUNCH!', f.headX, f.headY - 70, BK.PAL.brass, 58);
+  };
   g.cardTotals = () => [0, 1, 2].map(j => g.roundLog.reduce((t, r) => [t[0] + r.cards[j][0], t[1] + r.cards[j][1]], [0, 0]));
 
   function cornerTip(log) {
@@ -209,8 +234,9 @@
       case 'roundIntro':
         p1.update(dt, IDLE, p2); p2.update(dt, IDLE, p1); ref.update(dt, p1, p2);
         BK.input.player();
-        if (g.stateT > 1.3 && !g.rang) { g.rang = true; BK.audio.bell(1); }
-        if (g.stateT > 1.6) { g.rang = false; setState('fight'); g.ai.reset(); }
+        const len = introLen();
+        if (g.stateT > len - 0.3 && !g.rang) { g.rang = true; BK.audio.bell(1); }
+        if (g.stateT > len) { g.rang = false; setState('fight'); g.ai.reset(); }
         break;
       case 'fight': {
         const i1 = BK.input.player(), i2 = g.ai.input(dt);
@@ -281,6 +307,7 @@
   }
   g.onTap = (x, y) => {
     BK.audio.init();
+    if (BK.replay.active) { BK.replay.skip(); return true; }
     if (g.state === 'title') goFullscreen();
     if (BK.ui.tap(x, y)) return true;
     if (g.state === 'knockdown' && !g.paused) { BK.getup.tap(x, y, false); return true; }
@@ -289,6 +316,7 @@
   };
   g.onKey = k => {
     BK.audio.init();
+    if (BK.replay.active) { BK.replay.skip(); return; }
     if (k === 'escape' || k === 'p') { if (g.paused) g.resume(); else g.pause(); return; }
     if (g.paused) { if (k === 'enter') g.resume(); return; }
     if (g.state === 'knockdown' && (k === ' ' || k === 'enter')) { BK.getup.tap(0, 0, true); return; }
@@ -300,7 +328,29 @@
     else if (g.state === 'corner') g.workCorner();
     else if (g.state === 'result') g.toTape();
   };
-  g.controlsActive = () => g.state === 'fight' && !g.paused;
+  g.controlsActive = () => g.state === 'fight' && !g.paused && !BK.replay.active;
+
+  // ---------- ring card walker (from round 2) ----------
+  const CARD_WALK = 2.6;
+  const introLen = () => (g.round > 1 ? CARD_WALK + 0.6 : 1.6);
+  const cardPose = BK.rig.make();
+  function cardWalker() {
+    if (g.state !== 'roundIntro' || g.round < 2 || g.stateT > CARD_WALK) return null;
+    const k = g.stateT / CARD_WALK, u = BK.lerp(0.06, 0.94, k), z = 0.86, ph = g.stateT * 9;
+    BK.rig.copy(BK.POSES.cardHold, cardPose);
+    cardPose.ffX += Math.sin(ph) * 16; cardPose.ffY -= Math.max(0, Math.cos(ph)) * 8;
+    cardPose.rfX -= Math.sin(ph) * 16; cardPose.rfY -= Math.max(0, -Math.cos(ph)) * 8;
+    cardPose.py -= Math.abs(Math.sin(ph)) * 3;
+    return {
+      look: BK.CARD_LOOK, sx: BK.toScreenX(u, z), sy: BK.toScreenY(z), z, fs: BK.depthScale(z) * 1.3, dir: 1,
+      pose: cardPose, st: { damage: 0, dazed: false, blink: false, sweat: 0 }, flash: 0,
+      extra: () => {
+        BK.draw.rr(-50, -376, 138, 78, 8); BK.draw.fillOut('#f4efe4', 4);
+        BK.draw.text('ROUND', 19, -354, BK.FONT.ui(20), BK.PAL.ink);
+        BK.draw.text(String(g.round), 19, -320, BK.FONT.display(40), BK.PAL.blood);
+      },
+    };
+  }
 
   // ---------- render ----------
   function render() {
@@ -310,23 +360,40 @@
     ctx.save();
     ctx.translate(v.ox, v.oy); ctx.scale(v.s, v.s);
 
+    const ex = BK.audio.excitement;
+    const stage = drawEnts => {
+      BK.arena.drawBackdrop(g.t, ex);
+      BK.arena.drawRing();
+      BK.fx.drawDecals();
+      BK.arena.drawBackRopes();
+      drawEnts();
+      BK.arena.drawFrontRopes();
+      BK.arena.drawFrontRow(g.t, ex);
+      BK.arena.drawAtmosphere(g.t);
+    };
+    if (BK.replay.active) {
+      BK.replay.drawWorld(stage, g.t);
+      hud.vignette();
+      BK.ui.begin();
+      BK.replay.drawOverlay();
+      ctx.restore();
+      return;
+    }
     ctx.save();
     BK.applyCamera();
-    const ex = BK.audio.excitement;
-    BK.arena.drawBackdrop(g.t, ex);
-    BK.arena.drawRing();
-    BK.fx.drawDecals();
-    BK.arena.drawBackRopes();
-    const ents = [g.p1, g.p2];
-    if (!['title', 'tape'].includes(g.state)) ents.push(g.ref);
-    ents.sort((a, b) => a.z - b.z).forEach(e => e.draw());
-    BK.fx.drawParticles();
-    BK.arena.drawFrontRopes();
-    BK.arena.drawAtmosphere(g.t);
+    stage(() => {
+      const ents = [g.p1, g.p2];
+      if (!['title', 'tape'].includes(g.state)) ents.push(g.ref);
+      const card = cardWalker();
+      ents.map(e => (e.snapshot ? e.snapshot() : e)).concat(card ? [card] : [])
+        .sort((a, b) => a.z - b.z).forEach(e => BK.drawFigure(e));
+      BK.fx.drawParticles();
+    });
     BK.fx.drawPopups();
     ctx.restore();
 
     hud.vignette();
+    if (g.flashT > 0) { ctx.fillStyle = `rgba(255,250,235,${g.flashT * 3})`; ctx.fillRect(-W, -H, W * 3, H * 3); }
     BK.ui.begin();
     const s = g.state, T = g.stateT;
     if (s === 'title') hud.title(g);
@@ -336,7 +403,9 @@
     else if (s === 'result') hud.result(g);
     else {
       hud.draw(g);
-      if (s === 'roundIntro') hud.banner(g.round === g.totalRounds && g.round > 1 ? 'FINAL ROUND' : `ROUND ${g.round}`, g.round === 1 ? 'PROTECT YOURSELF AT ALL TIMES' : null, Math.min(1, T * 4));
+      // from round 2 the card walker announces the round first, then the banner lands
+      const bannerT = g.round > 1 ? T - (CARD_WALK - 0.3) : T;
+      if (s === 'roundIntro' && bannerT > 0) hud.banner(g.round === g.totalRounds && g.round > 1 ? 'FINAL ROUND' : `ROUND ${g.round}`, g.round === 1 ? 'PROTECT YOURSELF AT ALL TIMES' : null, Math.min(1, bannerT * 4));
       if (s === 'fight' && T < 0.7) hud.banner('FIGHT!', null, 1 - T / 0.7, BK.PAL.brass, 150);
       if (s === 'roundEnd') hud.banner(g.round >= g.totalRounds ? 'FINAL BELL' : `END OF ROUND ${g.round}`, null, Math.min(1, T * 4), BK.PAL.bone, 100);
       if (s === 'decision') hud.banner('TO THE SCORECARDS', 'THE JUDGES HAVE THEIR SAY', Math.min(1, T * 3), BK.PAL.bone, 96);
@@ -360,15 +429,24 @@
   function frame(now) {
     const real = Math.min(0.05, (now - last) / 1000);
     last = now;
-    if (!g.paused) {
+    if (BK.replay.active) BK.replay.update(real);
+    else if (!g.paused) {
       g.t += real;
       g.slowmo = Math.max(0, g.slowmo - real);
+      g.flashT = Math.max(0, (g.flashT || 0) - real);
       const frozen = g.stop > 0;
       g.stop = Math.max(0, g.stop - real);
       const scale = frozen ? 0 : g.slowmo > 0 ? 0.3 : 1;
       update(real * scale);
       BK.getup.update(real);
       BK.fx.update(real * scale);
+      if (['fight', 'knockdown', 'fightOver'].includes(g.state)) BK.replay.record(g.t, g);
+      const pr = g.pendingReplay;
+      if (pr && g.t >= pr.at) {
+        g.pendingReplay = null;
+        const over = g.state === 'fightOver';
+        BK.replay.start(pr.tHit, pr.v, pr.a, () => { if (over && g.state === 'fightOver') g.stateT = Math.min(g.stateT, 1.6); });
+      }
     }
     BK.audio.update(real);
     BK.arena.update(real, BK.audio.excitement);
