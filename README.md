@@ -38,7 +38,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 ## How a fight works
 
 - **Walkout.** Each fighter comes out of his lit entrance arch and walks down the ramp to his corner under a spotlight, ducks through the ropes and parades while the announcer calls him. The referee brings them to the centre to touch gloves, but one of them may refuse. Tap to skip.
-- **The referee** chips in at random moments, at most twice a round, with recorded lines (`audio/`): "Come on boys, fair knock", "Come on boys, few shlaaaps and then few pints later", "Come on boys, call it a draw now", 
+- **The referee** chips in at random moments, at most twice a round, with recorded lines (`audio/`): "You're looking at a real boss here, I am the real boss", "It was you who started all this with the computers", "Come on lads, keep it going". The knockdown count (one to ten) is recorded too. 
 
 - **Stamina.** Every punch costs stamina; missing costs more. A tired fighter punches slower and weaker and his hands drop.
 - **Defence.** Blocking stops most of a jab or cross, but hooks and uppercuts partly break the guard. Swaying costs 15 stamina (more than any punch) and always comes back with a punch: a cross off the lean-back, a hook out of the duck-and-roll. If the sway made him miss, that punch lands as a counter. Leaning back and ducking both avoid head shots; a duck-and-roll sets up a bigger counter but walks straight into an uppercut. Neither gets you out of the way of a body shot.
@@ -54,7 +54,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 - **Rounds.** 90-second rounds (1, 3 or 5). Between rounds your corner shows fight stats, the judges' scorecards and advice.
 - **Corner.** Between rounds both fighters recover some health. Go *To the corner* for a 15-second scene on the stool and pick one boost: **dip your hands in diesel** (+5% power), **take a few slaps** (+7% chin) or **drink a beer** (+10% stamina). Boosts stack for the rest of the fight and show under your name. Baldy's corner picks one too.
 - **Scoring.** Three judges score each round on the 10-point must system: 10-9 to the round winner, and a point off for every knockdown. Fights that go the distance end in a unanimous, split or majority decision, or a draw.
-- **Sound.** Synthesised punches, bell, crowd, referee count, and a voice for each fighter: several different grunts when throwing, when hit (head, body, big shots) and a groan on a knockdown.
+- **Sound.** Synthesised punches, bell and crowd, a recorded referee count, and a voice for each fighter: several different grunts when throwing, when hit (head, body, big shots) and a groan on a knockdown.
 - **Blood and sweat.** Sweat builds up over the fight; blood from cuts soaks into tops and trousers, and a bleeding opponent leaves his blood on you.
 - **Record.** Your win-loss-draw record is saved on the device.
 
@@ -89,5 +89,5 @@ Timing: every punch runs wind-up, then a fast snap to full extension, a held fol
 | `js/fx.js` | Sweat, blood, sparks, callouts |
 | `js/hud.js` | Health/stamina/clock HUD and every menu screen |
 | `js/input.js` | Touch controls and keyboard |
-| `js/audio.js` | Synthesised punches, bell, crowd and referee count |
+| `js/audio.js` | Synthesised punches, bell and crowd; recorded referee lines and count |
 | `js/game.js` | Fight flow, knockdown count, scoring, main loop |

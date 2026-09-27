@@ -156,7 +156,7 @@
       if (kd.t >= kd.next) {
         kd.next += 1.05; kd.count++;
         g.ref.countGesture();
-        BK.audio.say(String(kd.count));
+        if (!BK.audio.clip(`count-${kd.count}`)) BK.audio.say(String(kd.count));
         if (kd.count === 1 && g.isHuman(v)) BK.getup.start(v, rise);
         if (!g.isHuman(v) && kd.count === kd.getUpAt) rise();
         if (kd.count >= 10 && !kd.rising) { stoppage('KNOCKOUT', 'Counted out'); return; }
@@ -183,9 +183,9 @@
   // ---------- referee chatter ----------
   // Recorded lines, at random moments, never more than twice a round.
   const REF_LINES = [
-    ['Come on boys, fair knock!', 'ref-fair-knock'],
-    ['Come on boys, few shlaaaps and then few pints later!', 'ref-few-pints'],
-    ['Come on boys, call it a draw now!', 'ref-call-it-a-draw'],
+    ["You're looking at a real boss here. I am the real boss!", 'ref-real-boss'],
+    ['It was you who started all this with the computers!', 'ref-started-it'],
+    ['Come on lads, keep it going!', 'ref-keep-it-going'],
   ];
   const REF_PER_ROUND = 2;
   function refChatter(dt) {

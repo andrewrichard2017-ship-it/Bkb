@@ -1,4 +1,4 @@
-// Synthesised sound: punches, whooshes, the ring bell, crowd ambience and the referee's count.
+// Synthesised sound: punches, whooshes, the ring bell, crowd ambience; recorded referee lines and count.
 // Everything is generated with Web Audio so there are no sound files to ship.
 (() => {
   'use strict';
@@ -206,10 +206,11 @@
     } catch (e) { /* speech is optional */ }
   }
   A.say = text => speak(text, 1.0, 0.85);
-  // ---------- recorded clips (referee lines) ----------
+  // ---------- recorded clips (referee lines and the count) ----------
   // Decoded into Web Audio so they follow the sound setting and the master volume. If decoding isn't
   // possible (e.g. opened straight from disk) they fall back to a plain <audio> element.
-  const CLIPS = ['ref-fair-knock', 'ref-few-pints', 'ref-call-it-a-draw'];
+  const CLIPS = ['ref-real-boss', 'ref-started-it', 'ref-keep-it-going'];
+  for (let n = 1; n <= 10; n++) CLIPS.push(`count-${n}`);
   const clipBuf = {}, clipEl = {};
   A.loadClips = () => {
     for (const name of CLIPS) {
