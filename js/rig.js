@@ -411,6 +411,42 @@
     ctx.beginPath(); ctx.ellipse(12, -64, 5, 6.5, 0, 0, PI * 2); ctx.fill(); ctx.stroke(); // medallion
   }
 
+  // Open cuts: a swollen, split gash with blood running from it (longer the longer it's been open),
+  // a bloody nose running over the lip, and a smear of blood over the face once it's cut up.
+  function drawCuts(st) {
+    const cuts = st.cuts || [];
+    if (!cuts.length) return;
+    ctx.save();
+    ctx.lineCap = 'round';
+    if (cuts.length >= 2) { // smeared blood over the lower face
+      ctx.fillStyle = `rgba(150,18,26,${Math.min(0.35, cuts.length * 0.07)})`;
+      ctx.beginPath(); ctx.ellipse(22, -14, 12, 9, 0.2, 0, PI * 2); ctx.fill();
+    }
+    for (const c of cuts) {
+      const run = Math.min(30, 6 + c.age * 1.6); // how far the blood has run
+      if (c.name === 'nose') {
+        for (const [ox, w] of [[0, 3], [-3, 2.2]]) {
+          ctx.strokeStyle = 'rgba(165,18,28,0.9)'; ctx.lineWidth = w;
+          ctx.beginPath(); ctx.moveTo(c.x + ox, c.y); ctx.quadraticCurveTo(c.x + ox + 1, c.y + run * 0.5, c.x + ox - 2, c.y + run); ctx.stroke();
+        }
+        continue;
+      }
+      const dx = Math.cos(c.ang) * c.len / 2, dy = Math.sin(c.ang) * c.len / 2;
+      ctx.fillStyle = 'rgba(190,70,70,0.45)'; // swelling round the cut
+      ctx.beginPath(); ctx.ellipse(c.x, c.y, c.len * 0.75 + 3, 5, c.ang, 0, PI * 2); ctx.fill();
+      ctx.strokeStyle = '#5c0a10'; ctx.lineWidth = 4;
+      ctx.beginPath(); ctx.moveTo(c.x - dx, c.y - dy); ctx.lineTo(c.x + dx, c.y + dy); ctx.stroke();
+      ctx.strokeStyle = '#c42a34'; ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.moveTo(c.x - dx * 0.8, c.y - dy * 0.8); ctx.lineTo(c.x + dx * 0.8, c.y + dy * 0.8); ctx.stroke();
+      // blood running down from the cut
+      ctx.strokeStyle = 'rgba(165,18,28,0.9)'; ctx.lineWidth = 2.6;
+      ctx.beginPath(); ctx.moveTo(c.x + dx * 0.5, c.y + 1); ctx.quadraticCurveTo(c.x + dx * 0.5 + 3, c.y + run * 0.5, c.x + dx * 0.5 + 1, c.y + run); ctx.stroke();
+      ctx.fillStyle = 'rgba(165,18,28,0.9)'; D_drop(c.x + dx * 0.5 + 1, c.y + run + 2);
+    }
+    ctx.restore();
+  }
+  const D_drop = (x, y) => { ctx.beginPath(); ctx.ellipse(x, y, 2.2, 3, 0, 0, PI * 2); ctx.fill(); };
+
   function drawHead(L, st) {
     // neck
     cel(() => { ctx.beginPath(); ctx.moveTo(-9, 8); ctx.lineTo(15, 8); ctx.lineTo(13, -18); ctx.lineTo(-6, -18); ctx.closePath(); }, L.skinShade, { outline: 3.5 });
@@ -546,12 +582,7 @@
       ctx.beginPath(); ctx.moveTo(33, -15); ctx.quadraticCurveTo(38, -16, 37, -22); ctx.strokeStyle = INK; ctx.lineWidth = 7; ctx.stroke();
       ctx.beginPath(); ctx.moveTo(33, -15); ctx.quadraticCurveTo(38, -16, 37, -22); ctx.strokeStyle = L.hair; ctx.lineWidth = 4; ctx.stroke();
     }
-    // cut and blood
-    if (st.damage > 0.45) line(15, -45, 25, -43, '#8e111a', 3);
-    if (st.damage > 0.62) {
-      ctx.strokeStyle = 'rgba(160,20,28,0.9)'; ctx.lineWidth = 2.5;
-      ctx.beginPath(); ctx.moveTo(24, -43); ctx.quadraticCurveTo(29, -30, 26, -18); ctx.stroke();
-    }
+    drawCuts(st);
   }
 
   function drawArm(L, pose, front, st) {
@@ -593,6 +624,12 @@
     });
   }
 
+  function fistBloodDetail(st) {
+    const b = st.fistBlood || 0;
+    if (b < 0.05) return;
+    ctx.fillStyle = `rgba(140,14,22,${Math.min(0.75, b)})`;
+    for (const [x, y, r] of [[18, -6, 5], [20, 4, 4], [10, -10, 3.5], [14, 9, 3]].slice(0, 1 + Math.floor(b * 4))) { ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0.3, 0, PI * 2); ctx.fill(); }
+  }
   function drawFist(L, front, st) {
     const fist = () => {
       ctx.beginPath(); ctx.moveTo(-6, -13);
@@ -606,6 +643,7 @@
         ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 1.6;
         for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(-6 + i * 7, -14); ctx.lineTo(2 + i * 7, 14); ctx.stroke(); }
         ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.beginPath(); ctx.moveTo(-2, -14); ctx.lineTo(6, 14); ctx.stroke();
+        fistBloodDetail(st);
       } });
       line(18, -6, 18, 6, 'rgba(0,0,0,0.3)', 1.6);
     } else {
@@ -614,6 +652,7 @@
         ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.6;
         for (let i = 0; i < 3; i++) { ctx.beginPath(); ctx.moveTo(14, -9 + i * 7); ctx.lineTo(23, -8 + i * 7); ctx.stroke(); }
         if (L.fist === 'bare' && st.damage > 0.3) { ctx.fillStyle = 'rgba(150,30,30,0.6)'; BK.draw.circle(20, -4, 3); ctx.fill(); BK.draw.circle(21, 4, 2.5); ctx.fill(); }
+        fistBloodDetail(st);
       } });
       // thumb wrapped over the fingers
       ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-2, 6); ctx.quadraticCurveTo(8, 4, 14, 8); ctx.stroke();

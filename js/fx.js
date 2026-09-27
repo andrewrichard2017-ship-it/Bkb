@@ -17,7 +17,7 @@
     }
   };
   FX.blood = (x, y, dir, floorY, amount = 1) => {
-    const n = Math.round(6 * amount);
+    const n = Math.round(9 * amount);
     for (let i = 0; i < n; i++) {
       const a = (dir > 0 ? 0 : Math.PI) + BK.rnd(-0.7, 0.5) * (dir > 0 ? 1 : -1) - 0.25 * dir;
       const v = BK.rnd(120, 340);
@@ -36,7 +36,7 @@
       p.x += p.vx * dt; p.y += p.vy * dt; p.vy += 980 * dt; p.life -= dt;
       if (p.kind === 'blood' && p.vy > 0 && p.y >= p.floorY) {
         p.life = 0;
-        if (FX.decals.length < 140) FX.decals.push({ x: p.x, y: p.floorY, rx: p.r * BK.rnd(1.4, 2.6), ry: p.r * BK.rnd(0.5, 0.9), a: BK.rnd(0.45, 0.8) });
+        if (FX.decals.length < 320) FX.decals.push({ x: p.x, y: p.floorY, rx: p.r * BK.rnd(1.6, 3.4), ry: p.r * BK.rnd(0.6, 1.1), a: BK.rnd(0.5, 0.85) });
       }
     }
     FX.parts = FX.parts.filter(p => p.life > 0);

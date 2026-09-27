@@ -130,6 +130,10 @@
       g.addColorStop(0, BK.shade(b.color, 1.35)); g.addColorStop(1, b.color);
       D.circle(b.x, b.y, rr); ctx.fillStyle = g; ctx.fill();
       ctx.globalAlpha = 0.9; ctx.strokeStyle = BK.PAL.bone; ctx.lineWidth = 2; ctx.stroke();
+      if (player.chainReady && BK.PUNCHES[b.id] && !b.big) { // next punch is ready: chain it
+        ctx.globalAlpha = 0.9; ctx.strokeStyle = '#f0c75a'; ctx.lineWidth = 5;
+        D.circle(b.x, b.y, rr + 5); ctx.stroke();
+      }
       ctx.globalAlpha = 1;
       ctx.font = BK.FONT.display(Math.round(lay.r * (b.big ? 0.5 : b.label.length > 5 ? 0.32 : b.label.length > 4 ? 0.36 : 0.42)));
       ctx.fillStyle = BK.PAL.bone; ctx.fillText(b.label, b.x, b.y + 1);

@@ -30,7 +30,9 @@
       this.damage = 0; this.kdTotal = 0; this.ko = false;
       this.stats = { thrown: 0, landed: 0, pthrown: 0, planded: 0, counters: 0, kd: 0 };
       this.sweat = 0; this.blood = 0; // build up over the whole fight
+      this.fistBlood = 0;
       this.bodyDmg = 0;               // accumulated body shots: slows stamina recovery
+      this.cuts = [];                 // cuts opened on the face; they keep bleeding
       this.buffs = { power: 0, chin: 0, stamina: 0 };
       this.applyAttrs();
       this.resetRound();
@@ -44,6 +46,7 @@
       this.down = false; this.downT = 0; this.lift = 0; this.liftTarget = 0; this.rising = false;
       this.celebrate = false; this.regenDelay = 0; this.dripT = 0;
       this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false;
+      this.buffer = []; this.chainHits = 0;
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make();
@@ -84,10 +87,11 @@
       else this.ghostHp = this.hp;
 
       if (!this.down) this.sweat = Math.min(1, this.sweat + dt * 0.004 * (1 + this.moving));
-      if (this.damage > 0.45 && !this.down) this.blood = Math.min(1, this.blood + dt * 0.006 * this.damage); // a cut bleeds onto the top
-      if (this.damage > 0.65 && !this.down) {
+      for (const c of this.cuts) c.age += dt;
+      if (this.cuts.length && !this.down) this.blood = Math.min(1, this.blood + dt * 0.003 * this.cuts.length); // cuts bleed onto the top
+      if (this.cuts.length && !this.down) {
         this.dripT -= dt;
-        if (this.dripT <= 0) { this.dripT = BK.rnd(0.6, 1.6); this.blood = Math.min(1, this.blood + 0.01); BK.fx.drip(this.headX + this.dir * 10 * this.fs, this.headY + 10 * this.fs, this.sy + 4); }
+        if (this.dripT <= 0) { this.dripT = BK.rnd(0.3, 1.2) / this.cuts.length; this.blood = Math.min(1, this.blood + 0.01); BK.fx.drip(this.headX + this.dir * 10 * this.fs, this.headY + 10 * this.fs, this.sy + 4); }
       }
 
       if (this.down) {
@@ -116,7 +120,7 @@
       if (this.regenDelay <= 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + 0.5 * dt);
 
       if (this.clinch) { this.clinchLogic(dt, input, opp); return; }
-      if (this.stun > 0) { this.stun -= dt; this.punch = null; this.blocking = false; this.slip = null; this.grab = null; this.combo = []; this.moving = 0; return; }
+      if (this.stun > 0) { this.stun -= dt; this.punch = null; this.blocking = false; this.slip = null; this.grab = null; this.combo = []; this.buffer = []; this.moving = 0; return; }
 
       const dx = opp.sx - this.sx;
       if (Math.abs(dx) > 8 && !this.celebrate) this.dir = Math.sign(dx);
@@ -155,7 +159,7 @@
         this.combo = ['jab', 'cross', 'hook'];
         BK.fx.popup('COMBO!', this.headX, this.headY - 60, BK.PAL.brass, 40);
       }
-      if (this.combo.length && !this.punch && !staggered) this.throwPunch(this.combo.shift(), { auto: true, fast: true });
+      if (this.combo.length && !staggered && this.canThrow(this.combo[0])) this.throwPunch(this.combo.shift(), { auto: true, fast: true });
       if (input.slip && (sway === 'lean' || sway === 'duck') && !this.punch && !this.slip && !staggered && this.stamina > 4) {
         const duck = sway === 'duck';
         this.slip = { t: 0, dur: duck ? 0.5 : 0.4, kind: duck ? 'duck' : 'lean' };
@@ -171,14 +175,35 @@
         this.stamina -= 3;
       }
       // punches (hold BODY to go downstairs)
+      // A tap is remembered briefly (buffered) and thrown as soon as it can be, so combos flow
       const superReady = input.ko && this.superAvailable(opp);
       const want = superReady ? (this.look.super || 'ko') : ['jab', 'cross', 'hook', 'upper'].find(k => input[k]);
-      if (want && !this.punch && !this.blocking && !this.slip && !this.grab && !this.combo.length && !staggered) this.throwPunch(want, { body: !!input.body && !P[want].super });
+      // Up to three taps queue up in order, so mashing jab-cross-hook throws exactly that.
+      if (want && this.buffer.length < 3) this.buffer.push({ type: want, body: !!input.body && !P[want].super, t: 0.9 });
+      for (const q of this.buffer) q.t -= dt;
+      while (this.buffer.length && this.buffer[0].t <= 0) this.buffer.shift();
+      const b = this.buffer[0];
+      if (b && !this.blocking && !this.slip && !this.grab && !this.combo.length && !staggered && this.canThrow(b.type)) {
+        this.buffer.shift();
+        this.throwPunch(b.type, { body: b.body });
+      }
       this.tickPunch(dt, opp);
     }
 
     // Super punch is on offer when the opponent is under 5% health (Digger's only once a round).
     superAvailable(opp) { return opp.hp < 5 && !opp.down && !(this.look.superOnce && this.superUsed); }
+
+    // Free, or far enough through the current punch to chain the next one.
+    // Switching hands chains straight after the impact; the same hand needs more of the recovery.
+    canThrow(type) {
+      const p = this.punch;
+      if (!p) return true;
+      if (!p.resolved || p.super || P[type].super || p.clinch) return false;
+      return p.t >= this.chainAt(p, type);
+    }
+    chainAt(p, type) { return P[type].hand !== p.hand ? p.hitAt + 0.05 : p.hitAt + (p.dur - p.hitAt) * 0.65; }
+    // For the touch buttons: is a follow-up punch ready right now?
+    get chainReady() { const p = this.punch; return !!(p && p.resolved && !p.super && !p.clinch && p.t >= p.hitAt + 0.05 && p.t < p.dur); }
 
     tickPunch(dt, opp) {
       const p = this.punch;
@@ -224,9 +249,13 @@
     throwPunch(type, opt = {}) {
       if (P[type].super) { BK.game.onKoPunch(this, type); this.superUsed = true; }
       const d = P[type];
+      const prev = this.punch;
+      const chain = prev && !opt.clinch ? (prev.chain || 0) + 1 : 0;
+      if (!prev) this.chainHits = 0;
       const tired = this.stamina < 25 ? 1.2 : 1;
       const sp = (this.speedMul * 0.5 + 0.5) * (opt.clinch ? 1.35 : 1) * (opt.fast ? 1.2 : 1);
-      this.punch = { type, ...d, dur: d.dur * tired / sp, hitAt: d.hitAt * tired / sp, t: 0, resolved: false, body: !!opt.body, clinch: !!opt.clinch };
+      this.punch = { type, ...d, dur: d.dur * tired / sp, hitAt: d.hitAt * tired / sp, t: 0, resolved: false, body: !!opt.body, clinch: !!opt.clinch,
+        chain, from: BK.rig.copy(this.pose, {}) }; // start from wherever the arm is now
       if (opt.clinch) { this.punch.dmg = d.dmg * 0.28; this.punch.reach = 999; }
       if (!opt.auto) this.stamina = Math.max(0, this.stamina - d.cost * this.stamMul * (opt.clinch ? 0.5 : 1));
       this.stats.thrown++; if (d.power) this.stats.pthrown++;
@@ -274,6 +303,7 @@
       const staminaF = 0.55 + 0.45 * Math.min(1, from.stamina / 60);
       let dmg = p.dmg * from.powerMul * staminaF * this.chinMul * (counter ? 1.6 : 1);
       if (this.stagger > 0) dmg *= 1.25;
+      if (p.chain) dmg *= 1 + 0.08 * Math.min(4, p.chain); // combos hit a little harder
       from.counterWindow = 0;
       const hx = this.sx - from.dir * 18 * this.fs, hy = p.body ? this.sy - 150 * this.fs : this.headY;
       const floor = p.clinch ? Math.min(this.hp, 1) : 0; // clinch digs can hurt, never finish
@@ -317,13 +347,18 @@
         if (this.punch) this.punch = null;
         this.slip = null;
         from.stats.landed++; from.roundLanded++; from.roundDmg += dmg;
+        from.chainHits = p.chain ? from.chainHits + 1 : 1;
+        if (from.chainHits >= 3 && !p.clinch) BK.fx.popup(`${from.chainHits}-HIT COMBO!`, from.headX, from.headY - 110, '#f0c75a', 36 + Math.min(4, from.chainHits) * 3);
         if (p.power) from.stats.planded++;
         BK.fx.impact(hx, hy, from.dir, this.sy, 'sweat', p.power ? 1.3 : 0.8);
         if (p.body && !p.clinch && p.power) BK.fx.popup('BODY SHOT', this.sx, this.sy - 200 * this.fs, BK.PAL.bone, 30);
-        if (!p.body && p.power && (this.damage > 0.3 || counter) && Math.random() < 0.7) {
-          BK.fx.blood(hx, hy + 6, from.dir, this.sy, counter ? 1.6 : 1);
-          this.blood = Math.min(1, this.blood + 0.07);
+        const bleeding = this.cuts.length > 0;
+        if (!p.body && ((p.power && (this.damage > 0.25 || counter)) || (bleeding && Math.random() < 0.6))) {
+          BK.fx.blood(hx, hy + 6, from.dir, this.sy, (counter ? 2.2 : p.power ? 1.5 : 0.8) * (1 + this.cuts.length * 0.25));
+          this.blood = Math.min(1, this.blood + (p.power ? 0.07 : 0.03));
+          if (bleeding) from.fistBlood = Math.min(1, (from.fistBlood || 0) + 0.12);
         }
+        if (!p.body && !p.clinch) this.openCuts(from);
         if (counter) {
           from.stats.counters++;
           BK.fx.popup('COUNTER!', this.headX, this.headY - 50, BK.PAL.brass, 48);
@@ -344,6 +379,26 @@
         }
       }
       if (this.hp <= 0 && !p.clinch) BK.game.onKnockdown(this, from, p.type);
+    }
+
+    // Cuts open as the face takes damage; each one keeps bleeding for the rest of the fight.
+    openCuts(from) {
+      const SITES = [
+        { at: 0.35, name: 'brow', x: 20, y: -45, len: 11, ang: 0.15 },
+        { at: 0.45, name: 'nose', x: 31, y: -19, len: 0, ang: 0 },
+        { at: 0.55, name: 'lip', x: 27, y: -9, len: 6, ang: -0.3 },
+        { at: 0.65, name: 'cheek', x: 22, y: -26, len: 10, ang: 0.5 },
+        { at: 0.8, name: 'forehead', x: 8, y: -54, len: 14, ang: -0.2 },
+      ];
+      for (const c of SITES) {
+        if (this.damage >= c.at && !this.cuts.some(k => k.name === c.name)) {
+          this.cuts.push({ ...c, age: 0 });
+          BK.fx.popup(c.name === 'nose' ? 'BLOODY NOSE!' : 'CUT!', this.headX, this.headY - 60, '#e2584f', 42);
+          BK.fx.blood(this.headX, this.headY, from.dir, this.sy, 2.5);
+          this.blood = Math.min(1, this.blood + 0.05);
+          break;
+        }
+      }
     }
 
     knockDown() {
@@ -426,8 +481,8 @@
     punchPose(T) {
       const R = BK.rig, PO = BK.POSES, U = R.UPPER, p = this.punch;
       const A = PO[p.type + 'A'], X = PO[p.type + 'X'];
-      const tA = p.hitAt * 0.5, hold = p.hitAt + (p.power ? 0.075 : 0.045);
-      if (p.t < tA) R.mixInto(T, A, BK.easeInOut(p.t / tA), U);
+      const tA = p.hitAt * (p.chain ? 0.35 : 0.5), hold = p.hitAt + (p.power ? 0.075 : 0.045);
+      if (p.t < tA) R.mixInto(T, R.mix(this.tmp, p.from, A, BK.easeInOut(p.t / tA), U), 1, U);
       else if (p.t < p.hitAt) {
         const k = (p.t - tA) / (p.hitAt - tA);
         R.mixInto(T, R.mix(this.tmp, A, X, 1 - Math.pow(1 - k, 3), U), 1, U);
@@ -473,7 +528,8 @@
     draw() { BK.drawFigure(this.snapshot()); }
 
     drawState() {
-      return { damage: this.damage, dazed: this.stun > 0 || this.down || this.stagger > 0, blink: this.blinkT < 0, sweat: this.sweat, blood: this.blood };
+      return { damage: this.damage, dazed: this.stun > 0 || this.down || this.stagger > 0, blink: this.blinkT < 0, sweat: this.sweat, blood: this.blood,
+        cuts: this.cuts.map(c => ({ ...c })), fistBlood: this.fistBlood || 0 };
     }
 
     drawPortrait(x, y, scale, flip) {
