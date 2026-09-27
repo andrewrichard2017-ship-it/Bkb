@@ -51,7 +51,7 @@
     // portrait medallion
     const px = left ? 80 : W - 80, py = 72;
     D.circle(px, py, 50); ctx.fillStyle = '#1c1512'; ctx.fill();
-    ctx.lineWidth = 4; ctx.strokeStyle = f.look.cornerColor; ctx.stroke();
+    ctx.lineWidth = 4; ctx.strokeStyle = f.cornerColor; ctx.stroke();
     ctx.save(); D.circle(px, py, 46); ctx.clip();
     f.drawPortrait(px, py + 12, 1.55, !left);
     ctx.restore();
@@ -142,11 +142,18 @@
     ctx.fillStyle = grad; ctx.fillRect(-W, -H, W * 3, H * 3);
     D.text('NO GLOVES  ·  NO MERCY  ·  ONE WINNER', W / 2, 110, F.ui(28), PAL.brass);
     strokeText('BARE KNUCKLE', W / 2, 215, F.display(172), PAL.bone, 14);
-    ctx.save(); ctx.globalAlpha = 0.9;
-    D.text('McDONAGH', W / 2 - 60, 330, F.display(46), PAL.bone, 'right');
-    D.text('VS', W / 2, 330, F.display(46), PAL.blood);
-    D.text('BALDY', W / 2 + 60, 330, F.display(46), PAL.bone, 'left');
-    ctx.restore();
+    // pick your man and the CPU's (tap to cycle)
+    const pick = (f, x, who, which) => {
+      UI.button(x, 330, 400, 96, `${f.look.name}  ›`, () => g.cycleFighter(which), 'secondary', who);
+      D.circle(x + (which === 'player' ? -250 : 250), 330, 52); ctx.fillStyle = '#1c1512'; ctx.fill();
+      ctx.lineWidth = 4; ctx.strokeStyle = f.cornerColor; ctx.stroke();
+      ctx.save(); D.circle(x + (which === 'player' ? -250 : 250), 330, 48); ctx.clip();
+      f.drawPortrait(x + (which === 'player' ? -250 : 250), 342, 1.6, which !== 'player');
+      ctx.restore();
+    };
+    pick(g.p1, W / 2 - 290, 'YOU  ·  RED CORNER', 'player');
+    pick(g.p2, W / 2 + 290, 'CPU  ·  BLUE CORNER', 'cpu');
+    D.text('VS', W / 2, 332, F.display(48), PAL.blood);
 
     UI.button(W / 2, 470, 420, 104, 'FIGHT', () => g.toTape(), 'primary');
     const s = BK.settings;
@@ -159,7 +166,7 @@
     row.forEach(([sub, val, fn], i) => UI.button(W / 2 + (i - 1.5) * 300, 620, 270, 92, val, () => { fn(); BK.saveSettings(); }, 'secondary', sub));
     const r = BK.record;
     D.text(r.w + r.l + r.d ? `YOUR RECORD  ${r.w}-${r.l}-${r.d}  (${r.ko} KO)` : 'YOUR FIRST FIGHT', W / 2, 735, F.ui(30), PAL.bone);
-    D.text('Left thumb moves  ·  Right thumb punches, blocks and slips  ·  Keyboard: WASD, J K U I, hold B body, L block, Space slip, C clinch', W / 2, 800, F.ui(24, 500), 'rgba(239,230,210,0.65)');
+    D.text('Left thumb moves  ·  Right thumb punches, blocks and slips  ·  Keys: WASD, J K U I, hold B body, L block, Space sway, C clinch', W / 2, 800, F.ui(24, 500), 'rgba(239,230,210,0.65)');
   };
 
   // ---------- tale of the tape ----------
@@ -168,9 +175,9 @@
     D.text('TALE OF THE TAPE', W / 2, 90, F.display(64), PAL.brass);
     const a = g.p1, b = g.p2;
     [[a, 250, false], [b, W - 250, true]].forEach(([f, x, flip]) => {
-      D.circle(x, 225, 92); ctx.fillStyle = '#1c1512'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = f.look.cornerColor; ctx.stroke();
+      D.circle(x, 225, 92); ctx.fillStyle = '#1c1512'; ctx.fill(); ctx.lineWidth = 6; ctx.strokeStyle = f.cornerColor; ctx.stroke();
       ctx.save(); D.circle(x, 225, 86); ctx.clip(); f.drawPortrait(x, 250, 3.1, flip); ctx.restore();
-      D.text(f.look.corner, x, 345, F.ui(24), f === a ? '#e2584f' : '#6f8fd6');
+      D.text(f.corner, x, 345, F.ui(24), f === a ? '#e2584f' : '#6f8fd6');
       D.text(f.look.name, x, 385, F.display(38), PAL.bone);
     });
     const keys = Object.keys(a.look.tape);

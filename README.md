@@ -4,10 +4,13 @@ A bare knuckle boxing game for Android phones and tablets, inspired by Fight Nig
 
 ## Fighters
 
-| | Michael McDonagh (you, red corner) | Baldy Can Box (CPU, blue corner) |
-|---|---|---|
-| Kit | Stained white tank top, tracksuit bottoms, beige desert boots, red hand wraps | Brown hoodie, jeans, black shoes, bare knuckles |
-| Style | Pressure fighter: faster, better stamina | Counter puncher: hits harder, better chin |
+Pick any fighter for yourself and for the CPU on the main menu (tap the name to cycle). If both corners pick the same man, the CPU gets alternate colours.
+
+| | Michael McD | John Joe | Big Joe |
+|---|---|---|---|
+| Kit | Stained white tank top, tracksuit bottoms, beige desert boots, red hand wraps | Brown hoodie, jeans, black shoes, bare knuckles | White tank top over a big belly, black trousers and boots, gold chain, white hair and handlebar moustache |
+| Style | Pressure fighter: fast, good stamina | Counter puncher: heavy hands, good chin | Brawler: hardest puncher, best chin, slow, gasses early |
+| Sway | Leans back | Leans back | **Ducks and rolls** |
 
 ## Controls
 
@@ -19,24 +22,26 @@ A bare knuckle boxing game for Android phones and tablets, inspired by Fight Nig
 | Body shot (hold, then punch) | BODY | hold B |
 | Clinch | CLINCH | C |
 | Block (hold) | BLOCK | L |
-| Slip | SLIP | Space |
+| Sway (lean back or duck & roll, by fighter) | SWAY / DUCK | Space |
 | Super punch (opponent under 5% health) | SUPER (appears when ready) | O |
 | Pause | ⏸ under the clock | P / Esc |
 
 ## How a fight works
 
 - **Stamina.** Every punch costs stamina; missing costs more. A tired fighter punches slower and weaker and his hands drop.
-- **Defence.** Blocking stops most of a jab or cross, but hooks and uppercuts partly break the guard. Slip a punch to open a counter window.
+- **Defence.** Blocking stops most of a jab or cross, but hooks and uppercuts partly break the guard. Sway a punch to open a counter window. Leaning back and ducking both avoid head shots; a duck-and-roll sets up a bigger counter but walks straight into an uppercut. Neither gets you out of the way of a body shot.
 - **Counters.** Land a punch while your opponent is mid-punch, or straight after a slip, for 1.6× damage.
-- **Body shots.** Hold BODY and throw any punch to go to the ribs. Less damage to health, but they drain stamina hard, get through a high guard more easily, and every one slows the opponent's stamina recovery for the rest of the fight.
-- **Clinch.** Tap CLINCH up close to grab. The reach-in can be **blocked** (you're pushed off) or **slipped** ("swayed", and he gets a counter). Locked up, punches become short body digs that do light damage and **can never knock anyone down**. The grabber gets his breath back; the referee breaks it after a few seconds.
-- **Super punch.** When your opponent drops under 5% health a glowing **SUPER** button appears. It throws a loaded overhand that can't be blocked (but can be slipped or missed); if it lands it's a guaranteed knockdown, and the count decides the rest.
+- **Body shots.** Hold BODY and throw any punch to go to the ribs. Little damage to health, but they drain stamina hard, get through a high guard more easily, and every one slows the opponent's stamina recovery for the rest of the fight.
+- **Clinch.** Tap CLINCH up close to grab. The reach-in can be **blocked** (you're pushed off) or **slipped** ("swayed", and he gets a counter). Locked up, punches become short body digs that do light damage and **can never knock anyone down**. Hold BLOCK in the clinch to tie his arms up and smother the digs. The grabber gets his breath back; the referee breaks it after a few seconds.
+- **Super punch.** When your opponent drops under 5% health a glowing **SUPER** button appears. It throws a loaded overhand that can't be blocked (but can be slipped or missed); if it lands it's a guaranteed knockdown, and the count decides the rest. The CPU always beats the count the first two times it goes down; after that it's a bonus.
 - **Replays.** Every knockdown and knockout is replayed TV-style: slow motion through the impact, a tilted close-up camera, letterbox bars. Tap to skip.
 - **Hurt.** A fighter below ~28 HP can be staggered by power shots and becomes easier to finish.
 - **Knockdowns.** At 0 HP a fighter goes down and the referee counts. To beat the count, **tap each orb as the closing ring meets it**. Perfect or good timing lifts you up; mistimed taps knock you back a step. Each knockdown needs more orbs and gives you less time, and lowers your maximum health for the rest of the fight. **Three knockdowns in one round is a TKO.**
 - **Rounds.** 90-second rounds (1, 3 or 5). Between rounds your corner shows fight stats, the judges' scorecards and advice.
 - **Corner.** Between rounds both fighters recover some health. Go *To the corner* for a 15-second scene on the stool and pick one boost: **dip your hands in diesel** (+5% power), **take a few slaps** (+7% chin) or **drink a beer** (+10% stamina). Boosts stack for the rest of the fight and show under your name. Baldy's corner picks one too.
 - **Scoring.** Three judges score each round on the 10-point must system: 10-9 to the round winner, and a point off for every knockdown. Fights that go the distance end in a unanimous, split or majority decision, or a draw.
+- **Sound.** Synthesised punches, bell, crowd, referee count, and a voice for each fighter: several different grunts when throwing, when hit (head, body, big shots) and a groan on a knockdown.
+- **Blood and sweat.** Sweat builds up over the fight; blood from cuts soaks into tops and trousers, and a bleeding opponent leaves his blood on you.
 - **Record.** Your win-loss-draw record is saved on the device.
 
 ## Run it

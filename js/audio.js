@@ -87,6 +87,54 @@
   };
   A.slap = () => { if (A.ctx) { noiseBurst(0.07, 2500, 'highpass', 0.9); tone(420, 180, 0.06, 0.3, 'triangle'); } };
   A.glug = () => { if (A.ctx) { tone(160, 90, 0.12, 0.5); tone(120, 70, 0.1, 0.35, 'sine', 0.1); } };
+  // ---------- voices ----------
+  // Grunts are synthesised: a buzzy glottal source through three vowel formant filters, plus breath noise.
+  // Each fighter has a pitch and a formant scale (bigger man = lower, darker voice).
+  const VOWELS = { uh: [640, 1190, 2390], ah: [760, 1150, 2450], oh: [540, 860, 2400], oo: [320, 800, 2240], eh: [560, 1750, 2480], hn: [260, 1900, 2700] };
+  // [vowel, length s, pitch multiplier at start, pitch fall, loudness, breathiness]
+  const GRUNTS = {
+    effortSmall: [['hn', 0.09, 1.1, 0.85, 0.35, 0.3], ['uh', 0.08, 1.15, 0.8, 0.3, 0.5]],
+    effort:      [['uh', 0.11, 1.2, 0.8, 0.45, 0.4], ['hn', 0.1, 1.15, 0.85, 0.4, 0.3], ['eh', 0.1, 1.25, 0.75, 0.4, 0.6]],
+    effortBig:   [['ah', 0.18, 1.3, 0.7, 0.6, 0.5], ['uh', 0.16, 1.25, 0.72, 0.6, 0.45], ['eh', 0.17, 1.35, 0.68, 0.55, 0.55]],
+    effortHuge:  [['ah', 0.36, 1.45, 0.6, 0.85, 0.5]],
+    block:       [['hn', 0.08, 1.0, 0.9, 0.3, 0.4]],
+    hurtSmall:   [['uh', 0.1, 1.1, 0.75, 0.35, 0.6]],
+    hurt:        [['uh', 0.15, 1.2, 0.65, 0.5, 0.6], ['oh', 0.14, 1.15, 0.7, 0.5, 0.7]],
+    hurtBody:    [['oo', 0.2, 1.0, 0.6, 0.55, 0.9], ['oh', 0.22, 1.05, 0.55, 0.55, 0.85]],
+    hurtBig:     [['ah', 0.26, 1.35, 0.55, 0.7, 0.6], ['uh', 0.24, 1.3, 0.55, 0.7, 0.55], ['oh', 0.25, 1.25, 0.6, 0.65, 0.65]],
+    down:        [['oh', 0.7, 1.1, 0.5, 0.7, 0.6], ['uh', 0.65, 1.05, 0.55, 0.7, 0.7]],
+  };
+  A.voice = (v, kind) => {
+    if (!A.ctx || !v) return;
+    const [vowel, len0, p0, fall, loud, breath0] = BK.pick(GRUNTS[kind] || GRUNTS.effort);
+    const c = A.ctx, t = c.currentTime + 0.005;
+    const len = len0 * BK.rnd(0.9, 1.15), pitch = v.pitch * BK.rnd(0.94, 1.06), breath = breath0 * (0.6 + v.breath);
+    const out = c.createGain();
+    out.gain.setValueAtTime(0.0001, t);
+    out.gain.exponentialRampToValueAtTime(loud * 0.5, t + 0.018);
+    out.gain.setValueAtTime(loud * 0.5, t + len * 0.35);
+    out.gain.exponentialRampToValueAtTime(0.0001, t + len);
+    out.connect(A.master);
+    // voiced part
+    const osc = c.createOscillator(); osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(pitch * p0, t);
+    osc.frequency.exponentialRampToValueAtTime(pitch * p0 * fall, t + len);
+    const vib = c.createOscillator(), vibG = c.createGain(); // rough, strained voice
+    vib.frequency.value = 28; vibG.gain.value = pitch * 0.04; vib.connect(vibG).connect(osc.frequency);
+    VOWELS[vowel].forEach((f, i) => {
+      const bp = c.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = f * v.formant; bp.Q.value = [7, 9, 11][i];
+      const g = c.createGain(); g.gain.value = [1.6, 0.9, 0.35][i];
+      osc.connect(bp).connect(g).connect(out);
+    });
+    // breath
+    const n = c.createBufferSource(); n.buffer = A.noiseBuf;
+    const nf = c.createBiquadFilter(); nf.type = 'bandpass'; nf.frequency.value = VOWELS[vowel][1] * v.formant; nf.Q.value = 0.8;
+    const ng = c.createGain(); ng.gain.value = breath * 1.4;
+    n.connect(nf).connect(ng).connect(out);
+    osc.start(t); vib.start(t); n.start(t, Math.random() * 2);
+    osc.stop(t + len + 0.05); vib.stop(t + len + 0.05); n.stop(t + len + 0.05);
+  };
+
   A.tick = (good) => { if (A.ctx) tone(good ? 880 : 220, good ? 1320 : 160, 0.12, 0.35, good ? 'triangle' : 'square'); };
 
   A.say = text => {

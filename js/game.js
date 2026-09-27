@@ -9,10 +9,22 @@
     round: 1, totalRounds: 3, clock: BK.ROUND_LEN, roundLog: [], result: null, tip: '',
     slowmo: 0, stop: 0, kd: null, recorded: false,
   };
-  g.p1 = new BK.Fighter('michael', 0);
-  g.p2 = new BK.Fighter('baldy', 1);
+  // Build both fighters from the menu picks. Same man in both corners gets his alternate colours.
+  g.setupFighters = () => {
+    const s = BK.settings, ok = k => BK.FIGHTERS[k];
+    if (!ok(s.player)) s.player = 'michael';
+    if (!ok(s.cpu)) s.cpu = 'johnjoe';
+    g.p1 = new BK.Fighter(s.player, 0);
+    g.p2 = new BK.Fighter(s.cpu, 1, s.cpu === s.player);
+    g.ai = new BK.AI(g.p2, g.p1);
+  };
+  g.cycleFighter = which => {
+    const o = BK.FIGHTER_ORDER, s = BK.settings;
+    s[which] = o[(o.indexOf(s[which]) + 1) % o.length];
+    BK.saveSettings(); g.setupFighters();
+  };
+  g.setupFighters();
   g.ref = new BK.Referee();
-  g.ai = new BK.AI(g.p2, g.p1);
 
   const setState = s => { g.state = s; g.stateT = 0; };
   // Freeze-frame on impact: the world holds for a few frames so hits land with weight.
@@ -25,7 +37,7 @@
     g.p1.resetFight(); g.p2.resetFight(); g.ref.reset(); BK.fx.clear();
     setState('title');
   };
-  g.toTape = () => { g.p1.resetFight(); g.p2.resetFight(); BK.fx.clear(); g.result = null; setState('tape'); };
+  g.toTape = () => { g.setupFighters(); BK.fx.clear(); g.result = null; setState('tape'); };
   g.startFight = () => {
     g.totalRounds = BK.settings.rounds; g.round = 1; g.roundLog = []; g.result = null; g.recorded = false;
     g.p1.resetFight(); g.p2.resetFight(); g.ai.reset(); BK.fx.clear();
@@ -46,7 +58,7 @@
     f.stamina = 100; f.damage = Math.max(0, f.damage - 0.08);
   };
   g.workCorner = () => {
-    g.cpuBoost = BK.pick(Object.keys(BK.CORNER_BOOSTS)); // Baldy's corner decides too
+    g.cpuBoost = BK.pick(Object.keys(BK.CORNER_BOOSTS)); // the CPU's corner decides too
     BK.corner.start(g.p1, g.p2, g.cpuBoost, () => g.nextRound());
     setState('cornerGame');
   };
@@ -82,8 +94,8 @@
     g.ref.victim = victim;
     if (tko) g.ref.waveOff(); else g.ref.mode = 'count';
     if (victim === g.p2) {
-      // CPU: chance of beating the count drops each time it goes down
-      const chance = [0.92, 0.62, 0.3][Math.min(2, victim.kdTotal - 1)] * [0.8, 1, 1.12][BK.settings.difficulty];
+      // CPU: always beats the first two counts; after that it's a bonus
+      const chance = victim.kdTotal <= 2 ? 1 : 0.35 * [0.8, 1, 1.15][BK.settings.difficulty];
       g.kd.getUpAt = Math.random() < chance ? Math.floor(BK.rnd(3, 9.99)) : 99;
     }
     setState('knockdown');

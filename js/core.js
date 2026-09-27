@@ -97,7 +97,7 @@
   // ---------- persistence (per-device only, always optional) ----------
   const load = (k, d) => { try { const v = JSON.parse(localStorage.getItem(k)); return v ? Object.assign({}, d, v) : d; } catch (e) { return d; } };
   const save = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) { /* storage blocked */ } };
-  BK.settings = load('bkb.settings', { difficulty: 1, rounds: 3, sound: true, vibrate: true });
+  BK.settings = load('bkb.settings', { difficulty: 1, rounds: 3, sound: true, vibrate: true, player: 'michael', cpu: 'johnjoe' });
   BK.record = load('bkb.record', { w: 0, l: 0, d: 0, ko: 0 });
   BK.saveSettings = () => save('bkb.settings', BK.settings);
   BK.saveRecord = () => save('bkb.record', BK.record);

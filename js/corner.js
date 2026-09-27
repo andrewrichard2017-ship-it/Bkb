@@ -2,7 +2,7 @@
 //   DIESEL - dip your hands in a bucket of diesel      +5% power
 //   SLAPS  - your cornerman slaps you awake            +7% chin
 //   BEER   - a pint to settle the nerves               +10% stamina
-// Boosts stack across rounds for the rest of the fight. Baldy's corner picks one too.
+// Boosts stack across rounds for the rest of the fight. The CPU's corner picks one too.
 (() => {
   'use strict';
   const BK = window.BK, ctx = BK.ctx, D = BK.draw, W = BK.W, PAL = BK.PAL, F = BK.FONT;
@@ -191,7 +191,7 @@
     floor.addColorStop(0, '#8d846f'); floor.addColorStop(1, '#bdb39b');
     ctx.fillStyle = floor; ctx.fillRect(140, FLOOR - 30, 820, 80);
     D.rr(186, 150, 44, FLOOR - 150, 6); D.fillOut('#1a1a1d', 4);
-    D.rr(176, 190, 64, 360, 10); D.fillOut(f.look.cornerColor, 4);
+    D.rr(176, 190, 64, 360, 10); D.fillOut(f.cornerColor, 4);
     [['#b3202a', 560], ['#efe6d2', 440], ['#23386b', 320]].forEach(([c, y]) => {
       ctx.strokeStyle = PAL.ink; ctx.lineWidth = 14; ctx.beginPath(); ctx.moveTo(230, y); ctx.lineTo(980, y + 30); ctx.stroke();
       ctx.strokeStyle = c; ctx.lineWidth = 9; ctx.beginPath(); ctx.moveTo(230, y); ctx.lineTo(980, y + 30); ctx.stroke();

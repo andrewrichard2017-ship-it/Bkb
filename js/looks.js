@@ -3,9 +3,11 @@
   'use strict';
   const BK = window.BK;
 
+  // sway: how the SWAY/DUCK button moves them. 'lean' pulls the head back; 'duck' ducks and rolls under.
+  // alt: colours used when both corners pick the same fighter.
   BK.FIGHTERS = {
     michael: {
-      name: 'MICHAEL McDONAGH', short: 'McDONAGH', corner: 'RED CORNER', cornerColor: '#b3202a',
+      name: 'MICHAEL McD', short: 'McD', voice: { pitch: 125, formant: 1.0, breath: 0.25 },
       skin: '#e3b08a', skinShade: '#c48b66', hair: '#3a2718',
       top: 'tank', topColor: '#f1ede2', topShade: '#cfc8b6',
       // vest stains, in torso space (waist at y=0, shoulders near y=-80)
@@ -13,26 +15,45 @@
                [-4, -14, 11, 5, 'rgba(160,130,60,0.38)'], [18, -58, 5, 4, 'rgba(110,60,40,0.5)'],
                [2, -62, 4, 3, 'rgba(150,40,40,0.35)'], [-18, -30, 5, 7, 'rgba(130,100,50,0.35)']],
       pants: '#4d525c', pantsShade: '#3b3f47', pantsStripe: '#e8e8e8',
-      boots: '#c9ad7f', bootSole: '#6d5a3e', desertBoots: true,
+      boots: '#c9ad7f', bootSole: '#6d5a3e',
       wraps: '#c1272d', wrapShade: '#8e1a1f',
-      sleeves: 'none', bald: false, legs: 'track', shoes: 'desert', fist: 'wraps', head: 'hair',
-      // tale of the tape
+      sleeves: 'none', legs: 'track', shoes: 'desert', fist: 'wraps', head: 'hair', sway: 'lean',
+      alt: { topColor: '#2c2c31', topShade: '#1d1d21', pants: '#2f3f63', pantsShade: '#24314d', wraps: '#e8e4da', wrapShade: '#b9b4a8' },
       tape: { AGE: '27', HEIGHT: '6\'1"', WEIGHT: '14st 2lb', REACH: '75"', RECORD: '11-0 (9 KO)', STYLE: 'Pressure fighter' },
       attr: { POWER: 78, SPEED: 88, CHIN: 80, STAMINA: 86 },
     },
-    baldy: {
-      name: 'BALDY CAN BOX', short: 'BALDY', corner: 'BLUE CORNER', cornerColor: '#23386b',
+    johnjoe: {
+      name: 'JOHN JOE', short: 'JOHN JOE', voice: { pitch: 104, formant: 0.95, breath: 0.3 },
       skin: '#d9a07c', skinShade: '#b47f5d', hair: null,
       top: 'hoodie', topColor: '#6e4a2c', topShade: '#523620',
       stains: [],
       pants: '#3d5d8f', pantsShade: '#2c466c', pantsStripe: null,
-      boots: '#1e1e21', bootSole: '#050505', desertBoots: false,
+      boots: '#1e1e21', bootSole: '#050505',
       wraps: null, wrapShade: null,
-      sleeves: 'long', bald: true, legs: 'jeans', shoes: 'shoe', fist: 'bare', head: 'bald',
+      sleeves: 'long', legs: 'jeans', shoes: 'shoe', fist: 'bare', head: 'bald', sway: 'lean',
+      alt: { topColor: '#5d6470', topShade: '#454b55', pants: '#2b2b30', pantsShade: '#1e1e22' },
       tape: { AGE: '34', HEIGHT: '5\'11"', WEIGHT: '15st 6lb', REACH: '72"', RECORD: '19-4-1 (12 KO)', STYLE: 'Counter puncher' },
       attr: { POWER: 90, SPEED: 72, CHIN: 86, STAMINA: 76 },
     },
+    bigjoe: {
+      name: 'BIG JOE', short: 'BIG JOE', voice: { pitch: 84, formant: 0.86, breath: 0.45 },
+      skin: '#e2a48a', skinShade: '#bf8068', hair: '#efece6',
+      top: 'tank', build: 'belly', topColor: '#f4f2ec', topShade: '#d3cfc6',
+      stains: [[6, -40, 7, 5, 'rgba(142,104,48,0.35)'], [30, -18, 5, 4, 'rgba(120,90,50,0.3)']],
+      pants: '#1f1f24', pantsShade: '#141418', pantsStripe: null,
+      boots: '#18181b', bootSole: '#060606',
+      wraps: null, wrapShade: null,
+      sleeves: 'none', legs: 'trousers', shoes: 'boots', fist: 'bare', head: 'white', stache: 'handlebar', chain: true, sway: 'duck',
+      alt: { topColor: '#2c2c31', topShade: '#1d1d21', pants: '#3a2c22', pantsShade: '#2a2019' },
+      tape: { AGE: '46', HEIGHT: '6\'2"', WEIGHT: '19st 4lb', REACH: '76"', RECORD: '31-6 (24 KO)', STYLE: 'Brawler' },
+      attr: { POWER: 95, SPEED: 64, CHIN: 92, STAMINA: 68 },
+    },
   };
+  BK.FIGHTER_ORDER = ['michael', 'johnjoe', 'bigjoe'];
+  BK.CORNERS = [
+    { corner: 'RED CORNER', color: '#b3202a' },
+    { corner: 'BLUE CORNER', color: '#23386b' },
+  ];
 
   BK.REF_LOOK = {
     skin: '#e6b995', skinShade: '#c99a78', hair: '#b9b5ae',

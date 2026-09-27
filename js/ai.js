@@ -42,7 +42,10 @@
 
       // clinch: tie him up when hurt or gassed, and throw short digs once locked
       if (me.clinch) {
-        this.cool -= dt;
+        this.cool -= dt; this.blockT -= dt;
+        // tie his arms up when he starts digging
+        if (foe.punch && foe.punch !== this.seenPunch) { this.seenPunch = foe.punch; if (Math.random() < lv.react + 0.15) this.blockT = BK.rnd(0.5, 0.9); }
+        if (this.blockT > 0) { inp.block = true; return inp; }
         if (this.cool <= 0 && Math.random() < 0.5) { inp[BK.pick(['hook', 'upper', 'jab'])] = true; this.cool = BK.rnd(0.35, 0.8); }
         return inp;
       }

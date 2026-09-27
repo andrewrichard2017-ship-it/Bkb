@@ -6,8 +6,13 @@
   const INK = BK.PAL.ink;
 
   class Fighter {
-    constructor(key, side) {
-      this.key = key; this.look = BK.FIGHTERS[key]; this.side = side;
+    // alt: use the fighter's alternate colours (both corners picked the same man)
+    constructor(key, side, alt) {
+      const base = BK.FIGHTERS[key];
+      this.key = key; this.side = side;
+      this.look = alt && base.alt ? Object.assign({}, base, base.alt) : base;
+      this.corner = BK.CORNERS[side].corner; this.cornerColor = BK.CORNERS[side].color;
+      this.voiceT = 0;
       this.resetFight();
     }
 
@@ -45,6 +50,13 @@
       this.impact = 0; this.impactHand = 'front'; this.blinkT = BK.rnd(1, 4);
     }
 
+    // Grunts: throttled so a flurry doesn't turn into noise.
+    grunt(kind, force) {
+      if (!force && this.t - this.voiceT < 0.14) return;
+      this.voiceT = this.t;
+      BK.audio.voice(this.look.voice, kind);
+    }
+
     get sx() { return BK.toScreenX(this.u, this.z); }
     get sy() { return BK.toScreenY(this.z); }
     get fs() { return BK.depthScale(this.z) * 1.38; }
@@ -71,6 +83,7 @@
       else this.ghostHp = this.hp;
 
       if (!this.down) this.sweat = Math.min(1, this.sweat + dt * 0.004 * (1 + this.moving));
+      if (this.damage > 0.45 && !this.down) this.blood = Math.min(1, this.blood + dt * 0.006 * this.damage); // a cut bleeds onto the top
       if (this.damage > 0.65 && !this.down) {
         this.dripT -= dt;
         if (this.dripT <= 0) { this.dripT = BK.rnd(0.6, 1.6); this.blood = Math.min(1, this.blood + 0.01); BK.fx.drip(this.headX + this.dir * 10 * this.fs, this.headY + 10 * this.fs, this.sy + 4); }
@@ -129,11 +142,13 @@
 
       // slip
       if (input.slip && !this.punch && !this.slip && !staggered && this.stamina > 4) {
-        this.slip = { t: 0, dur: 0.4 };
+        const duck = this.look.sway === 'duck';
+        this.slip = { t: 0, dur: duck ? 0.5 : 0.4, kind: duck ? 'duck' : 'lean' };
         this.stamina -= 5 * this.stamMul;
       }
       // clinch attempt: a visible reach-in the other fighter can block or sway away from
       if (this.grab) {
+        if (this.grab.t === 0) this.grunt('effortSmall');
         this.grab.t += dt;
         if (this.grab.t >= this.grab.dur) { this.grab = null; this.resolveGrab(opp); }
       } else if (input.clinch && !this.punch && !this.slip && this.stamina > 3) {
@@ -159,13 +174,14 @@
     clinchLogic(dt, input, opp) {
       const c = this.clinch;
       c.t += dt;
-      this.blocking = false; this.slip = null; this.grab = null; this.moving = 0; this.stun = 0;
+      this.slip = null; this.grab = null; this.moving = 0; this.stun = 0;
+      this.blocking = !!input.block && !this.punch; // tie his arms up
       if (c.role === 'holder') { // leaning on him buys time
         this.stamina = Math.min(100, this.stamina + 14 * dt);
         this.stagger = Math.max(0, this.stagger - dt * 1.5);
       } else this.stamina = Math.max(0, this.stamina - 3 * dt);
       const want = ['jab', 'cross', 'hook', 'upper'].find(k => input[k]);
-      if (want && !this.punch) this.throwPunch(want, { clinch: true, body: true });
+      if (want && !this.punch && !this.blocking) this.throwPunch(want, { clinch: true, body: true });
       this.tickPunch(dt, opp);
     }
 
@@ -196,6 +212,9 @@
       if (opt.clinch) { this.punch.dmg = d.dmg * 0.28; this.punch.reach = 999; }
       this.stamina = Math.max(0, this.stamina - d.cost * this.stamMul * (opt.clinch ? 0.5 : 1));
       this.stats.thrown++; if (d.power) this.stats.pthrown++;
+      if (type === 'ko') this.grunt('effortHuge', true);
+      else if (opt.clinch) { if (Math.random() < 0.5) this.grunt('effortSmall'); }
+      else if (d.power ? Math.random() < 0.85 : Math.random() < 0.4) this.grunt(d.power ? 'effortBig' : 'effort');
     }
 
     punchExt() {
@@ -209,10 +228,16 @@
       const dx = (opp.sx - this.sx) * this.dir;
       const inRange = !opp.down && dx > 0 && dx < p.reach * this.fs && Math.abs(opp.z - this.z) < 0.12;
       if (!inRange) { this.whiff(); return; }
-      if (opp.slip && opp.slip.t < 0.3) {
+      const sl = opp.slip, ducking = sl && sl.kind === 'duck';
+      if (sl && !p.body && sl.t < (ducking ? 0.38 : 0.3)) {
+        if (ducking && p.type === 'upper') { // ran straight into it
+          BK.fx.popup('CAUGHT DUCKING', opp.headX, opp.headY - 60, BK.PAL.brass, 36);
+          opp.receive({ ...p, dmg: p.dmg * 1.4 }, this);
+          return;
+        }
         this.whiff();
-        opp.counterWindow = 0.8;
-        BK.fx.popup('SLIPPED', opp.headX, opp.headY - 40, BK.PAL.bone, 34);
+        opp.counterWindow = ducking ? 1.0 : 0.8; // rolling under loads up a bigger counter
+        BK.fx.popup(ducking ? 'DUCKED' : 'SLIPPED', opp.headX, opp.headY - 40, BK.PAL.bone, 34);
         return;
       }
       opp.receive(p, this);
@@ -234,10 +259,16 @@
       from.counterWindow = 0;
       const hx = this.sx - from.dir * 18 * this.fs, hy = p.body ? this.sy - 150 * this.fs : this.headY;
       const floor = p.clinch ? Math.min(this.hp, 1) : 0; // clinch digs can hurt, never finish
+      if (p.clinch && this.blocking) { // arms tied up: the dig is smothered
+        from.stamina = Math.max(0, from.stamina - 2);
+        if (Math.random() < 0.4) BK.fx.popup('TIED UP', this.headX, this.headY - 40, BK.PAL.bone, 30);
+        BK.audio.punch('blocked');
+        return;
+      }
       if (p.body) { // body shots: less to the head, but they sap the legs and the lungs
         this.stamina = Math.max(0, this.stamina - dmg * (blocked ? 0.6 : 1.8));
         if (!blocked) this.bodyDmg += dmg;
-        dmg *= 0.62;
+        dmg *= 0.35;
       }
 
       if (blocked) {
@@ -248,6 +279,7 @@
         this.sqV += 3; from.impact = 0.6; from.impactHand = p.hand;
         BK.game.hitstop(0.03);
         BK.audio.punch('blocked');
+        if (Math.random() < 0.35) this.grunt('block');
         BK.fx.impact(hx - from.dir * 20 * this.fs, hy + 20 * this.fs, from.dir, this.sy, 'blocked', 0.8);
         if (through > 0.3) BK.fx.popup(p.body ? 'TO THE BODY' : 'GUARD BROKEN', this.headX, this.headY - 50, BK.PAL.bone, 30);
       } else {
@@ -280,6 +312,8 @@
           BK.audio.punch('counter');
         } else BK.audio.punch(p.power ? 'power' : 'jab');
         BK.cam.shake = Math.max(BK.cam.shake, counter ? 14 : p.power ? 9 : 4);
+        this.grunt(p.clinch ? 'hurtSmall' : p.body ? 'hurtBody' : p.power || counter ? 'hurtBig' : 'hurt', p.power);
+        if (this.damage > 0.5 && !p.body) from.blood = Math.min(1, from.blood + 0.012); // his blood on your hands and vest
         BK.audio.excite(dmg / 40);
         if (this.side === 0) BK.vibrate(p.power ? 45 : 20);
         if (!p.clinch && this.hp > 0 && this.hp < 28 && p.power && this.stagger <= 0 && Math.random() < 0.45) {
@@ -296,6 +330,7 @@
       this.punch = null; this.slip = null; this.blocking = false; this.stun = 0; this.stagger = 0;
       this.grab = null; this.clinch = null;
       this.kdTotal++; this.kdRound++;
+      this.grunt('down', true);
     }
     getUp(hp) {
       this.rising = true;
@@ -323,7 +358,13 @@
 
       this.blockW += ((this.blocking ? 1 : 0) - this.blockW) * Math.min(1, dt * 18);
       if (this.blockW > 0.01) R.mixInto(T, PO.block, this.blockW, U);
-      if (this.slip) R.mixInto(T, PO.slip, Math.sin(PI * clamp(this.slip.t / this.slip.dur, 0, 1)), U);
+      if (this.slip) {
+        const k = clamp(this.slip.t / this.slip.dur, 0, 1);
+        if (this.slip.kind === 'duck') { // dip under, roll across, come up the other side
+          R.mixInto(T, PO.duck, Math.sin(PI * k), U);
+          T.px += Math.sin(2 * PI * k) * 12; T.lean += Math.sin(2 * PI * k) * 8;
+        } else R.mixInto(T, PO.slip, Math.sin(PI * k), U);
+      }
       if (this.grab) R.mixInto(T, PO.grab, BK.easeOut(this.grab.t / this.grab.dur), U);
       if (this.clinch) R.mixInto(T, this.clinch.role === 'holder' ? PO.clinchHold : PO.clinchHeld, Math.min(1, this.clinch.t * 6), U);
       if (this.punch) {

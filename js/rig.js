@@ -32,6 +32,7 @@
   def('guard', {});
   def('tired', { fX: 52, fY: -76, rX: 32, rY: -80, lean: 12, head: 8, py: 9 });
   def('block', { fX: 40, fY: -124, fB: 0.8, rX: 34, rY: -116, rB: 0.7, head: 12, lean: 12, py: 10, fZ: 1.1, rZ: 1.05 });
+  def('duck', { lean: 34, px: 6, py: 42, head: 22, fX: 46, fY: -112, fB: 0.8, rX: 32, rY: -114, rB: 0.8 });
   def('slip', { lean: -24, px: -18, py: 16, head: -8, fX: 36, fY: -100, rX: 24, rY: -104 });
   def('hurt', { lean: -18, head: -26, px: -14, py: 6, fX: 42, fY: -82, fB: 0.9, rX: 22, rY: -86 });
   def('hurtUp', { lean: -22, head: -40, px: -12, py: 2, fX: 40, fY: -78, fB: 0.9, rX: 18, rY: -84 });
@@ -153,9 +154,22 @@
   }
   // Blood soaking into clothes, in a fixed spatter pattern so it builds up rather than flickering.
   const SPATTER = [[8, -60, 4, 3], [14, -44, 3, 5], [-2, -52, 5, 3], [20, -24, 3, 3], [4, -34, 2.5, 4], [-10, -64, 3, 2.5],
-    [12, -72, 2.5, 2], [-6, -20, 4, 3], [24, -50, 2, 3], [0, -8, 3, 2], [16, -12, 3.5, 2.5], [-14, -40, 2.5, 2.5]];
-  function spatter(st, color) {
-    const n = Math.floor((st.blood || 0) * SPATTER.length);
+    [12, -72, 2.5, 2], [-6, -20, 4, 3], [24, -50, 2, 3], [0, -8, 3, 2], [16, -12, 3.5, 2.5], [-14, -40, 2.5, 2.5],
+    [18, -66, 5, 4], [6, -26, 4, 6], [-18, -54, 3, 4], [26, -36, 3, 5], [-4, -70, 4, 3], [10, -4, 5, 3],
+    [-20, -16, 3, 3], [22, -8, 4, 3], [2, -44, 6, 4], [-12, -30, 4, 5], [14, -56, 6, 3], [28, -60, 3, 4]];
+  // Blood soaks in over the fight: spatter builds up, and a stain spreads down from the collar.
+  function spatter(st, color, soak) {
+    const b = st.blood || 0;
+    if (b > 0.25 && soak) {
+      const g = ctx.createLinearGradient(0, -90, 0, 10);
+      g.addColorStop(0, soak.replace('A', Math.min(0.55, (b - 0.25) * 0.9)));
+      g.addColorStop(Math.min(0.95, 0.15 + (b - 0.25) * 1.1), soak.replace('A', Math.min(0.3, (b - 0.25) * 0.5)));
+      g.addColorStop(1, soak.replace('A', 0));
+      ctx.fillStyle = g; ctx.fillRect(-40, -92, 100, 110);
+      ctx.fillStyle = soak.replace('A', Math.min(0.5, (b - 0.25) * 0.8)); // runs down the front
+      for (const [x, len] of [[14, 40], [20, 60], [8, 30]]) { ctx.beginPath(); ctx.ellipse(x, -70 + len * b * 0.5, 2.5, len * b * 0.5, 0.05, 0, PI * 2); ctx.fill(); }
+    }
+    const n = Math.floor(b * SPATTER.length);
     ctx.fillStyle = color;
     for (let i = 0; i < n; i++) { const [x, y, rx, ry] = SPATTER[i]; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0.6, 0, PI * 2); ctx.fill(); }
   }
@@ -203,6 +217,16 @@
       } });
       ctx.fillStyle = '#3b2a1a'; BK.draw.circle(6, -10, 1.8); ctx.fill(); BK.draw.circle(12, -7, 1.8); ctx.fill();
       line(6, -10, 13, -13, '#5b4028', 1.8);
+    } else if (L.shoes === 'boots') {
+      cel(rrect(-17, 4, 51, 10, 3), '#070707', { outline: 3, noRim: true });
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-15, 6); ctx.lineTo(-15, -30); ctx.lineTo(8, -30);
+        ctx.quadraticCurveTo(10, -14, 18, -8); ctx.quadraticCurveTo(32, -4, 33, 4); ctx.lineTo(33, 6); ctx.closePath();
+      }, front ? L.boots : BK.shade(L.boots, 0.8), { detail: () => {
+        line(-8, -26, -8, -2, 'rgba(255,255,255,0.18)', 2.5);
+        line(12, -8, 28, -2, 'rgba(255,255,255,0.3)', 2.5);
+        line(-15, -27, 8, -27, 'rgba(0,0,0,0.5)', 2);
+      } });
     } else {
       cel(rrect(-15, 5, 47, 8, 3), '#0a0a0b', { outline: 3, noRim: true });
       cel(() => {
@@ -213,7 +237,7 @@
     ctx.restore();
   }
 
-  function drawPelvis(L, x, y) {
+  function drawPelvis(L, x, y, st) {
     ctx.save(); ctx.translate(x, y);
     cel(() => {
       ctx.beginPath(); ctx.moveTo(-27, -14); ctx.lineTo(27, -14); ctx.quadraticCurveTo(31, 6, 25, 20);
@@ -221,6 +245,8 @@
     }, L.pants, { detail: () => {
       if (L.legs === 'track') { line(-2, -12, 0, 18, 'rgba(0,0,0,0.2)', 2); }
       if (L.legs === 'jeans') { line(8, -6, 12, 14, 'rgba(255,220,150,0.35)', 1.5); } // fly stitching
+      const b = st.blood || 0;
+      if (b > 0.4) { ctx.fillStyle = 'rgba(90,10,14,0.55)'; for (const [x, y, r] of [[14, 2, 3], [20, 12, 2.5], [4, 10, 3.5], [22, -6, 2]].slice(0, Math.ceil((b - 0.4) * 7))) { ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0, 0, PI * 2); ctx.fill(); } }
     } });
     if (L.top !== 'hoodie') {
       const band = L.legs === 'track' ? BK.shade(L.pants, 0.8) : '#2b2118';
@@ -232,7 +258,37 @@
   }
 
   function drawTorso(L, st) {
-    if (L.top === 'tank') {
+    if (L.top === 'tank' && L.build === 'belly') {
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-25, 4);
+        ctx.bezierCurveTo(-33, -20, -34, -52, -27, -74);
+        ctx.quadraticCurveTo(-18, -88, -2, -89); ctx.lineTo(14, -89);
+        ctx.quadraticCurveTo(28, -86, 30, -70);
+        ctx.bezierCurveTo(36, -60, 37, -52, 35, -46);
+        ctx.bezierCurveTo(56, -36, 60, -4, 42, 12);
+        ctx.quadraticCurveTo(28, 18, 20, 6); ctx.closePath();
+      }, L.skin, { detail: () => {
+        sheen(st, [[30, -2, 8, 3], [24, -76, 4, 6, 0.4]]);
+        ctx.fillStyle = 'rgba(90,50,30,0.5)'; ctx.beginPath(); ctx.ellipse(40, 4, 2, 3, 0, 0, PI * 2); ctx.fill(); // belly button
+      } });
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-27, 4);
+        ctx.bezierCurveTo(-33, -24, -33, -50, -21, -66);
+        ctx.lineTo(-13, -88); ctx.lineTo(-5, -88);
+        ctx.quadraticCurveTo(0, -72, 12, -70);
+        ctx.lineTo(16, -86); ctx.lineTo(23, -84);
+        ctx.quadraticCurveTo(21, -64, 33, -52);
+        ctx.bezierCurveTo(54, -40, 58, -14, 46, -4);
+        ctx.quadraticCurveTo(32, 0, 18, -3);
+        ctx.lineTo(-27, 4); ctx.closePath();
+      }, L.topColor, { detail: () => {
+        ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1.6; // fabric stretched over the gut
+        for (const y of [-38, -28, -18, -9]) { ctx.beginPath(); ctx.moveTo(18, y - 3); ctx.quadraticCurveTo(36, y + 3, 52, y - 2); ctx.stroke(); }
+        for (const [x, y, rx, ry, c] of L.stains) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0.4, 0, PI * 2); ctx.fill(); }
+        if (st.sweat > 0.3) { ctx.fillStyle = `rgba(160,150,120,${(st.sweat - 0.3) * 0.5})`; ctx.beginPath(); ctx.ellipse(8, -50, 16, 20, 0, 0, PI * 2); ctx.fill(); }
+        spatter(st, 'rgba(150,18,26,0.8)', 'rgba(150,20,28,A)');
+      } });
+    } else if (L.top === 'tank') {
       // bare skin: V-taper back, pec, deltoid
       cel(() => {
         ctx.beginPath(); ctx.moveTo(-23, 2);
@@ -259,7 +315,7 @@
         ctx.strokeStyle = 'rgba(0,0,0,0.12)'; ctx.lineWidth = 2; // sag folds
         ctx.beginPath(); ctx.moveTo(-18, -10); ctx.quadraticCurveTo(0, -4, 20, -12); ctx.stroke();
         if (st.sweat > 0.3) { ctx.fillStyle = `rgba(160,150,120,${(st.sweat - 0.3) * 0.5})`; ctx.beginPath(); ctx.ellipse(4, -48, 16, 22, 0, 0, PI * 2); ctx.fill(); }
-        spatter(st, 'rgba(150,18,26,0.8)');
+        spatter(st, 'rgba(150,18,26,0.8)', 'rgba(150,20,28,A)');
       } });
     } else if (L.top === 'hoodie') {
       cel(ellipse(-20, -84, 23, 15, -0.3), L.topShade);
@@ -280,7 +336,7 @@
           ctx.beginPath(); ctx.ellipse(8, -56, 18, 16, 0, 0, PI * 2); ctx.fill();
           ctx.beginPath(); ctx.ellipse(-24, -60, 8, 12, 0, 0, PI * 2); ctx.fill();
         }
-        spatter(st, 'rgba(70,10,12,0.75)');
+        spatter(st, 'rgba(70,10,12,0.75)', 'rgba(60,8,10,A)');
       } });
       cel(() => { ctx.beginPath(); ctx.moveTo(2, -30); ctx.lineTo(34, -30); ctx.lineTo(36, 2); ctx.lineTo(4, 2); ctx.quadraticCurveTo(10, -14, 2, -30); ctx.closePath(); },
         BK.shade(L.topColor, 0.9), { outline: 3 });
@@ -304,6 +360,18 @@
       }
       if (L.print) { ctx.save(); ctx.translate(8, -50); ctx.rotate(-0.05); const m = ctx.getTransform(); if (m.a * m.d - m.b * m.c < 0) ctx.scale(-1, 1); BK.draw.text(L.print, 0, 0, BK.FONT.display(15), '#d9a441'); ctx.restore(); }
     }
+  }
+
+  function drawChain() {
+    // links hanging from the back of the neck down onto the chest
+    for (let i = 0; i <= 14; i++) {
+      const t = i / 14, x = lerp(-4, 24, t), y = -90 + Math.sin(t * PI) * 22 + t * 4;
+      ctx.fillStyle = i % 2 ? '#b8862a' : '#e9c35a';
+      ctx.strokeStyle = '#5a3d10'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.ellipse(x, y, 3.4, 2.4, t * 1.4, 0, PI * 2); ctx.fill(); ctx.stroke();
+    }
+    ctx.fillStyle = '#e9c35a'; ctx.strokeStyle = '#5a3d10'; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.ellipse(12, -64, 5, 6.5, 0, 0, PI * 2); ctx.fill(); ctx.stroke(); // medallion
   }
 
   function drawHead(L, st) {
@@ -358,7 +426,7 @@
       ctx.fillStyle = '#1b1411'; ctx.beginPath(); ctx.ellipse(21.5, -33, 2.4, 3, 0, 0, PI * 2); ctx.fill();
     }
     // heavy brow
-    ctx.strokeStyle = L.head === 'hair' ? L.hair : L.head === 'grey' ? '#8d887f' : '#4a3020';
+    ctx.strokeStyle = L.head === 'hair' || L.head === 'white' ? L.hair : L.head === 'grey' ? '#8d887f' : '#4a3020';
     ctx.lineWidth = L.head === 'bald' ? 6 : 5; ctx.lineCap = 'round';
     ctx.beginPath(); ctx.moveTo(11, -42); ctx.lineTo(27, -39); ctx.stroke();
     // mouth
@@ -378,6 +446,18 @@
         ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2;
         for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-14 + i * 7, -58 + i); ctx.quadraticCurveTo(-8 + i * 7, -52, -12 + i * 6, -40); ctx.stroke(); }
       } });
+    } else if (L.head === 'white') {
+      // thick white hair swept straight back
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-21, -14);
+        ctx.bezierCurveTo(-33, -34, -26, -64, -2, -66);
+        ctx.quadraticCurveTo(14, -68, 24, -58); ctx.quadraticCurveTo(20, -52, 12, -52);
+        ctx.quadraticCurveTo(2, -50, -2, -42); ctx.quadraticCurveTo(-4, -30, -1, -22);
+        ctx.quadraticCurveTo(-10, -14, -21, -14); ctx.closePath();
+      }, L.hair, { outline: 3.5, detail: () => {
+        ctx.strokeStyle = 'rgba(120,115,105,0.35)'; ctx.lineWidth = 2;
+        for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(18 - i * 7, -60 + i); ctx.quadraticCurveTo(4 - i * 6, -58, -12 - i * 3, -40 + i * 3); ctx.stroke(); }
+      } });
     } else if (L.head === 'grey') {
       cel(() => {
         ctx.beginPath(); ctx.moveTo(-20, -16); ctx.bezierCurveTo(-30, -34, -24, -60, -2, -62);
@@ -385,6 +465,15 @@
         ctx.quadraticCurveTo(-2, -30, 0, -22); ctx.quadraticCurveTo(-10, -14, -20, -16); ctx.closePath();
       }, '#b9b5ae', { outline: 3 });
       line(22, -15, 30, -16, '#9a958d', 4); // moustache
+    }
+    if (L.stache === 'handlebar') {
+      // big white handlebar: a thick bar under the nose, both ends curled up
+      const bar = () => { ctx.beginPath(); ctx.moveTo(33, -15); ctx.quadraticCurveTo(24, -9, 12, -12); ctx.quadraticCurveTo(4, -15, 6, -23); };
+      ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      bar(); ctx.strokeStyle = INK; ctx.lineWidth = 10; ctx.stroke();
+      bar(); ctx.strokeStyle = L.hair; ctx.lineWidth = 6.5; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(33, -15); ctx.quadraticCurveTo(38, -16, 37, -22); ctx.strokeStyle = INK; ctx.lineWidth = 7; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(33, -15); ctx.quadraticCurveTo(38, -16, 37, -22); ctx.strokeStyle = L.hair; ctx.lineWidth = 4; ctx.stroke();
     }
     // cut and blood
     if (st.damage > 0.45) line(15, -45, 25, -43, '#8e111a', 3);
@@ -475,9 +564,10 @@
     drawLeg(L, hipR, legR, false);
     torso(() => drawArm(L, pose, false, st));
     drawLeg(L, hipF, legF, true);
-    drawPelvis(L, pelX, pelY);
+    drawPelvis(L, pelX, pelY, st);
     torso(() => {
       drawTorso(L, st);
+      if (L.chain) drawChain();
       ctx.save(); ctx.translate(4, -86); ctx.rotate(pose.head * DEG);
       drawHead(L, st);
       ctx.restore();

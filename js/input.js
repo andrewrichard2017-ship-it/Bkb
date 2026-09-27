@@ -23,7 +23,8 @@
     const sc = BK.screen, U = Math.min(sc.w, sc.h);
     const r = clamp(U * 0.08, 27, 50), gap = r * 2.25;
     const right = sc.w - sc.safe.r - 18 - r, bottom = sc.h - sc.safe.b - 16 - r;
-    const buttons = BTNS.map(b => ({ ...b, x: right - (3 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
+    const duck = BK.game.p1 && BK.game.p1.look.sway === 'duck';
+    const buttons = BTNS.map(b => ({ ...b, label: b.id === 'slip' ? (duck ? 'DUCK' : 'SWAY') : b.label, x: right - (3 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
     if (BK.game.koReady()) buttons.push({ id: 'ko', label: 'SUPER', color: '#c98a1e', x: right - gap * 1.5, y: bottom - gap * 2.1, big: 1.3 });
     return {
       r,
