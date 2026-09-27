@@ -7,7 +7,7 @@
   const g = BK.game = {
     state: 'title', stateT: 0, paused: false, t: 0,
     round: 1, totalRounds: 3, clock: BK.ROUND_LEN, roundLog: [], result: null, tip: '',
-    slowmo: 0, kd: null, recorded: false,
+    slowmo: 0, stop: 0, kd: null, recorded: false,
   };
   g.p1 = new BK.Fighter('michael', 0);
   g.p2 = new BK.Fighter('baldy', 1);
@@ -15,6 +15,8 @@
   g.ai = new BK.AI(g.p2, g.p1);
 
   const setState = s => { g.state = s; g.stateT = 0; };
+  // Freeze-frame on impact: the world holds for a few frames so hits land with weight.
+  g.hitstop = d => { g.stop = Math.max(g.stop, d); };
   const IDLE = { mx: 0, my: 0 };
 
   // ---------- transitions ----------
@@ -179,7 +181,7 @@
   // ---------- update ----------
   function separate(a, b) {
     if (a.down || b.down || Math.abs(a.z - b.z) > 0.14) return;
-    const minD = 76 * (a.fs + b.fs) / 2, dx = b.sx - a.sx, d = Math.abs(dx);
+    const minD = 94 * (a.fs + b.fs) / 2, dx = b.sx - a.sx, d = Math.abs(dx);
     if (d < minD) {
       const push = (minD - d) / 2, sgn = dx === 0 ? 1 : Math.sign(dx);
       a.u = clamp(a.u - sgn * push / (BK.ringR(a.z) - BK.ringL(a.z)), BK.U_MIN, BK.U_MAX);
@@ -345,9 +347,12 @@
     if (!g.paused) {
       g.t += real;
       g.slowmo = Math.max(0, g.slowmo - real);
-      update(real * (g.slowmo > 0 ? 0.3 : 1));
+      const frozen = g.stop > 0;
+      g.stop = Math.max(0, g.stop - real);
+      const scale = frozen ? 0 : g.slowmo > 0 ? 0.3 : 1;
+      update(real * scale);
       BK.getup.update(real);
-      BK.fx.update(real * (g.slowmo > 0 ? 0.3 : 1));
+      BK.fx.update(real * scale);
     }
     BK.audio.update(real);
     BK.arena.update(real, BK.audio.excitement);

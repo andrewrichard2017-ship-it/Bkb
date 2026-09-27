@@ -1,7 +1,7 @@
 // A fighter: movement, punching, defence, damage, knockdowns and how they're drawn.
 (() => {
   'use strict';
-  const BK = window.BK, ctx = BK.ctx, D = BK.draw, P = BK.PUNCHES;
+  const BK = window.BK, ctx = BK.ctx, D = BK.draw, P = BK.PUNCHES, PI = Math.PI;
   const { lerp, clamp } = BK;
   const INK = BK.PAL.ink;
 
@@ -27,9 +27,13 @@
       this.kdRound = 0; this.roundDmg = 0; this.roundLanded = 0;
       this.punch = null; this.blocking = false; this.slip = null; this.counterWindow = 0;
       this.stun = 0; this.stagger = 0; this.knock = 0; this.flash = 0;
-      this.headSnap = 0; this.headSnapV = 0; this.walk = 0; this.moving = 0; this.t = Math.random() * 10;
+      this.walk = 0; this.moving = 0; this.t = Math.random() * 10;
       this.down = false; this.downT = 0; this.lift = 0; this.liftTarget = 0; this.rising = false;
       this.celebrate = false; this.regenDelay = 0; this.dripT = 0;
+      // animation state
+      this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make();
+      this.blockW = 0; this.hurtW = 0; this.hurtKind = 'head'; this.sq = 0; this.sqV = 0;
+      this.impact = 0; this.impactHand = 'front'; this.blinkT = BK.rnd(1, 4); this.sweat = 0;
     }
 
     get sx() { return BK.toScreenX(this.u, this.z); }
@@ -46,14 +50,16 @@
     }
 
     update(dt, input, opp) {
+      this.logic(dt, input, opp);
+      this.animate(dt);
+    }
+
+    logic(dt, input, opp) {
       this.t += dt;
       this.flash = Math.max(0, this.flash - dt);
       this.counterWindow = Math.max(0, this.counterWindow - dt);
       if (this.ghostHp > this.hp) this.ghostHp = Math.max(this.hp, this.ghostHp - 28 * dt);
       else this.ghostHp = this.hp;
-      // head snap spring
-      this.headSnapV += (-this.headSnap * 140 - this.headSnapV * 13) * dt;
-      this.headSnap += this.headSnapV * dt;
 
       if (this.damage > 0.65 && !this.down) {
         this.dripT -= dt;
@@ -63,7 +69,7 @@
       if (this.down) {
         this.downT += dt;
         // slide so the body lands inside the ropes rather than through them
-        const tail = this.sx - this.dir * 250 * this.fs, w = BK.ringR(this.z) - BK.ringL(this.z);
+        const tail = this.sx - this.dir * 300 * this.fs, w = BK.ringR(this.z) - BK.ringL(this.z);
         if (tail < BK.ringL(this.z) + 30) this.u += Math.min(0.02, (BK.ringL(this.z) + 30 - tail) / w) * dt * 10;
         if (tail > BK.ringR(this.z) - 30) this.u -= Math.min(0.02, (tail - BK.ringR(this.z) + 30) / w) * dt * 10;
         this.u = clamp(this.u, BK.U_MIN, BK.U_MAX);
@@ -174,6 +180,8 @@
         this.hp = Math.max(0, this.hp - dmg);
         this.stamina = Math.max(0, this.stamina - p.dmg * 0.45);
         this.knock = from.dir * 0.07;
+        this.sqV += 3; from.impact = 0.6; from.impactHand = p.hand;
+        BK.game.hitstop(0.03);
         BK.audio.punch('blocked');
         BK.fx.impact(hx - from.dir * 20 * this.fs, hy + 20 * this.fs, from.dir, this.sy, 'blocked', 0.8);
         if (p.through > 0.3) BK.fx.popup('GUARD BROKEN', this.headX, this.headY - 50, BK.PAL.bone, 30);
@@ -182,7 +190,13 @@
         this.damage = Math.min(1, this.damage + dmg / 240);
         this.stun = p.stun * (counter ? 1.3 : 1);
         this.knock = from.dir * (p.power ? 0.26 : 0.14);
-        this.headSnapV -= p.snap * (counter ? 1.5 : 1) * 30;
+        this.hurtW = Math.min(1.3, 0.7 + p.snap * (counter ? 1.8 : 1.2));
+        this.hurtKind = p.type === 'upper' ? 'up' : 'head';
+        this.sqV += (p.power ? 9 : 5) * (counter ? 1.4 : 1);
+        from.impact = 1; from.impactHand = p.hand;
+        this.sweat = Math.min(1, this.sweat + 0.04);
+        BK.game.hitstop(counter ? 0.13 : p.power ? 0.085 : 0.045);
+        BK.cam.kick = counter ? 0.06 : p.power ? 0.035 : 0.015;
         this.flash = 0.12;
         this.regenDelay = 3;
         if (this.punch) this.punch = null;
@@ -222,57 +236,101 @@
       this.stagger = 0.8;
     }
 
+    // ---------------- animation ----------------
+    // Builds the target pose from game state, then eases the displayed pose toward it.
+    animate(dt) {
+      const R = BK.rig, PO = BK.POSES, T = this.tpose, U = R.UPPER;
+      R.copy(PO.guard, T);
+      const tired = clamp((32 - this.stamina) / 32, 0, 1);
+      if (tired > 0) R.mixInto(T, PO.tired, tired, U);
+
+      // boxer's bounce and footwork
+      const m = Math.min(1, this.moving * 1.5), ph = this.walk;
+      T.py += Math.sin(this.t * (tired > 0.5 ? 7 : 5)) * 2.5 * (1 - m * 0.6) - Math.abs(Math.sin(ph)) * 3 * m;
+      T.ffX += Math.sin(ph) * 18 * m; T.ffY -= Math.max(0, Math.cos(ph)) * 10 * m;
+      T.rfX -= Math.sin(ph) * 18 * m; T.rfY -= Math.max(0, -Math.cos(ph)) * 10 * m;
+      T.lean += tired * Math.sin(this.t * 7) * 2; // heaving breaths
+
+      this.blockW += ((this.blocking ? 1 : 0) - this.blockW) * Math.min(1, dt * 18);
+      if (this.blockW > 0.01) R.mixInto(T, PO.block, this.blockW, U);
+      if (this.slip) R.mixInto(T, PO.slip, Math.sin(PI * clamp(this.slip.t / this.slip.dur, 0, 1)), U);
+      if (this.punch) this.punchPose(T);
+      if (this.stagger > 0) {
+        R.mix(this.tmp, PO.staggerA, PO.staggerB, (Math.sin(this.t * 4.5) + 1) / 2, U);
+        R.mixInto(T, this.tmp, Math.min(1, this.stagger * 3), U);
+      }
+      if (this.hurtW > 0.01) R.mixInto(T, this.hurtKind === 'up' ? PO.hurtUp : PO.hurt, Math.min(1, this.hurtW), U);
+      if (this.celebrate && !this.down) {
+        R.mix(this.tmp, PO.victoryA, PO.victoryB, (Math.sin(this.t * 7) + 1) / 2, U);
+        R.mixInto(T, this.tmp, 1, U);
+      }
+      if (this.down) this.downPose(T);
+
+      // squash & stretch spring, fist swelling on contact
+      this.sqV += (-this.sq * 300 - this.sqV * 16) * dt;
+      this.sq += this.sqV * dt;
+      T.sqx = 1 + this.sq * 0.09; T.sqy = 1 - this.sq * 0.07;
+      if (this.impact > 0) { T[this.impactHand === 'front' ? 'fZ' : 'rZ'] += this.impact * 0.3; this.impact = Math.max(0, this.impact - dt * 9); }
+      this.hurtW = Math.max(0, this.hurtW - dt * 3.4);
+
+      // Punches and hits snap straight to the target; everything else eases in.
+      const snap = this.punch || this.hurtW > 0.25 || this.down;
+      R.mixInto(this.pose, T, snap ? 1 : 1 - Math.exp(-dt * 20));
+      this.blinkT -= dt;
+      if (this.blinkT < -0.12) this.blinkT = BK.rnd(1.5, 4.5);
+    }
+
+    // wind-up -> snap to full extension -> held follow-through -> eased recovery
+    punchPose(T) {
+      const R = BK.rig, PO = BK.POSES, U = R.UPPER, p = this.punch;
+      const A = PO[p.type + 'A'], X = PO[p.type + 'X'];
+      const tA = p.hitAt * 0.5, hold = p.hitAt + (p.power ? 0.075 : 0.045);
+      if (p.t < tA) R.mixInto(T, A, BK.easeInOut(p.t / tA), U);
+      else if (p.t < p.hitAt) {
+        const k = (p.t - tA) / (p.hitAt - tA);
+        R.mixInto(T, R.mix(this.tmp, A, X, 1 - Math.pow(1 - k, 3), U), 1, U);
+      } else if (p.t < hold) {
+        R.mixInto(T, X, 1, U);
+        const k = (p.t - p.hitAt) / (hold - p.hitAt);
+        T.lean += 3 * Math.sin(k * PI); T.px += 3 * Math.sin(k * PI); // follow-through
+      } else R.mixInto(T, X, 1 - BK.easeInOut((p.t - hold) / (p.dur - hold)), U);
+    }
+
+    // knocked down: recoil, topple, bounce, lie; then prop -> kneel -> stand as lift rises
+    downPose(T) {
+      const R = BK.rig, PO = BK.POSES, t = this.downT, L = this.lift;
+      if (L > 0.02) {
+        const keys = [[0, PO.lying], [0.4, PO.prop], [0.72, PO.kneel], [1, PO.guard]];
+        for (let i = 1; i < keys.length; i++) {
+          if (L <= keys[i][0] || i === keys.length - 1) {
+            const k = clamp((L - keys[i - 1][0]) / (keys[i][0] - keys[i - 1][0]), 0, 1);
+            R.mix(T, keys[i - 1][1], keys[i][1], BK.easeInOut(k));
+            break;
+          }
+        }
+        return;
+      }
+      if (t < 0.16) R.mix(T, T, PO.hurtBig, BK.easeOut(t / 0.16));
+      else {
+        const k = clamp((t - 0.16) / 0.34, 0, 1);
+        R.mix(T, PO.hurtBig, PO.lying, k * k); // gravity: accelerate into the canvas
+        if (t > 0.5) T.rot += Math.sin(clamp((t - 0.5) / 0.22, 0, 1) * PI) * 7; // bounce
+        if (this.ko) T.head -= 8;
+        else T.fY += Math.sin(this.t * 3) * 4; // groggy arm
+      }
+    }
+
     // ---------------- drawing ----------------
+    get lying() { return clamp(-this.pose.rot / 86, 0, 1); }
+
     draw() {
-      const s = this.fs;
+      const s = this.fs, ly = this.lying;
       ctx.save();
       ctx.translate(this.sx, this.sy);
-
-      const lying = this.down ? BK.easeOut(this.downT / 0.5) * (1 - this.lift) : 0;
       ctx.fillStyle = 'rgba(40,25,10,0.3)';
-      ctx.beginPath(); ctx.ellipse(-this.dir * 110 * s * lying, 0, (70 + 110 * lying) * s, 15 * s, 0, 0, Math.PI * 2); ctx.fill();
-
+      ctx.beginPath(); ctx.ellipse(-this.dir * 130 * s * ly, 0, (64 + 120 * ly) * s, 14 * s, 0, 0, Math.PI * 2); ctx.fill();
       ctx.scale(s * this.dir, s);
-      if (this.down) {
-        // fall backward, bounce once on the canvas
-        const bounce = this.downT > 0.5 && this.downT < 0.75 && !this.rising ? Math.sin((this.downT - 0.5) / 0.25 * Math.PI) * 0.06 : 0;
-        ctx.translate(-lying * 30, 0);
-        ctx.rotate(-(Math.PI / 2 * 0.96) * lying + bounce);
-      }
-
-      const moving = Math.min(1, this.moving * 1.5);
-      const walkSwing = Math.sin(this.walk) * 16 * moving;
-      const idle = this.down ? 0 : Math.sin(this.t * (this.stamina < 30 ? 8 : 5)) * 3;
-      const bob = idle - Math.abs(Math.sin(this.walk)) * 4 * moving;
-      const ext = this.punchExt(), type = this.punch ? this.punch.type : null;
-      let lean = 0, shiftX = 0;
-      if (this.stun > 0) lean -= 0.2;
-      if (type === 'jab') lean += ext * 0.05;
-      if (type === 'cross') lean += ext * 0.13;
-      if (type === 'hook') lean += ext * 0.16;
-      if (type === 'upper') lean += (this.punch.t < this.punch.hitAt ? -0.06 : 0.1) * ext;
-      if (this.slip) { const k = Math.sin(Math.PI * this.slip.t / this.slip.dur); lean -= 0.42 * k; shiftX -= 18 * k; }
-      if (this.blocking) lean += 0.05;
-      if (this.stagger > 0) lean += Math.sin(this.t * 6) * 0.12 - 0.08;
-      if (this.celebrate) lean -= 0.06;
-
-      const hipY = -120;
-      this.drawLeg(-8, -30 - walkSwing, false);
-      const upper = fn => {
-        ctx.save();
-        ctx.translate(shiftX, hipY); ctx.rotate(lean); ctx.translate(0, -hipY + bob);
-        fn(); ctx.restore();
-      };
-      upper(() => this.drawArm(false, ext, type));
-      this.drawLeg(8, 30 + walkSwing, true);
-      upper(() => {
-        this.drawTorso();
-        ctx.save();
-        ctx.translate(4, -214); ctx.rotate(this.headSnap); ctx.translate(-4, 214);
-        this.drawHead(this.damage, this.stun > 0 || this.down || this.stagger > 0);
-        ctx.restore();
-        this.drawArm(true, ext, type);
-      });
+      BK.rig.draw(this.look, this.pose, this.drawState());
       ctx.restore();
 
       if (this.flash > 0) { // impact ring at the head
@@ -284,227 +342,15 @@
       }
     }
 
-    drawLeg(hx, fx, front) {
-      const L = this.look, hipY = -120;
-      const kx = (hx + fx) / 2 + 10, ky = hipY / 2 + 4;
-      D.limb(hx, hipY, kx, ky, fx, -10, 31, 27, front ? L.pants : L.pantsShade);
-      if (L.pantsStripe) {
-        ctx.strokeStyle = front ? L.pantsStripe : BK.shade('#e8e8e8', 0.75); ctx.lineWidth = 3.5; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(hx + 3, hipY + 6); ctx.lineTo(kx + 3, ky); ctx.lineTo(fx + 2, -16); ctx.stroke();
-        // cuffed ankle, like tracksuit bottoms
-        ctx.fillStyle = BK.shade(L.pants, 0.8); D.rr(fx - 13, -30, 26, 9, 4); ctx.fill();
-      } else {
-        // denim seam + a hint of fade on the thigh
-        ctx.strokeStyle = 'rgba(255,255,255,0.13)'; ctx.lineWidth = 8;
-        ctx.beginPath(); ctx.moveTo(hx + 4, hipY + 10); ctx.lineTo(kx + 2, ky); ctx.stroke();
-      }
-      // footwear
-      ctx.fillStyle = L.bootSole; D.rr(fx - 17, -8, 49, 9, 3); ctx.fill();
-      D.rr(fx - 15, -27, 44, 21, 9);
-      D.fillOut(front ? L.boots : BK.shade(L.boots, 0.82), 3);
-      if (L.desertBoots) {
-        ctx.fillStyle = BK.shade(L.boots, 1.12); D.rr(fx - 13, -40, 22, 16, 6); ctx.fill(); ctx.stroke();
-        ctx.strokeStyle = BK.shade(L.boots, 0.6); ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.moveTo(fx + 2, -24); ctx.lineTo(fx + 12, -18); ctx.moveTo(fx + 6, -28); ctx.lineTo(fx + 16, -21); ctx.stroke();
-      } else {
-        ctx.fillStyle = 'rgba(255,255,255,0.18)'; D.rr(fx + 4, -23, 18, 4, 2); ctx.fill();
-      }
+    drawState() {
+      return { damage: this.damage, dazed: this.stun > 0 || this.down || this.stagger > 0, blink: this.blinkT < 0, sweat: this.sweat };
     }
 
-    drawTorso() {
-      const L = this.look;
-      const sh = -208, hip = -120;
-      if (L.top === 'tank') {
-        // bare shoulders and chest, then the vest
-        D.poly([[-31, sh + 2], [31, sh + 2], [27, hip + 4], [-27, hip + 4]]);
-        D.fillOut(L.skin);
-        ctx.fillStyle = L.skinShade; D.circle(20, sh + 12, 11); ctx.fill(); // front delt
-        const g = ctx.createLinearGradient(-28, 0, 28, 0);
-        g.addColorStop(0, L.topShade); g.addColorStop(0.45, L.topColor); g.addColorStop(1, L.topColor);
-        D.poly([[-24, sh + 1], [-14, sh + 1], [-7, sh + 22], [11, sh + 22], [16, sh + 1], [24, sh + 1],
-                [27, sh + 30], [26, hip + 6], [-26, hip + 6], [-27, sh + 30]]);
-        D.fillOut(g, 3);
-        for (const [x, y, rx, ry, c] of L.stains) {
-          ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0.4, 0, Math.PI * 2); ctx.fill();
-        }
-        // rib-knit texture
-        ctx.strokeStyle = 'rgba(0,0,0,0.05)'; ctx.lineWidth = 1;
-        for (let x = -20; x <= 22; x += 6) { ctx.beginPath(); ctx.moveTo(x, sh + 26); ctx.lineTo(x, hip + 4); ctx.stroke(); }
-        // tracksuit waistband with drawcord
-        D.rr(-28, hip - 3, 56, 13, 4); D.fillOut(L.pants, 2.5);
-        ctx.fillStyle = '#ddd'; ctx.fillRect(-3, hip + 3, 2, 12); ctx.fillRect(4, hip + 3, 2, 11);
-      } else {
-        // hoodie: hood bunched behind the neck, boxy body, kangaroo pocket, ribbed hem
-        ctx.beginPath(); ctx.ellipse(-18, sh + 2, 22, 14, -0.3, 0, Math.PI * 2); D.fillOut(L.topShade);
-        const g = ctx.createLinearGradient(-34, 0, 34, 0);
-        g.addColorStop(0, L.topShade); g.addColorStop(0.4, L.topColor); g.addColorStop(1, BK.shade(L.topColor, 1.1));
-        D.poly([[-34, sh - 2], [30, sh - 2], [35, hip + 14], [-35, hip + 14]]);
-        D.fillOut(g);
-        D.rr(-12, hip - 34, 42, 27, 7); D.fillOut(L.topShade, 2.5);
-        ctx.fillStyle = BK.shade(L.topColor, 0.72); D.rr(-35, hip + 5, 70, 10, 3); ctx.fill();
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(-6, sh + 8); ctx.quadraticCurveTo(-2, sh + 40, -12, hip - 10); ctx.stroke();
-        // drawstrings with aglets
-        ctx.strokeStyle = '#e7dcc6'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(10, sh + 6); ctx.lineTo(12, sh + 38); ctx.moveTo(19, sh + 6); ctx.lineTo(22, sh + 33); ctx.stroke();
-        ctx.fillStyle = '#9a8f7c'; ctx.fillRect(10.5, sh + 37, 3, 5); ctx.fillRect(20.5, sh + 32, 3, 5);
-        // jeans waist + belt
-        ctx.fillStyle = '#2b2118'; ctx.fillRect(-31, hip + 14, 62, 6);
-      }
-      // neck
-      D.rr(-6, sh - 22, 19, 28, 7); D.fillOut(L.skinShade, 2.5);
-    }
-
-    drawHead(dmg, dazed) {
-      const L = this.look;
-      const hx = 6, hy = -240, r = 25;
-      // skull + jaw
-      ctx.beginPath(); ctx.arc(hx, hy, r, 0, Math.PI * 2);
-      ctx.moveTo(hx + 26, hy + 12); ctx.ellipse(hx + 10, hy + 12, 16, 13, 0, 0, Math.PI * 2);
-      ctx.strokeStyle = INK; ctx.lineWidth = 7; ctx.stroke();
-      const g = ctx.createRadialGradient(hx + 8, hy - 8, 4, hx, hy, 34);
-      g.addColorStop(0, BK.shade(L.skin, 1.08)); g.addColorStop(1, L.skinShade);
-      ctx.fillStyle = g;
-      ctx.beginPath(); ctx.arc(hx, hy, r, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.ellipse(hx + 10, hy + 12, 16, 13, 0, 0, Math.PI * 2); ctx.fill();
-      // nose
-      ctx.fillStyle = L.skin;
-      ctx.beginPath(); ctx.moveTo(hx + 22, hy - 5); ctx.lineTo(hx + 32, hy + 6); ctx.lineTo(hx + 22, hy + 9); ctx.closePath(); ctx.fill();
-      ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke();
-      // ear
-      ctx.fillStyle = L.skinShade; ctx.beginPath(); ctx.ellipse(hx - 6, hy + 2, 5.5, 8.5, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.stroke();
-
-      // bruising and swelling grow with accumulated damage
-      if (dmg > 0.12) {
-        ctx.fillStyle = `rgba(92,40,90,${Math.min(0.55, dmg * 0.7)})`;
-        ctx.beginPath(); ctx.ellipse(hx + 15, hy + 3, 7 + dmg * 5, 5 + dmg * 4, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = `rgba(170,60,60,${Math.min(0.4, dmg * 0.5)})`;
-        ctx.beginPath(); ctx.ellipse(hx + 16, hy + 14, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
-      }
-      const swollen = dmg > 0.8;
-      if (dazed && !swollen) {
-        ctx.strokeStyle = INK; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(hx + 12, hy - 5); ctx.lineTo(hx + 18, hy + 1); ctx.moveTo(hx + 18, hy - 5); ctx.lineTo(hx + 12, hy + 1); ctx.stroke();
-      } else if (swollen) {
-        ctx.fillStyle = `rgba(120,60,110,0.8)`; ctx.beginPath(); ctx.ellipse(hx + 15, hy - 2, 7, 5, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(hx + 10, hy - 1); ctx.lineTo(hx + 20, hy - 1); ctx.stroke();
-      } else {
-        ctx.fillStyle = '#f4eee4'; ctx.beginPath(); ctx.ellipse(hx + 15, hy - 2, 4, 3.4, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#1b1411'; ctx.beginPath(); ctx.ellipse(hx + 17, hy - 2, 2.2, 2.8, 0, 0, Math.PI * 2); ctx.fill();
-      }
-      // brow
-      ctx.strokeStyle = L.bald ? '#5a3b28' : L.hair; ctx.lineWidth = 4; ctx.lineCap = 'round';
-      ctx.beginPath(); ctx.moveTo(hx + 9, hy - 10); ctx.lineTo(hx + 23, hy - 9); ctx.stroke();
-      // mouth: gritted, or open when hurt
-      if (dazed) { ctx.fillStyle = '#3a1512'; ctx.beginPath(); ctx.ellipse(hx + 21, hy + 16, 4, 3, 0, 0, Math.PI * 2); ctx.fill(); }
-      else { ctx.strokeStyle = BK.shade(L.skin, 0.55); ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(hx + 16, hy + 16); ctx.lineTo(hx + 24, hy + 15); ctx.stroke(); }
-
-      if (L.bald) {
-        ctx.fillStyle = 'rgba(255,245,230,0.6)';
-        ctx.beginPath(); ctx.ellipse(hx + 1, hy - 15, 11, 5, -0.35, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = 'rgba(60,40,30,0.28)';
-        ctx.beginPath(); ctx.ellipse(hx + 10, hy + 15, 15, 9, 0, 0, Math.PI); ctx.fill();
-        ctx.fillStyle = 'rgba(60,40,30,0.2)'; // shaved sides
-        ctx.beginPath(); ctx.ellipse(hx - 10, hy + 2, 10, 13, 0, 0, Math.PI * 2); ctx.fill();
-      } else {
-        ctx.fillStyle = L.hair;
-        ctx.beginPath(); ctx.arc(hx - 1, hy - 4, r + 1.5, Math.PI * 0.95, Math.PI * 1.97); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(hx - 12, hy + 1, 13, 17, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.moveTo(hx + 12, hy - 22); ctx.lineTo(hx + 22, hy - 16); ctx.lineTo(hx + 8, hy - 14); ctx.fill();
-        ctx.fillStyle = 'rgba(58,39,24,0.25)';
-        ctx.beginPath(); ctx.ellipse(hx + 10, hy + 15, 14, 8, 0, 0, Math.PI); ctx.fill();
-      }
-      // cut over the eye, then a trickle of blood
-      if (dmg > 0.45) {
-        ctx.strokeStyle = '#8e111a'; ctx.lineWidth = 3; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(hx + 12, hy - 14); ctx.lineTo(hx + 21, hy - 12); ctx.stroke();
-      }
-      if (dmg > 0.62) {
-        ctx.strokeStyle = 'rgba(160,20,28,0.85)'; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.moveTo(hx + 20, hy - 11); ctx.quadraticCurveTo(hx + 24, hy + 2, hx + 21, hy + 12); ctx.stroke();
-      }
-    }
-
-    // Draw just the head, centred, for HUD portraits.
     drawPortrait(x, y, scale, flip) {
       ctx.save();
-      ctx.translate(x, y); ctx.scale(scale * (flip ? -1 : 1), scale); ctx.translate(-8, 234);
-      D.rr(-6, -230, 19, 28, 7); D.fillOut(this.look.skinShade, 2.5);
-      this.drawHead(this.damage, this.down);
+      ctx.translate(x, y - 8 * scale); ctx.scale(scale * (flip ? -1 : 1), scale);
+      BK.rig.drawHead(this.look, this.drawState());
       ctx.restore();
-    }
-
-    armPose(front, ext, type) {
-      const shX = front ? 14 : -12, shY = -198;
-      if (this.down) {
-        return front ? { sh: [shX, shY], el: [40, -170], fi: [70, -150] } : { sh: [shX, shY], el: [-10, -160], fi: [20, -130] };
-      }
-      if (this.celebrate) {
-        const w = Math.sin(this.t * 7) * 6;
-        return front ? { sh: [shX, shY], el: [38, -250], fi: [30, -305 + w] } : { sh: [shX, shY], el: [-26, -250], fi: [-14, -305 - w] };
-      }
-      if (this.blocking) {
-        return front ? { sh: [shX, shY], el: [40, -186], fi: [40, -252] } : { sh: [shX, shY], el: [28, -182], fi: [32, -230] };
-      }
-      const tired = this.stamina < 30 ? (30 - this.stamina) / 30 * 26 : 0;
-      const bobA = Math.sin(this.t * 5 + (front ? 0 : 1.5)) * 3;
-      let fi = front ? [44, -228 + bobA + tired] : [26, -234 + bobA + tired];
-      let el = front ? [30, -168 + tired * 0.5] : [8, -166 + tired * 0.5];
-      let sh = [shX, shY];
-      const mine = type && ((front && P[type].hand === 'front') || (!front && P[type].hand === 'rear'));
-      if (mine && ext > 0) {
-        const windup = this.punch.t < this.punch.hitAt;
-        if (!front) sh = [shX + 16 * ext, shY];
-        let tf, te;
-        if (type === 'jab' || type === 'cross') {
-          tf = [type === 'jab' ? 138 : 150, -222];
-          te = [(sh[0] + tf[0]) / 2, (shY + tf[1]) / 2 + 4];
-        } else if (type === 'hook') {
-          tf = [104, -234]; te = [62, -208];
-        } else {
-          tf = [92, -262]; te = [58, -196];
-        }
-        fi = [lerp(fi[0], tf[0], ext), lerp(fi[1], tf[1], ext)];
-        el = [lerp(el[0], te[0], ext), lerp(el[1], te[1], ext)];
-        if (type === 'upper' && windup) fi[1] += 48 * Math.sin(ext * Math.PI);
-        if (type === 'hook' && windup) el[1] -= 14 * Math.sin(ext * Math.PI);
-      }
-      return { sh, el, fi };
-    }
-
-    drawArm(front, ext, type) {
-      const L = this.look;
-      const { sh, el, fi } = this.armPose(front, ext, type);
-      const armCol = L.sleeves ? (front ? L.sleeves : L.topShade) : (front ? L.skin : L.skinShade);
-      D.limb(sh[0], sh[1], el[0], el[1], fi[0], fi[1], L.sleeves ? 24 : 19, L.sleeves ? 21 : 16, armCol);
-      if (!L.sleeves) { // bicep highlight on bare arms
-        ctx.strokeStyle = 'rgba(255,230,200,0.25)'; ctx.lineWidth = 6; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(lerp(sh[0], el[0], 0.25), lerp(sh[1], el[1], 0.25) - 3); ctx.lineTo(lerp(sh[0], el[0], 0.7), lerp(sh[1], el[1], 0.7) - 3); ctx.stroke();
-      }
-      const [fx, fy] = fi;
-      const wx = lerp(el[0], fx, 0.7), wy = lerp(el[1], fy, 0.7);
-      if (L.sleeves) { // cuff then bare wrist
-        ctx.strokeStyle = front ? L.skin : L.skinShade; ctx.lineWidth = 13; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(wx, wy); ctx.lineTo(fx, fy); ctx.stroke();
-        D.circle(wx, wy, 11); D.fillOut(BK.shade(L.topColor, 0.8), 2.5);
-      }
-      // fist
-      D.circle(fx, fy, 13);
-      if (L.wraps) {
-        D.fillOut(front ? L.wraps : L.wrapShade, 3);
-        ctx.strokeStyle = front ? L.wraps : L.wrapShade; ctx.lineWidth = 15; ctx.lineCap = 'butt';
-        const ax = lerp(wx, fx, 0.4), ay = lerp(wy, fy, 0.4);
-        ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(fx, fy); ctx.stroke();
-        ctx.strokeStyle = 'rgba(0,0,0,0.28)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(fx - 9, fy - 6); ctx.lineTo(fx + 6, fy + 9); ctx.moveTo(fx - 3, fy - 12); ctx.lineTo(fx + 11, fy + 2); ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,0.2)'; D.circle(fx + 3, fy - 5, 4); ctx.fill();
-      } else {
-        D.fillOut(front ? L.skin : L.skinShade, 3);
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(fx + 7, fy - 9); ctx.lineTo(fx + 7, fy + 9); ctx.stroke();
-        if (this.damage > 0.3) { ctx.fillStyle = 'rgba(150,30,30,0.5)'; D.circle(fx + 8, fy - 2, 3.5); ctx.fill(); } // split knuckles
-      }
     }
   }
 

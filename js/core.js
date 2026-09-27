@@ -76,7 +76,7 @@
   window.addEventListener('resize', BK.resize);
   BK.toHud = (cx, cy) => ({ x: (cx - BK.view.ox) / BK.view.s, y: (cy - BK.view.oy) / BK.view.s });
 
-  BK.cam = { x: BK.W / 2, y: BK.H / 2, zoom: 1, tx: BK.W / 2, ty: BK.H / 2, tz: 1, shake: 0 };
+  BK.cam = { x: BK.W / 2, y: BK.H / 2, zoom: 1, tx: BK.W / 2, ty: BK.H / 2, tz: 1, shake: 0, kick: 0 };
   BK.updateCamera = dt => {
     const c = BK.cam, k = 1 - Math.pow(0.02, dt);
     c.zoom = lerp(c.zoom, c.tz, k);
@@ -84,12 +84,13 @@
     const hw = BK.W / 2 / c.zoom, hh = BK.H / 2 / c.zoom;
     c.x = clamp(c.x, hw, BK.W - hw); c.y = clamp(c.y, hh, BK.H - hh);
     c.shake = Math.max(0, c.shake - dt * 40);
+    c.kick = Math.max(0, c.kick - dt * 0.5);
   };
   BK.applyCamera = () => {
     const c = BK.cam;
     const sx = (Math.random() - 0.5) * c.shake, sy = (Math.random() - 0.5) * c.shake;
     ctx.translate(BK.W / 2 + sx, BK.H / 2 + sy);
-    ctx.scale(c.zoom, c.zoom);
+    ctx.scale(c.zoom + c.kick, c.zoom + c.kick);
     ctx.translate(-c.x, -c.y);
   };
 

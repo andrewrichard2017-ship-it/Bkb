@@ -37,13 +37,20 @@ A bare knuckle boxing game for Android phones and tablets, inspired by Fight Nig
 - **On your phone:** host with GitHub Pages (Settings → Pages → deploy from branch), open the URL in Chrome, then ⋮ → *Add to Home screen*. It launches full screen in landscape.
 - **Play Store (later):** wrap the same files with [Capacitor](https://capacitorjs.com/).
 
+## Animation
+
+Characters are cutout-animated: vector body parts (head, torso, upper arm, forearm, fist, thigh, shin, boots) hang on a skeleton. Arms and legs are posed by two-bone IK, so a pose is just a handful of numbers and any two poses blend smoothly. `js/rig.js` holds the pose library: guard, tired guard, block, slip, hurt, stagger, wind-up and extension for each punch, the fall, lying, propped up, kneeling, victory, and the referee's count and wave-off.
+
+Timing: every punch runs wind-up, then a fast snap to full extension, a held follow-through and an eased recovery. Clean hits freeze the frame for a few frames, squash the fighter who is hit, swell the attacker's fist toward the camera and punch the camera in slightly.
+
 ## Code layout
 
 | File | What it does |
 |---|---|
 | `js/core.js` | Namespace, ring geometry, camera, settings/record storage, drawing helpers |
 | `js/looks.js` | Fighter outfits, tale of the tape, attributes, punch data, corner advice |
-| `js/fighter.js` | Movement, punches, defence, damage, knockdowns, character drawing |
+| `js/rig.js` | Cutout character rig: skeleton + IK, cel-shaded vector body parts, pose library |
+| `js/fighter.js` | Movement, punches, defence, damage, knockdowns, and the animation layer that blends poses |
 | `js/referee.js` | Referee movement, count and wave-off |
 | `js/ai.js` | CPU opponent (Easy / Normal / Hard) |
 | `js/getup.js` | Get-up orb minigame |

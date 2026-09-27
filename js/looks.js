@@ -8,13 +8,14 @@
       name: 'MICHAEL McDONAGH', short: 'McDONAGH', corner: 'RED CORNER', cornerColor: '#b3202a',
       skin: '#e3b08a', skinShade: '#c48b66', hair: '#3a2718',
       top: 'tank', topColor: '#f1ede2', topShade: '#cfc8b6',
-      stains: [[-10, -170, 9, 6, 'rgba(142,104,48,0.5)'], [12, -150, 6, 8, 'rgba(120,70,40,0.42)'],
-               [-4, -135, 11, 5, 'rgba(160,130,60,0.38)'], [16, -190, 5, 4, 'rgba(110,60,40,0.5)'],
-               [0, -186, 4, 3, 'rgba(150,40,40,0.35)']],
+      // vest stains, in torso space (waist at y=0, shoulders near y=-80)
+      stains: [[-10, -48, 9, 6, 'rgba(142,104,48,0.5)'], [14, -30, 6, 8, 'rgba(120,70,40,0.42)'],
+               [-4, -14, 11, 5, 'rgba(160,130,60,0.38)'], [18, -58, 5, 4, 'rgba(110,60,40,0.5)'],
+               [2, -62, 4, 3, 'rgba(150,40,40,0.35)'], [-18, -30, 5, 7, 'rgba(130,100,50,0.35)']],
       pants: '#4d525c', pantsShade: '#3b3f47', pantsStripe: '#e8e8e8',
       boots: '#c9ad7f', bootSole: '#6d5a3e', desertBoots: true,
       wraps: '#c1272d', wrapShade: '#8e1a1f',
-      sleeves: null, bald: false,
+      sleeves: 'none', bald: false, legs: 'track', shoes: 'desert', fist: 'wraps', head: 'hair',
       // tale of the tape
       tape: { AGE: '27', HEIGHT: '6\'1"', WEIGHT: '14st 2lb', REACH: '75"', RECORD: '11-0 (9 KO)', STYLE: 'Pressure fighter' },
       attr: { POWER: 78, SPEED: 88, CHIN: 80, STAMINA: 86 },
@@ -27,10 +28,18 @@
       pants: '#3d5d8f', pantsShade: '#2c466c', pantsStripe: null,
       boots: '#1e1e21', bootSole: '#050505', desertBoots: false,
       wraps: null, wrapShade: null,
-      sleeves: '#6e4a2c', bald: true,
+      sleeves: 'long', bald: true, legs: 'jeans', shoes: 'shoe', fist: 'bare', head: 'bald',
       tape: { AGE: '34', HEIGHT: '5\'11"', WEIGHT: '15st 6lb', REACH: '72"', RECORD: '19-4-1 (12 KO)', STYLE: 'Counter puncher' },
       attr: { POWER: 90, SPEED: 72, CHIN: 86, STAMINA: 76 },
     },
+  };
+
+  BK.REF_LOOK = {
+    skin: '#e6b995', skinShade: '#c99a78', hair: '#b9b5ae',
+    top: 'shirt', topColor: '#f3f1ec', topShade: '#d6d2c8', stains: [],
+    pants: '#1c1c20', pantsShade: '#131316', pantsStripe: null,
+    boots: '#0f0f11', bootSole: '#050505',
+    sleeves: 'short', legs: 'trousers', shoes: 'shoe', fist: 'glove', head: 'grey',
   };
 
   // hand: which fist throws it. dmg is before attribute/stamina/counter modifiers.
