@@ -97,7 +97,6 @@
       const k = BK.easeInOut(m / MEET);
       walk(a, [0.28, 0.46], [0.41, 0.5], k); walk(b, [0.72, 0.46], [0.59, 0.5], k);
       step(a, dt, true, b.sx); step(b, dt, true, a.sx);
-      say('ref', () => BK.audio.sayRef('Protect yourselves at all times. Touch gloves.'));
       return;
     }
     // touch gloves, or refuse

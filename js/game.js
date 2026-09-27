@@ -50,7 +50,7 @@
   function beginRound() {
     g.p1.resetRound(); g.p2.resetRound(); g.ref.reset();
     g.clock = BK.ROUND_LEN; g.kd = null; g.clapped = false; g.pendingReplay = null;
-    g.refTalkT = BK.rnd(12, 22); g.ref.bubble = null;
+    g.refTalkT = BK.rnd(6, 45); g.refTalks = 0; g.ref.bubble = null; // first line at a random point in the round
     BK.replay.clear();
     for (const f of [g.p1, g.p2]) f.sweat *= 0.6; // towelled off in the corner
     BK.input.releaseAll();
@@ -149,20 +149,26 @@
   }
 
   // ---------- referee chatter ----------
+  // Recorded lines, at random moments, never more than twice a round.
   const REF_LINES = [
-    ['Come on boys, fair knock!', 'Come on boys. Fair knock.'],
-    ['Come on boys, few shlaaaps and then few pints later!', 'Come on boys. Few shlaaaaps. And then, few pints later.'],
-    ['Come on boys, call it a draw now!', 'Come on boys. Call it a draw now.'],
+    ['Come on boys, fair knock!', 'ref-fair-knock'],
+    ['Come on boys, few shlaaaps and then few pints later!', 'ref-few-pints'],
+    ['Come on boys, call it a draw now!', 'ref-call-it-a-draw'],
   ];
+  const REF_PER_ROUND = 2;
   function refChatter(dt) {
     const r = g.ref;
     if (r.bubble) { r.bubble.t -= dt; if (r.bubble.t <= 0) r.bubble = null; }
+    if (g.refTalks >= REF_PER_ROUND) return;
     g.refTalkT -= dt;
     if (g.refTalkT > 0 || g.p1.clinch) return;
-    const [text, spoken] = BK.pick(REF_LINES);
-    BK.audio.sayRef(spoken);
-    r.bubble = { text, t: 3.2 };
-    g.refTalkT = BK.rnd(18, 32);
+    // don't repeat the last line straight away
+    const lines = REF_LINES.filter(l => l[1] !== g.lastRefLine);
+    const [text, clip] = BK.pick(lines);
+    const len = BK.audio.clip(clip) || 3;
+    g.lastRefLine = clip; g.refTalks++;
+    r.bubble = { text, t: Math.max(2.4, len), len: Math.max(2.4, len) };
+    g.refTalkT = BK.rnd(18, 40);
   }
   function drawRefBubble() {
     const r = g.ref, b = r.bubble;
@@ -170,7 +176,7 @@
     // world -> screen (HUD) position of the referee's head, kept below the health bars
     const c = BK.cam, z = c.zoom + c.kick;
     const x = W / 2 + (r.sx - c.x) * z, y = Math.max(250, H / 2 + (r.sy - 270 * r.fs - c.y) * z);
-    const a = Math.min(1, b.t * 3, (3.2 - b.t) * 6);
+    const a = Math.min(1, b.t * 3, (b.len - b.t) * 6);
     ctx.save(); ctx.globalAlpha = a;
     ctx.font = BK.FONT.ui(28); const w = ctx.measureText(b.text).width + 40;
     const bx = clamp(x - w / 2, 20, W - w - 20);

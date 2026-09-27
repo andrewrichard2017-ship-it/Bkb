@@ -29,7 +29,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 ## How a fight works
 
 - **Walkout.** Each fighter comes out of his lit entrance arch and walks down the ramp to his corner under a spotlight, ducks through the ropes and parades while the announcer calls him. The referee brings them to the centre to touch gloves, but one of them may refuse. Tap to skip.
-- **The referee** chips in during the fight: "Come on boys, fair knock", "Come on boys, few shlaaaps and then few pints later", "Come on boys, call it a draw now" (spoken where the phone supports it, and always shown in a speech bubble).
+- **The referee** chips in at random moments, at most twice a round, with recorded lines (`audio/`): "Come on boys, fair knock", "Come on boys, few shlaaaps and then few pints later", "Come on boys, call it a draw now", also shown in a speech bubble.
 
 - **Stamina.** Every punch costs stamina; missing costs more. A tired fighter punches slower and weaker and his hands drop.
 - **Defence.** Blocking stops most of a jab or cross, but hooks and uppercuts partly break the guard. Swaying costs 15 stamina (more than any punch) and always comes back with a punch: a cross off the lean-back, a hook out of the duck-and-roll. If the sway made him miss, that punch lands as a counter. Leaning back and ducking both avoid head shots; a duck-and-roll sets up a bigger counter but walks straight into an uppercut. Neither gets you out of the way of a body shot.
@@ -63,6 +63,7 @@ Timing: every punch runs wind-up, then a fast snap to full extension, a held fol
 
 | File | What it does |
 |---|---|
+| `audio/` | Recorded referee lines |
 | `js/core.js` | Namespace, ring geometry, camera, settings/record storage, drawing helpers |
 | `js/looks.js` | Fighter outfits, tale of the tape, attributes, punch data, corner advice |
 | `js/rig.js` | Cutout character rig: skeleton + IK, cel-shaded vector body parts, pose library |

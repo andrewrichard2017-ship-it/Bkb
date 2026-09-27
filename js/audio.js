@@ -24,6 +24,7 @@
     A.crowd = c.createGain(); A.crowd.gain.value = 0.05;
     src.connect(bp).connect(A.crowd).connect(A.master);
     src.start();
+    A.loadClips();
   };
 
   A.setEnabled = on => { if (A.master) A.master.gain.setTargetAtTime(on ? 0.9 : 0, A.ctx.currentTime, 0.05); if (!on) A.hush(); };
@@ -205,7 +206,33 @@
     } catch (e) { /* speech is optional */ }
   }
   A.say = text => speak(text, 1.0, 0.85);
-  A.sayRef = text => { try { if (window.speechSynthesis && window.speechSynthesis.speaking) return false; } catch (e) { /* optional */ } speak(text, 0.95, 0.72); return true; };
+  // ---------- recorded clips (referee lines) ----------
+  // Decoded into Web Audio so they follow the sound setting and the master volume. If decoding isn't
+  // possible (e.g. opened straight from disk) they fall back to a plain <audio> element.
+  const CLIPS = ['ref-fair-knock', 'ref-few-pints', 'ref-call-it-a-draw'];
+  const clipBuf = {}, clipEl = {};
+  A.loadClips = () => {
+    for (const name of CLIPS) {
+      const url = `audio/${name}.mp3`;
+      if (!clipEl[name]) { try { clipEl[name] = new Audio(url); clipEl[name].preload = 'auto'; } catch (e) { /* optional */ } }
+      if (!A.ctx || clipBuf[name]) continue;
+      fetch(url).then(r => r.arrayBuffer()).then(b => A.ctx.decodeAudioData(b)).then(buf => { clipBuf[name] = buf; }).catch(() => {});
+    }
+  };
+  // Plays a clip and returns its length in seconds (0 if unavailable).
+  A.clip = name => {
+    if (!BK.settings.sound) return 0;
+    const buf = clipBuf[name];
+    if (A.ctx && buf) {
+      const s = A.ctx.createBufferSource(); s.buffer = buf;
+      const g = A.ctx.createGain(); g.gain.value = 1.6; // a touch louder than the crowd
+      s.connect(g).connect(A.master); s.start();
+      return buf.duration;
+    }
+    const el = clipEl[name];
+    if (el) { try { el.currentTime = 0; el.volume = 1; el.play().catch(() => {}); } catch (e) { /* optional */ } return el.duration || 3; }
+    return 0;
+  };
   A.announce = text => speak(text, 0.88, 0.8, true);
   // Walkout beat: kick, snare and a low bass line for a few bars.
   A.walkoutBeat = bars => {
