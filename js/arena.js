@@ -1,9 +1,9 @@
-// The venue: crowd, lighting rig, ring canvas, ropes and corner posts.
+// The hall venue: crowd, lighting rig, ring canvas, ropes and corner posts. Also the venue switch (bottom).
 (() => {
   'use strict';
   const BK = window.BK, ctx = BK.ctx, D = BK.draw, W = BK.W, H = BK.H, R = BK.RING;
   const { lerp } = BK;
-  const AR = BK.arena = { flashes: [], fans: [] };
+  const AR = { flashes: [], fans: [] };
 
   // ---------- crowd, pre-rendered once (it reads as a soft background at any zoom) ----------
   const CX0 = -420, CW = W + 840, CH = 480, CS = 1.5;
@@ -245,4 +245,15 @@
     }
     ctx.restore();
   };
+
+  // ---------- venues ----------
+  // Every venue draws the same layers over the same ring coordinates, so fighters, the walkout and the
+  // referee don't care which one is up. js/yard.js adds the tyre yard; BK.settings.arena picks one.
+  BK.VENUES = { hall: AR };
+  BK.ARENAS = [['hall', 'THE HALL'], ['yard', 'TYRE YARD']];
+  const venue = () => BK.VENUES[BK.settings.arena] || AR;
+  BK.arena = {};
+  for (const k of ['update', 'drawBackdrop', 'drawRing', 'drawBackRopes', 'drawFrontRopes', 'drawFrontRow', 'drawAtmosphere']) {
+    BK.arena[k] = (...a) => venue()[k](...a);
+  }
 })();

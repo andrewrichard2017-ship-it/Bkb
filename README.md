@@ -18,6 +18,8 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 
 **Controller** (PS5 DualSense / PS4 DualShock over Bluetooth or USB, or any standard pad): left stick or D-pad moves; ✕ jab, ○ cross, □ hook, △ uppercut; L1 clinch; hold R1 for a body shot; L2 sway/duck/combo; hold R2 to block; R3 super punch; Options opens the pause menu (resume, controls, sound, rumble, quit); any face button skips replays and the walkout. Every menu works with the D-pad or stick (a gold cursor moves over the buttons), ✕ selects and ○ goes back; on the title screen L1/R1 cycle the red/blue fighter and △ starts a tournament. Hits rumble the pad. The keyboard's arrow keys and Enter drive the menus the same way.
 
+**Arenas:** tap ARENA on the menu to switch venue. THE HALL is the big fight-night arena. TYRE YARD is outdoors at night behind a tyre place: a concrete pad with tyre-stack corner posts and ratchet-strap ropes, tools, drums and tyre piles about, a fire going in an oil drum, drizzle under the floodlights, and a few onlookers with their hoods up. The fighters walk out of the workshop shutters instead of down the ramps. The fight plays exactly the same in both.
+
 **Two players:** set PLAYERS to 2 on the menu. With two controllers, pad 1 is the red corner and pad 2 the blue; with one, the pad takes the blue corner and the touch screen / keyboard the red. Each player picks their own fighter (D-pad on their own pad), plays their own get-up bar and corner scene, and gets rumble on their own pad. Keyboard player 2: arrows move, 1-4 jab/cross/hook/upper, 5 sway, 6 clinch, hold 7 body, hold 8 block, 9 super. Tournaments are always one player against the CPU, and two-player results don't count toward your record.
 
 **Touch and keyboard:**
@@ -85,7 +87,8 @@ Timing: every punch runs wind-up, then a fast snap to full extension, a held fol
 | `js/getup.js` | Get-up rhythm bar |
 | `js/walkout.js` | Walkouts, announcer and touching gloves before round 1 |
 | `js/corner.js` | Between-rounds corner scene: diesel, slaps or a beer |
-| `js/arena.js` | Crowd, lighting rig, ring, ropes |
+| `js/arena.js` | The hall (crowd, lighting rig, ring, ropes) and the venue switch |
+| `js/yard.js` | The tyre yard venue |
 | `js/fx.js` | Sweat, blood, sparks, callouts |
 | `js/hud.js` | Health/stamina/clock HUD and every menu screen |
 | `js/input.js` | Touch controls and keyboard |

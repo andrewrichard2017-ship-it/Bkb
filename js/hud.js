@@ -220,10 +220,11 @@
       ['PLAYERS', s.players === 2 ? '2' : '1', () => g.togglePlayers()],
       ['DIFFICULTY', BK.DIFFS[s.difficulty], () => { s.difficulty = (s.difficulty + 1) % 3; }],
       ['ROUNDS', String(s.rounds), () => { s.rounds = BK.ROUND_OPTS[(BK.ROUND_OPTS.indexOf(s.rounds) + 1) % BK.ROUND_OPTS.length]; }],
+      ['ARENA', (BK.ARENAS.find(a => a[0] === s.arena) || BK.ARENAS[0])[1], () => { const i = BK.ARENAS.findIndex(a => a[0] === s.arena); s.arena = BK.ARENAS[(i + 1) % BK.ARENAS.length][0]; }],
       ['SOUND', s.sound ? 'ON' : 'OFF', () => { s.sound = !s.sound; BK.audio.setEnabled(s.sound); }],
       ['VIBRATION', s.vibrate ? 'ON' : 'OFF', () => { s.vibrate = !s.vibrate; BK.vibrate(40); }],
     ];
-    row.forEach(([sub, val, fn], i) => UI.button(W / 2 + (i - 2) * 250, 620, 228, 92, val, () => { fn(); BK.saveSettings(); }, 'secondary', sub));
+    row.forEach(([sub, val, fn], i) => UI.button(W / 2 + (i - 2.5) * 238, 620, 222, 92, val, () => { fn(); BK.saveSettings(); }, 'secondary', sub));
     if (two) {
       const n = BK.pad.count, msg = n >= 2 ? 'Two controllers connected: pad 1 is red, pad 2 is blue' : n === 1 ? 'One controller: it takes the blue corner, touch screen / keyboard the red' : 'Connect a controller for player 2 (or use arrows + 1-9 on a keyboard)';
       D.text(msg, W / 2, 690, F.ui(22), PAL.brass);
