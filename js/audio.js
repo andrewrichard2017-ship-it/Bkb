@@ -214,7 +214,7 @@
   const clipBuf = {}, clipEl = {};
   A.loadClips = () => {
     for (const name of CLIPS) {
-      const url = `audio/${name}.mp3`;
+      const url = `audio/${name}.mp3?v=2`; // bump ?v= (here and in index.html) when clips change, so browsers drop cached copies
       if (!clipEl[name]) { try { clipEl[name] = new Audio(url); clipEl[name].preload = 'auto'; } catch (e) { /* optional */ } }
       if (!A.ctx || clipBuf[name]) continue;
       fetch(url).then(r => r.arrayBuffer()).then(b => A.ctx.decodeAudioData(b)).then(buf => { clipBuf[name] = buf; }).catch(() => {});

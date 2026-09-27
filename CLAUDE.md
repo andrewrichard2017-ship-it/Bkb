@@ -7,3 +7,4 @@ More than one person edits this game, sometimes with other AI tools (e.g. ChatGP
 - If someone else's change breaks the game, say so and fix it forward rather than reverting their work without asking.
 - **Testing:** don't run the game in a browser to confirm every change. Only do it when the owner asks, when they report a problem, or when a change is complex enough that it's genuinely needed. A quick `node --check js/*.js` syntax check is fine.
 - The game is plain HTML/JS with no build step: open `index.html`, scripts are in `js/`, recorded audio in `audio/`.
+- **Cache-busting:** after changing any file in `js/` or `audio/`, bump the `?v=` number on the script tags in `index.html` and on the clip URL in `js/audio.js`, or phones may keep running the old copy.
