@@ -99,4 +99,6 @@ Timing: every punch runs wind-up, then a fast snap to full extension, a held fol
 
 ## Licence
 
-The code is released under the [MIT Licence](LICENSE). The recorded voice clips in `audio/` are not covered by it: they're real people's voices, all rights reserved, and they can't be reused without permission.
+Copyright (c) 2026 Andrew Richard and contributors. Released under the [PolyForm Strict License 1.0.0](LICENSE), which covers the code, art and recorded audio.
+
+In short: you may play it and read the code for personal, non-commercial purposes. You may **not** modify it, build new works from it, redistribute it or sell it. For any other use, ask the owner for permission.
