@@ -234,7 +234,9 @@
     D.text('YOUR CORNER', 1130, 500, F.ui(24), PAL.brass);
     ctx.font = F.ui(28, 500); ctx.fillStyle = PAL.bone; ctx.textAlign = 'center';
     wrap(g.tip, 1130, 545, 420, 34);
-    UI.button(W / 2, 735, 420, 90, `START ROUND ${g.round + 1}`, () => g.nextRound(), 'primary');
+    UI.button(W / 2 - 140, 735, 460, 90, 'WORK THE CORNER', () => g.workCorner(), 'primary');
+    UI.button(W / 2 + 250, 735, 260, 80, 'SKIP', () => g.nextRound());
+    D.text('Heal more and bring the swelling down', W / 2 - 140, 796, F.ui(22, 500), 'rgba(239,230,210,0.7)');
   };
   function wrap(text, x, y, maxW, lh) {
     const words = text.split(' '); let line = '', yy = y;

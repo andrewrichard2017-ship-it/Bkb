@@ -27,7 +27,8 @@ A bare knuckle boxing game for Android phones and tablets, inspired by Fight Nig
 - **Counters.** Land a punch while your opponent is mid-punch, or straight after a slip, for 1.6× damage.
 - **Hurt.** A fighter below ~28 HP can be staggered by power shots and becomes easier to finish.
 - **Knockdowns.** At 0 HP a fighter goes down and the referee counts. To beat the count, **tap each orb as the closing ring meets it**. Perfect or good timing lifts you up; mistimed taps knock you back a step. Each knockdown needs more orbs and gives you less time, and lowers your maximum health for the rest of the fight. **Three knockdowns in one round is a TKO.**
-- **Rounds.** 90-second rounds (1, 3 or 5). Between rounds your corner shows fight stats, the judges' scorecards and advice, and you recover some health.
+- **Rounds.** 90-second rounds (1, 3 or 5). Between rounds your corner shows fight stats, the judges' scorecards and advice.
+- **Corner game.** Choose *Work the corner* between rounds. **Cutman:** tap each cut on the close-up of your face before it bleeds. Every clean one heals you and brings the swelling down. **Breathe:** tap as the breathing ring meets the gold line, three times. A great corner is worth up to +40 health and some of your lost maximum health back; skipping it only gives +14. Baldy's corner recovers more on harder difficulties.
 - **Scoring.** Three judges score each round on the 10-point must system: 10-9 to the round winner, and a point off for every knockdown. Fights that go the distance end in a unanimous, split or majority decision, or a draw.
 - **Record.** Your win-loss-draw record is saved on the device.
 
@@ -54,6 +55,7 @@ Timing: every punch runs wind-up, then a fast snap to full extension, a held fol
 | `js/referee.js` | Referee movement, count and wave-off |
 | `js/ai.js` | CPU opponent (Easy / Normal / Hard) |
 | `js/getup.js` | Get-up orb minigame |
+| `js/corner.js` | Between-rounds corner minigame (cutman + breathing) |
 | `js/arena.js` | Crowd, lighting rig, ring, ropes |
 | `js/fx.js` | Sweat, blood, sparks, callouts |
 | `js/hud.js` | Health/stamina/clock HUD and every menu screen |

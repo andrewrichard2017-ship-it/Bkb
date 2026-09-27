@@ -37,12 +37,21 @@
     BK.input.releaseAll();
     setState('roundIntro');
   }
+  // Basic recovery between rounds. The corner minigame replaces this for the player.
+  const recover = (f, hp) => {
+    f.hp = Math.min(f.maxHp, f.hp + hp); f.ghostHp = f.hp;
+    f.stamina = 100; f.damage = Math.max(0, f.damage - 0.08);
+  };
+  g.workCorner = () => {
+    g.cornerDone = false;
+    BK.corner.start(g.p1, () => { g.cornerDone = true; });
+    setState('cornerGame');
+  };
   g.nextRound = () => {
+    if (!g.cornerDone) recover(g.p1, 14); // skipped the corner
+    recover(g.p2, 14 + BK.rnd(6, 16) * [0.7, 1, 1.25][BK.settings.difficulty]);
+    g.cornerDone = false; BK.corner.active = false;
     g.round++;
-    for (const f of [g.p1, g.p2]) {
-      f.hp = Math.min(f.maxHp, f.hp + 30); f.ghostHp = f.hp;
-      f.stamina = 100; f.damage = Math.max(0, f.damage - 0.12); // the cutman earns his money
-    }
     beginRound();
   };
   g.pause = () => { if (['fight', 'knockdown', 'roundIntro'].includes(g.state)) { g.paused = true; BK.input.releaseAll(); } };
@@ -228,6 +237,9 @@
         }
         break;
       }
+      case 'cornerGame':
+        BK.corner.update(dt);
+        // falls through
       case 'corner':
       case 'decision':
       case 'result':
@@ -248,7 +260,7 @@
       c.tx = v.sx - v.dir * 100 * v.fs; c.ty = v.sy - 120; c.tz = g.kd.t < 1.4 ? 1.5 : 1.25;
     } else if (s === 'fightOver' && g.result) {
       const w = g.result.winner; c.tx = w.sx; c.ty = w.sy - 170; c.tz = 1.4;
-    } else if (s === 'corner' || s === 'result' || s === 'decision') { c.tx = W / 2; c.ty = H / 2; c.tz = 1; }
+    } else if (s === 'corner' || s === 'cornerGame' || s === 'result' || s === 'decision') { c.tx = W / 2; c.ty = H / 2; c.tz = 1; }
     else {
       const dist = Math.abs(p1.sx - p2.sx);
       c.tx = (p1.sx + p2.sx) / 2; c.ty = (p1.sy + p2.sy) / 2 - 150;
@@ -272,6 +284,7 @@
     if (g.state === 'title') goFullscreen();
     if (BK.ui.tap(x, y)) return true;
     if (g.state === 'knockdown' && !g.paused) { BK.getup.tap(x, y, false); return true; }
+    if (g.state === 'cornerGame') return BK.corner.tap(x, y, false);
     return false;
   };
   g.onKey = k => {
@@ -279,10 +292,12 @@
     if (k === 'escape' || k === 'p') { if (g.paused) g.resume(); else g.pause(); return; }
     if (g.paused) { if (k === 'enter') g.resume(); return; }
     if (g.state === 'knockdown' && (k === ' ' || k === 'enter')) { BK.getup.tap(0, 0, true); return; }
+    if (g.state === 'cornerGame' && BK.corner.phase !== 'done' && (k === ' ' || k === 'enter')) { BK.corner.tap(0, 0, true); return; }
+    if (g.state === 'cornerGame' && k === 'enter') { g.nextRound(); return; }
     if (k !== 'enter' && k !== ' ') return;
     if (g.state === 'title') g.toTape();
     else if (g.state === 'tape') g.startFight();
-    else if (g.state === 'corner') g.nextRound();
+    else if (g.state === 'corner') g.workCorner();
     else if (g.state === 'result') g.toTape();
   };
   g.controlsActive = () => g.state === 'fight' && !g.paused;
@@ -317,6 +332,7 @@
     if (s === 'title') hud.title(g);
     else if (s === 'tape') hud.tape(g);
     else if (s === 'corner') hud.corner(g);
+    else if (s === 'cornerGame') BK.corner.draw(g);
     else if (s === 'result') hud.result(g);
     else {
       hud.draw(g);

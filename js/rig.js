@@ -280,7 +280,7 @@
     };
     cel(head, L.skin, { detail: () => {
       // stubble / beard shadow along the jaw
-      ctx.fillStyle = L.head === 'bald' ? 'rgba(50,34,24,0.38)' : 'rgba(58,39,24,0.22)';
+      ctx.fillStyle = L.head === 'bald' ? 'rgba(50,34,24,0.34)' : 'rgba(58,39,24,0.15)';
       ctx.beginPath(); ctx.moveTo(-10, -12); ctx.quadraticCurveTo(10, -18, 32, -12); ctx.lineTo(32, 8); ctx.lineTo(-10, 8); ctx.closePath(); ctx.fill();
       // bruising
       const d = st.damage;
