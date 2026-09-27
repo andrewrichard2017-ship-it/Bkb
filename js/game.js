@@ -10,12 +10,13 @@
     slowmo: 0, stop: 0, kd: null, recorded: false,
   };
   // Build both fighters from the menu picks. Same man in both corners gets his alternate colours.
-  g.setupFighters = () => {
+  g.setupFighters = cpuKey => {
     const s = BK.settings, ok = k => BK.FIGHTERS[k];
     if (!ok(s.player)) s.player = 'michael';
     if (!ok(s.cpu)) s.cpu = 'johnjoe';
+    const ck = cpuKey || s.cpu;
     g.p1 = new BK.Fighter(s.player, 0);
-    g.p2 = new BK.Fighter(s.cpu, 1, s.cpu === s.player);
+    g.p2 = new BK.Fighter(ck, 1, ck === s.player);
     g.ai = new BK.AI(g.p2, g.p1);
   };
   g.cycleFighter = which => {
@@ -33,14 +34,32 @@
 
   // ---------- transitions ----------
   g.toTitle = () => {
-    g.paused = false; BK.getup.stop(); BK.audio.hush();
-    g.p1.resetFight(); g.p2.resetFight(); g.ref.reset(); BK.fx.clear();
+    g.paused = false; BK.getup.stop(); BK.audio.hush(); g.tour = null;
+    g.setupFighters(); g.p1.resetFight(); g.p2.resetFight(); g.ref.reset(); BK.fx.clear();
     setState('title');
   };
-  g.toTape = () => { g.setupFighters(); BK.fx.clear(); g.result = null; setState('tape'); };
+  g.toTape = () => { g.setupFighters(g.tour ? g.tour.order[g.tour.index] : null); BK.fx.clear(); g.result = null; setState('tape'); };
+
+  // ---------- tournament ----------
+  // Fight everyone else in turn. Health carries over between fights, +10 after each win. Lose and you're out.
+  g.startTournament = () => {
+    const me = BK.settings.player;
+    g.tour = { order: BK.TOUR_ORDER.filter(k => k !== me), index: 0, hp: 100 };
+    setState('ladder');
+  };
+  g.tourNext = () => {
+    const t = g.tour;
+    t.hp = Math.min(100, Math.max(1, g.p1.hp) + 10);
+    t.index++;
+    if (t.index >= t.order.length) {
+      BK.record.champs = (BK.record.champs || 0) + 1; BK.saveRecord();
+      setState('champion'); g.p1.celebrate = true; BK.audio.roar(1); BK.audio.bell(3);
+    } else setState('ladder');
+  };
   g.startFight = () => {
     g.totalRounds = BK.settings.rounds; g.round = 1; g.roundLog = []; g.result = null; g.recorded = false;
     g.p1.resetFight(); g.p2.resetFight(); g.ai.reset(); BK.fx.clear();
+    if (g.tour) { g.p1.hp = g.p1.ghostHp = g.tour.hp; } // tournament: carry your health in
     BK.replay.clear(); g.pendingReplay = null;
     g.ref.reset();
     setState('walkout');
@@ -50,7 +69,7 @@
   function beginRound() {
     g.p1.resetRound(); g.p2.resetRound(); g.ref.reset();
     g.clock = BK.ROUND_LEN; g.kd = null; g.clapped = false; g.pendingReplay = null;
-    g.refTalkT = BK.rnd(6, 45); g.refTalks = 0; g.ref.bubble = null; // first line at a random point in the round
+    g.refTalkT = BK.rnd(6, 45); g.refTalks = 0; // first line at a random point in the round
     BK.replay.clear();
     for (const f of [g.p1, g.p2]) f.sweat *= 0.6; // towelled off in the corner
     BK.input.releaseAll();
@@ -84,14 +103,15 @@
   g.onKnockdown = (victim, attacker, how) => {
     if (g.state !== 'fight') return;
     const replay = { at: g.t + 1.25, tHit: g.t, v: idx(victim), a: idx(attacker) };
-    if (how === 'ko') { g.flashT = 0.25; BK.vibrate([120, 60, 200]); } // super punch: extra flash, then a normal count
+    const superHit = BK.PUNCHES[how] && BK.PUNCHES[how].super;
+    if (superHit) { g.flashT = 0.25; BK.vibrate([120, 60, 200]); } // super punch: extra flash, then a normal count
     g.pendingReplay = replay;
     victim.knockDown();
     attacker.stats.kd++;
     const tko = victim.kdRound >= 3;
     g.kd = { victim, attacker, t: 0, count: 0, next: 1.5, rising: false, resumeAt: 0, tko, getUpAt: 99 };
     g.slowmo = 1.1;
-    BK.cam.shake = how === 'ko' ? 30 : 22;
+    BK.cam.shake = superHit ? 30 : 22;
     BK.audio.thump(); BK.audio.roar(0.9);
     BK.vibrate(victim === g.p1 ? [80, 40, 120] : 60);
     BK.fx.popup(tko ? 'THIRD KNOCKDOWN!' : 'DOWN!', victim.sx, victim.sy - 330 * victim.fs, BK.PAL.blood, 64);
@@ -157,35 +177,17 @@
   ];
   const REF_PER_ROUND = 2;
   function refChatter(dt) {
-    const r = g.ref;
-    if (r.bubble) { r.bubble.t -= dt; if (r.bubble.t <= 0) r.bubble = null; }
     if (g.refTalks >= REF_PER_ROUND) return;
     g.refTalkT -= dt;
     if (g.refTalkT > 0 || g.p1.clinch) return;
     // don't repeat the last line straight away
     const lines = REF_LINES.filter(l => l[1] !== g.lastRefLine);
-    const [text, clip] = BK.pick(lines);
-    const len = BK.audio.clip(clip) || 3;
+    const clip = BK.pick(lines)[1];
+    BK.audio.clip(clip);
     g.lastRefLine = clip; g.refTalks++;
-    r.bubble = { text, t: Math.max(2.4, len), len: Math.max(2.4, len) };
     g.refTalkT = BK.rnd(18, 40);
   }
-  function drawRefBubble() {
-    const r = g.ref, b = r.bubble;
-    if (!b || g.state !== 'fight' || BK.replay.active) return;
-    // world -> screen (HUD) position of the referee's head, kept below the health bars
-    const c = BK.cam, z = c.zoom + c.kick;
-    const x = W / 2 + (r.sx - c.x) * z, y = Math.max(250, H / 2 + (r.sy - 270 * r.fs - c.y) * z);
-    const a = Math.min(1, b.t * 3, (b.len - b.t) * 6);
-    ctx.save(); ctx.globalAlpha = a;
-    ctx.font = BK.FONT.ui(28); const w = ctx.measureText(b.text).width + 40;
-    const bx = clamp(x - w / 2, 20, W - w - 20);
-    BK.draw.rr(bx, y - 64, w, 52, 14); BK.draw.fillOut('#f7f3ea', 3);
-    ctx.fillStyle = '#f7f3ea'; ctx.beginPath(); ctx.moveTo(x - 10, y - 13); ctx.lineTo(x + 6, y - 13); ctx.lineTo(x, y + 6); ctx.closePath(); ctx.fill();
-    ctx.strokeStyle = BK.PAL.ink; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x - 10, y - 12); ctx.lineTo(x, y + 6); ctx.lineTo(x + 6, y - 12); ctx.stroke();
-    BK.draw.text(b.text, bx + w / 2, y - 37, BK.FONT.ui(28), BK.PAL.ink);
-    ctx.restore();
-  }
+
 
   // ---------- rounds & scoring (10-point must system) ----------
   function scoreRound() {
@@ -207,12 +209,12 @@
     return log;
   }
   // Super punch: offered when the CPU is under 5% health. It forces a knockdown (with a count).
-  g.koReady = () => g.state === 'fight' && !g.paused && g.p2.hp < 5 && !g.p2.down && !g.p1.down && !g.p1.clinch;
-  g.onKoPunch = f => {
+  g.koReady = () => g.state === 'fight' && !g.paused && !g.p1.down && !g.p1.clinch && g.p1.superAvailable(g.p2);
+  g.onKoPunch = (f, type) => {
     g.slowmo = Math.max(g.slowmo, 0.55);
     BK.cam.kick = 0.08;
     BK.audio.roar(0.7);
-    BK.fx.popup('SUPER PUNCH!', f.headX, f.headY - 70, BK.PAL.brass, 58);
+    BK.fx.popup(type === 'duster' ? 'KNUCKLE DUSTER!' : 'SUPER PUNCH!', f.headX, f.headY - 70, BK.PAL.brass, 58);
   };
 
   // ---------- clinch ----------
@@ -310,6 +312,8 @@
     switch (g.state) {
       case 'title':
       case 'tape':
+      case 'ladder':
+      case 'champion':
         p1.update(dt, IDLE, p2); p2.update(dt, IDLE, p1);
         break;
       case 'walkout':
@@ -366,7 +370,7 @@
   function updateCamera() {
     const c = BK.cam, { p1, p2 } = g;
     const s = g.state;
-    if (s === 'title' || s === 'tape') { c.tx = W / 2; c.ty = 520; c.tz = 1.12 + Math.sin(g.t * 0.25) * 0.04; }
+    if (s === 'title' || s === 'tape' || s === 'ladder' || s === 'champion') { c.tx = W / 2; c.ty = 520; c.tz = 1.12 + Math.sin(g.t * 0.25) * 0.04; }
     else if (s === 'walkout') BK.walkout.camera(c);
     else if (s === 'knockdown' && g.kd) {
       const v = g.kd.victim;
@@ -414,7 +418,9 @@
     if (g.state === 'title') g.toTape();
     else if (g.state === 'tape') g.startFight();
     else if (g.state === 'corner') g.workCorner();
-    else if (g.state === 'result') g.toTape();
+    else if (g.state === 'result') { if (g.tour) (g.result.winner === g.p1 ? g.tourNext() : g.toTitle()); else g.toTape(); }
+    else if (g.state === 'ladder') g.toTape();
+    else if (g.state === 'champion') g.toTitle();
   };
   g.controlsActive = () => g.state === 'fight' && !g.paused && !BK.replay.active;
 
@@ -492,9 +498,10 @@
     else if (s === 'corner') hud.corner(g);
     else if (s === 'cornerGame') BK.corner.draw(g);
     else if (s === 'result') hud.result(g);
+    else if (s === 'ladder') hud.ladder(g);
+    else if (s === 'champion') hud.champion(g);
     else {
       hud.draw(g);
-      drawRefBubble();
       // from round 2 the card walker announces the round first, then the banner lands
       const bannerT = g.round > 1 ? T - (CARD_WALK - 0.3) : T;
       if (s === 'roundIntro' && bannerT > 0) hud.banner(g.round === g.totalRounds && g.round > 1 ? 'FINAL ROUND' : `ROUND ${g.round}`, g.round === 1 ? 'PROTECT YOURSELF AT ALL TIMES' : null, Math.min(1, bannerT * 4));

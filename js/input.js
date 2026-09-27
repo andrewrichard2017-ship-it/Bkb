@@ -23,9 +23,13 @@
     const sc = BK.screen, U = Math.min(sc.w, sc.h);
     const r = clamp(U * 0.08, 27, 50), gap = r * 2.25;
     const right = sc.w - sc.safe.r - 18 - r, bottom = sc.h - sc.safe.b - 16 - r;
-    const duck = BK.game.p1 && BK.game.p1.look.sway === 'duck';
-    const buttons = BTNS.map(b => ({ ...b, label: b.id === 'slip' ? (duck ? 'DUCK' : 'SWAY') : b.label, x: right - (3 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
-    if (BK.game.koReady()) buttons.push({ id: 'ko', label: 'SUPER', color: '#c98a1e', x: right - gap * 1.5, y: bottom - gap * 2.1, big: 1.3 });
+    // buttons depend on the fighter: DUCK / SWAY / COMBO, no sway for Digger, no clinch for Arthur
+    const me = BK.game.p1, L = me ? me.look : {};
+    const swayLabel = L.sway === 'duck' ? 'DUCK' : L.sway === 'combo' ? 'COMBO' : 'SWAY';
+    const buttons = BTNS
+      .filter(b => !(b.id === 'slip' && L.sway === 'none') && !(b.id === 'clinch' && L.noClinch))
+      .map(b => ({ ...b, label: b.id === 'slip' ? swayLabel : b.label, weak: b.id === 'slip' && L.sway === 'combo' && me.stamina < 40, x: right - (3 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
+    if (BK.game.koReady()) buttons.push({ id: 'ko', label: L.super === 'duster' ? 'DUSTER' : 'SUPER', color: L.super === 'duster' ? '#8d8f96' : '#c98a1e', x: right - gap * 1.5, y: bottom - gap * 2.1, big: 1.3 });
     return {
       r,
       buttons,
@@ -113,7 +117,7 @@
     for (const b of lay.buttons) {
       const down = IN.held[b.id];
       const cost = BK.PUNCHES[b.id] ? BK.PUNCHES[b.id].cost : 0;
-      const weak = cost && player.stamina < cost * 1.5;
+      const weak = b.weak || (cost && player.stamina < cost * 1.5);
       ctx.globalAlpha = b.big ? 0.95 : down ? 0.95 : weak ? 0.3 : 0.62;
       const pulse = b.big ? 1 + Math.sin(performance.now() / 90) * 0.06 : 1;
       const rr = lay.r * (down ? 0.92 : 1) * (b.big || 1) * pulse;

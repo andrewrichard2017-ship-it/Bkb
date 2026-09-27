@@ -43,7 +43,7 @@
       this.walk = 0; this.moving = 0; this.t = Math.random() * 10;
       this.down = false; this.downT = 0; this.lift = 0; this.liftTarget = 0; this.rising = false;
       this.celebrate = false; this.regenDelay = 0; this.dripT = 0;
-      this.grab = null; this.clinch = null;
+      this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false;
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make();
@@ -111,12 +111,12 @@
 
       // recovery
       const bodyF = clamp(1 - this.bodyDmg / 220, 0.5, 1);
-      if (!this.punch && !this.slip) this.stamina = Math.min(100, this.stamina + (this.blocking ? 6 : 15) / this.stamMul * bodyF * dt);
+      if (!this.punch && !this.slip && !this.combo.length) this.stamina = Math.min(100, this.stamina + (this.blocking ? 6 : 15) / this.stamMul * bodyF * (this.look.regen || 1) * dt);
       this.regenDelay -= dt;
       if (this.regenDelay <= 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + 0.5 * dt);
 
       if (this.clinch) { this.clinchLogic(dt, input, opp); return; }
-      if (this.stun > 0) { this.stun -= dt; this.punch = null; this.blocking = false; this.slip = null; this.grab = null; this.moving = 0; return; }
+      if (this.stun > 0) { this.stun -= dt; this.punch = null; this.blocking = false; this.slip = null; this.grab = null; this.combo = []; this.moving = 0; return; }
 
       const dx = opp.sx - this.sx;
       if (Math.abs(dx) > 8 && !this.celebrate) this.dir = Math.sign(dx);
@@ -137,7 +137,7 @@
       let spd = this.punch ? 0.25 : this.blocking ? 0.45 : this.slip || this.grab ? 0.3 : 1;
       if (staggered) spd *= 0.4;
       if (this.stamina < 20) spd *= 0.75;
-      spd *= 0.9 + 0.1 * this.speedMul;
+      spd *= (0.9 + 0.1 * this.speedMul) * (this.look.move || 1);
       let mx = input.mx || 0, my = input.my || 0;
       if (staggered) { mx += Math.sin(this.t * 5) * 0.5; my += Math.cos(this.t * 4) * 0.4; }
       const mag = Math.min(1, Math.hypot(mx, my));
@@ -148,8 +148,16 @@
       this.walk += dt * 11 * this.moving * ((mx * this.dir) >= 0 ? 1 : -1);
 
       // slip
-      if (input.slip && !this.punch && !this.slip && !staggered && this.stamina > 4) {
-        const duck = this.look.sway === 'duck';
+      const sway = this.look.sway;
+      if (input.slip && sway === 'combo' && !this.punch && !this.combo.length && !staggered && this.stamina >= 40) {
+        // Skinny Arthur: automatic jab, cross, left hook for 40% of the bar
+        this.stamina -= 40;
+        this.combo = ['jab', 'cross', 'hook'];
+        BK.fx.popup('COMBO!', this.headX, this.headY - 60, BK.PAL.brass, 40);
+      }
+      if (this.combo.length && !this.punch && !staggered) this.throwPunch(this.combo.shift(), { auto: true, fast: true });
+      if (input.slip && (sway === 'lean' || sway === 'duck') && !this.punch && !this.slip && !staggered && this.stamina > 4) {
+        const duck = sway === 'duck';
         this.slip = { t: 0, dur: duck ? 0.5 : 0.4, kind: duck ? 'duck' : 'lean' };
         this.stamina = Math.max(0, this.stamina - 15 * this.stamMul); // sway + the punch that comes back
       }
@@ -158,16 +166,19 @@
         if (this.grab.t === 0) this.grunt('effortSmall');
         this.grab.t += dt;
         if (this.grab.t >= this.grab.dur) { this.grab = null; this.resolveGrab(opp); }
-      } else if (input.clinch && !this.punch && !this.slip && this.stamina > 3) {
+      } else if (input.clinch && !this.look.noClinch && !this.punch && !this.slip && !this.combo.length && this.stamina > 3) {
         this.grab = { t: 0, dur: 0.38 };
         this.stamina -= 3;
       }
       // punches (hold BODY to go downstairs)
-      const superReady = input.ko && opp.hp < 5 && !opp.down;
-      const want = superReady ? 'ko' : ['jab', 'cross', 'hook', 'upper'].find(k => input[k]);
-      if (want && !this.punch && !this.blocking && !this.slip && !this.grab && !staggered) this.throwPunch(want, { body: !!input.body && want !== 'ko' });
+      const superReady = input.ko && this.superAvailable(opp);
+      const want = superReady ? (this.look.super || 'ko') : ['jab', 'cross', 'hook', 'upper'].find(k => input[k]);
+      if (want && !this.punch && !this.blocking && !this.slip && !this.grab && !this.combo.length && !staggered) this.throwPunch(want, { body: !!input.body && !P[want].super });
       this.tickPunch(dt, opp);
     }
+
+    // Super punch is on offer when the opponent is under 5% health (Digger's only once a round).
+    superAvailable(opp) { return opp.hp < 5 && !opp.down && !(this.look.superOnce && this.superUsed); }
 
     tickPunch(dt, opp) {
       const p = this.punch;
@@ -211,15 +222,15 @@
     }
 
     throwPunch(type, opt = {}) {
-      if (type === 'ko') BK.game.onKoPunch(this);
+      if (P[type].super) { BK.game.onKoPunch(this, type); this.superUsed = true; }
       const d = P[type];
       const tired = this.stamina < 25 ? 1.2 : 1;
-      const sp = (this.speedMul * 0.5 + 0.5) * (opt.clinch ? 1.35 : 1);
+      const sp = (this.speedMul * 0.5 + 0.5) * (opt.clinch ? 1.35 : 1) * (opt.fast ? 1.2 : 1);
       this.punch = { type, ...d, dur: d.dur * tired / sp, hitAt: d.hitAt * tired / sp, t: 0, resolved: false, body: !!opt.body, clinch: !!opt.clinch };
       if (opt.clinch) { this.punch.dmg = d.dmg * 0.28; this.punch.reach = 999; }
       if (!opt.auto) this.stamina = Math.max(0, this.stamina - d.cost * this.stamMul * (opt.clinch ? 0.5 : 1));
       this.stats.thrown++; if (d.power) this.stats.pthrown++;
-      if (type === 'ko') this.grunt('effortHuge', true);
+      if (P[type].super) this.grunt('effortHuge', true);
       else if (opt.clinch) { if (Math.random() < 0.5) this.grunt('effortSmall'); }
       else if (d.power ? Math.random() < 0.85 : Math.random() < 0.4) this.grunt(d.power ? 'effortBig' : 'effort');
     }
@@ -257,7 +268,7 @@
 
     receive(p, from) {
       const facing = this.dir === -from.dir;
-      const blocked = this.blocking && facing && p.type !== 'ko' && !p.clinch;
+      const blocked = this.blocking && facing && !p.super && !p.clinch;
       const counter = !blocked && !p.clinch && ((this.punch && !this.punch.resolved) || from.counterWindow > 0);
       const through = p.body ? Math.max(p.through, 0.45) : p.through; // a high guard leaves the body open
       const staminaF = 0.55 + 0.45 * Math.min(1, from.stamina / 60);
@@ -319,6 +330,9 @@
           BK.audio.punch('counter');
         } else BK.audio.punch(p.power ? 'power' : 'jab');
         BK.cam.shake = Math.max(BK.cam.shake, counter ? 14 : p.power ? 9 : 4);
+        if (p.type === 'duster') { // brass on bone
+          BK.fx.impact(hx, hy, from.dir, this.sy, 'blocked', 2);
+        }
         this.grunt(p.clinch ? 'hurtSmall' : p.body ? 'hurtBody' : p.power || counter ? 'hurtBig' : 'hurt', p.power);
         if (this.damage > 0.5 && !p.body) from.blood = Math.min(1, from.blood + 0.012); // his blood on your hands and vest
         BK.audio.excite(dmg / 40);
@@ -335,7 +349,7 @@
     knockDown() {
       this.down = true; this.downT = 0; this.lift = 0; this.liftTarget = 0; this.rising = false;
       this.punch = null; this.slip = null; this.blocking = false; this.stun = 0; this.stagger = 0;
-      this.grab = null; this.clinch = null;
+      this.grab = null; this.clinch = null; this.combo = [];
       this.kdTotal++; this.kdRound++;
       this.grunt('down', true);
     }

@@ -63,6 +63,8 @@
   // KO punch: a looping overhand haymaker, loaded way back
   def('koA', { rX: -46, rY: -126, rB: -0.6, rsh: -10, lean: -16, px: -14, py: 10, head: -6, fX: 40, fY: -112 });
   def('koX', { rX: 120, rY: -100, rB: 0.05, rZ: 1.6, rsh: 26, lean: 26, px: 26, py: 12, head: 10, fX: 22, fY: -96, fB: 1 });
+  def('dusterA', { rX: -2, rY: -28, rB: 1, rsh: -8, py: 28, lean: -14, px: -12, head: -6, fX: 40, fY: -112 });
+  def('dusterX', { rX: 82, rY: -150, rB: 1, rZ: 1.7, rsh: 18, py: -10, lean: 14, px: 18, head: -14, fX: 30, fY: -100 });
   def('cardHold', { fX: 26, fY: -168, fB: 0.5, rX: 8, rY: -166, rB: 0.5, head: -6, lean: -2, py: 0, ffX: 22, rfX: -22 });
   // falling and getting up
   def('hurtBig', { lean: -32, head: -38, px: -26, py: 4, fX: 30, fY: -48, fB: 1, rX: -8, rY: -56, rB: 1, ffX: 44, rfX: -62 });
@@ -178,9 +180,14 @@
 
   // ---------------- parts ----------------
   function drawLeg(L, hip, ik, front) {
-    const pants = front ? L.pants : L.pantsShade;
+    const pants = front ? L.pants : L.pantsShade, lw = L.limbW || 1;
     bone(hip[0], hip[1], ik.kx, ik.ky, len => {
-      cel(limbPath(len + 4, 36, 28, 5, 4, 0.35), pants, {
+      if (L.legs === 'shorts') { // bare thigh, shorts over the top half
+        cel(limbPath(len + 4, 30 * lw, 24 * lw, 3, 3, 0.35), front ? L.skin : L.skinShade);
+        cel(limbPath(len * 0.55, 40 * lw, 36 * lw, 3, 3, 0.4), pants, { detail: () => { line(len * 0.5, -18, len * 0.5, 18, L.pantsStripe, 3); } });
+        return;
+      }
+      cel(limbPath(len + 4, 36 * lw, 28 * lw, 5, 4, 0.35), pants, {
         detail: () => {
           if (L.legs === 'track') { line(4, -4, len, -4, L.pantsStripe, 3); line(4, 2, len, 2, L.pantsStripe, 3); }
           if (L.legs === 'jeans') { ctx.fillStyle = 'rgba(255,255,255,0.14)'; ctx.beginPath(); ctx.ellipse(len * 0.72, -3, 14, 7, 0, 0, PI * 2); ctx.fill(); }
@@ -189,7 +196,12 @@
       });
     });
     bone(ik.kx, ik.ky, ik.ax, ik.ay, len => {
-      cel(limbPath(len, 28, 23, 2, 4, 0.3), pants, {
+      if (L.legs === 'shorts') { // bare shin, white socks
+        cel(limbPath(len, 24 * lw, 18 * lw, 2, 3, 0.3), front ? L.skin : L.skinShade);
+        cel(rrect(len - 14, -11, 16, 22, 5), '#f4f2ee', { outline: 3 });
+        return;
+      }
+      cel(limbPath(len, 28 * lw, 23 * lw, 2, 4, 0.3), pants, {
         detail: () => {
           if (L.legs === 'track') { line(0, -4, len, -4, L.pantsStripe, 3); line(0, 2, len, 2, L.pantsStripe, 3); }
           ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 2; // fabric folds behind the knee
@@ -251,15 +263,38 @@
       if (b > 0.4) { ctx.fillStyle = 'rgba(90,10,14,0.55)'; for (const [x, y, r] of [[14, 2, 3], [20, 12, 2.5], [4, 10, 3.5], [22, -6, 2]].slice(0, Math.ceil((b - 0.4) * 7))) { ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0, 0, PI * 2); ctx.fill(); } }
     } });
     if (L.top !== 'hoodie') {
-      const band = L.legs === 'track' ? BK.shade(L.pants, 0.8) : '#2b2118';
+      const band = L.legs === 'track' || L.legs === 'shorts' ? BK.shade(L.pants, 0.8) : '#2b2118';
       cel(rrect(-28, -17, 56, 11, 4), band, { outline: 3, noRim: true });
-      if (L.legs === 'track') { line(4, -8, 5, 6, '#e8e8e8', 2); line(10, -8, 12, 5, '#e8e8e8', 2); }
+      if (L.legs === 'track' || L.legs === 'shorts') { line(4, -8, 5, 6, '#e8e8e8', 2); line(10, -8, 12, 5, '#e8e8e8', 2); }
       else { cel(rrect(14, -17, 10, 11, 2), '#b9a06a', { outline: 2, noRim: true }); }
     }
     ctx.restore();
   }
 
   function drawTorso(L, st) {
+    if (L.torsoW) { ctx.save(); ctx.scale(L.torsoW, 1); drawTorsoInner(L, st); ctx.restore(); return; }
+    drawTorsoInner(L, st);
+  }
+  function drawTorsoInner(L, st) {
+    if (L.top === 'none') {
+      // shirtless and skinny: ribs, collarbone, a sunken belly
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-22, 2);
+        ctx.bezierCurveTo(-28, -20, -30, -52, -25, -74);
+        ctx.quadraticCurveTo(-16, -88, -2, -89); ctx.lineTo(14, -89);
+        ctx.quadraticCurveTo(26, -86, 28, -72);
+        ctx.bezierCurveTo(32, -60, 30, -46, 24, -38);
+        ctx.quadraticCurveTo(18, -18, 20, 2); ctx.closePath();
+      }, L.skin, { detail: () => {
+        ctx.strokeStyle = 'rgba(120,70,50,0.35)'; ctx.lineWidth = 2;
+        for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-14, -66 + i * 8); ctx.quadraticCurveTo(6, -58 + i * 8, 26, -64 + i * 8); ctx.stroke(); } // ribs
+        ctx.beginPath(); ctx.moveTo(-2, -84); ctx.quadraticCurveTo(10, -80, 24, -84); ctx.stroke(); // collarbone
+        ctx.fillStyle = 'rgba(150,80,70,0.6)'; ctx.beginPath(); ctx.ellipse(22, -60, 2, 2, 0, 0, PI * 2); ctx.fill();
+        sheen(st, [[18, -72, 3, 8, 0.3], [10, -20, 5, 2]]);
+        spatter(st, 'rgba(150,18,26,0.75)', 'rgba(140,20,28,A)');
+      } });
+      return;
+    }
     if (L.top === 'tank' && L.build === 'belly') {
       cel(() => {
         ctx.beginPath(); ctx.moveTo(-25, 4);
@@ -448,6 +483,27 @@
         ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 2;
         for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(-14 + i * 7, -58 + i); ctx.quadraticCurveTo(-8 + i * 7, -52, -12 + i * 6, -40); ctx.stroke(); }
       } });
+    } else if (L.head === 'skin') {
+      // freshly shaved: a blue-grey shadow of stubble over the scalp, no shine
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-18, -16); ctx.bezierCurveTo(-30, -34, -24, -60, -2, -61);
+        ctx.quadraticCurveTo(16, -62, 24, -50); ctx.quadraticCurveTo(12, -50, 4, -46);
+        ctx.quadraticCurveTo(-2, -34, 0, -22); ctx.quadraticCurveTo(-8, -15, -18, -16); ctx.closePath();
+      }, BK.shade(L.skin, 0.82), { outline: 0, noRim: true, detail: () => {
+        ctx.fillStyle = 'rgba(70,70,90,0.35)';
+        for (let i = 0; i < 40; i++) ctx.fillRect(-22 + (i * 37) % 44, -60 + (i * 23) % 40, 1.5, 1.5);
+      } });
+    } else if (L.head === 'slick') {
+      // black hair slicked straight back with a wet shine
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-22, -12);
+        ctx.bezierCurveTo(-34, -32, -28, -64, -2, -66);
+        ctx.quadraticCurveTo(18, -67, 27, -54); ctx.quadraticCurveTo(14, -54, 6, -50);
+        ctx.quadraticCurveTo(-2, -44, -2, -30); ctx.quadraticCurveTo(-8, -16, -22, -12); ctx.closePath();
+      }, L.hair, { outline: 3.5, detail: () => {
+        ctx.strokeStyle = 'rgba(255,255,255,0.35)'; ctx.lineWidth = 2;
+        for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(20 - i * 4, -60 + i * 2); ctx.quadraticCurveTo(0 - i * 3, -62 + i * 3, -20 + i, -40 + i * 4); ctx.stroke(); }
+      } });
     } else if (L.head === 'white') {
       // thick white hair swept straight back
       cel(() => {
@@ -467,6 +523,19 @@
         ctx.quadraticCurveTo(-2, -30, 0, -22); ctx.quadraticCurveTo(-10, -14, -20, -16); ctx.closePath();
       }, '#b9b5ae', { outline: 3 });
       line(22, -15, 30, -16, '#9a958d', 4); // moustache
+    }
+    if (L.beard === 'long') {
+      // long black beard from the ears, over the jaw, down onto the chest
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-2, -26);
+        ctx.quadraticCurveTo(4, -14, 16, -16); ctx.lineTo(31, -17);
+        ctx.quadraticCurveTo(36, -6, 32, 8); ctx.quadraticCurveTo(26, 30, 12, 38);
+        ctx.quadraticCurveTo(4, 30, 0, 16); ctx.quadraticCurveTo(-10, 4, -12, -8); ctx.closePath();
+      }, L.hair, { outline: 3.5, detail: () => {
+        ctx.strokeStyle = 'rgba(255,255,255,0.14)'; ctx.lineWidth = 1.6;
+        for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(6 + i * 4, -12); ctx.quadraticCurveTo(8 + i * 3, 8, 6 + i * 2, 26 - i * 2); ctx.stroke(); }
+      } });
+      line(20, -12, 28, -13, '#3a1512', 2.5); // mouth in the beard
     }
     if (L.stache === 'handlebar') {
       // big white handlebar: a thick bar under the nose, both ends curled up
@@ -491,7 +560,7 @@
     const k = arm(shX, shY, tx, ty, front ? pose.fB : pose.rB);
     const z = front ? pose.fZ : pose.rZ;
     const skin = front ? L.skin : L.skinShade;
-    const sleeveCol = L.sleeves === 'long' ? (front ? L.topColor : L.topShade) : null;
+    const sleeveCol = L.sleeves === 'long' ? (front ? L.topColor : L.topShade) : null, lw = L.limbW || 1;
     // upper arm
     bone(shX, shY, k.ex, k.ey, len => {
       if (L.sleeves === 'long') {
@@ -500,8 +569,8 @@
           ctx.beginPath(); ctx.moveTo(len * 0.6, -12); ctx.quadraticCurveTo(len * 0.7, 0, len * 0.62, 12); ctx.stroke();
         } });
       } else {
-        cel(ellipse(2, 0, 16, 15), skin); // deltoid
-        cel(limbPath(len + 2, 25, 19, 6, 3, 0.42), skin, { detail: () => {
+        cel(ellipse(2, 0, 16 * lw, 15 * lw), skin); // deltoid
+        cel(limbPath(len + 2, 25 * lw, 19 * lw, 6 * lw, 3, 0.42), skin, { detail: () => {
           sheen(st, [[len * 0.45, -7, len * 0.18, 2.5]]);
           ctx.strokeStyle = 'rgba(90,50,30,0.25)'; ctx.lineWidth = 2; // bicep/tricep split
           ctx.beginPath(); ctx.moveTo(len * 0.25, 2); ctx.quadraticCurveTo(len * 0.55, 5, len * 0.85, 2); ctx.stroke();
@@ -516,7 +585,7 @@
         cel(rrect(len * 0.72, -13, 11, 26, 4), BK.shade(L.topColor, 0.72), { outline: 3 });
         ctx.save(); ctx.translate(len * 0.78, 0); cel(limbPath(len * 0.22, 15, 14), skin, { outline: 3 }); ctx.restore();
       } else {
-        cel(limbPath(len, 22, 15, 4, 3, 0.25), skin, { detail: () => line(len * 0.2, -3, len * 0.7, -2, 'rgba(255,235,210,0.25)', 3) });
+        cel(limbPath(len, 22 * lw, 15 * lw, 4 * lw, 3, 0.25), skin, { detail: () => line(len * 0.2, -3, len * 0.7, -2, 'rgba(255,235,210,0.25)', 3) });
       }
       ctx.save(); ctx.translate(len, 0); ctx.scale(z, z);
       drawFist(L, front, st);
@@ -548,6 +617,12 @@
       } });
       // thumb wrapped over the fingers
       ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-2, 6); ctx.quadraticCurveTo(8, 4, 14, 8); ctx.stroke();
+      if (L.fist === 'dusters') { // brass knuckles across the front of the fist
+        cel(rrect(14, -15, 12, 30, 5), '#c9c3b0', { outline: 3, detail: () => {
+          ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(16, -13, 3, 26);
+          for (let i = 0; i < 4; i++) { ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(24, -10 + i * 7, 3, -1.4, 1.4); ctx.stroke(); }
+        } });
+      }
     }
   }
 

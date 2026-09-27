@@ -99,10 +99,10 @@
     D.text(`ROUND ${g.round} / ${g.totalRounds}`, W / 2, 38, F.ui(22), PAL.brass);
     const low = g.clock <= 10 && g.state === 'fight';
     D.text(BK.fmtClock(g.clock), W / 2, 84, F.display(56), low ? '#e2584f' : PAL.bone);
-    if (g.koReady() && !(g.p1.punch && g.p1.punch.type === 'ko')) {
+    if (g.koReady() && !(g.p1.punch && BK.PUNCHES[g.p1.punch.type].super)) {
       const a = 0.6 + Math.sin(performance.now() / 110) * 0.4;
       ctx.save(); ctx.globalAlpha = a;
-      BK.strokeText('HE\'S OUT ON HIS FEET  ·  SUPER PUNCH READY', W / 2, 210, F.display(40), PAL.brass, 8);
+      BK.strokeText(`HE'S OUT ON HIS FEET  ·  ${g.p1.look.super === 'duster' ? 'KNUCKLE DUSTER' : 'SUPER PUNCH'} READY`, W / 2, 210, F.display(40), PAL.brass, 8);
       ctx.restore();
     }
     // pause button
@@ -155,7 +155,8 @@
     pick(g.p2, W / 2 + 290, 'CPU  ·  BLUE CORNER', 'cpu');
     D.text('VS', W / 2, 332, F.display(48), PAL.blood);
 
-    UI.button(W / 2, 470, 420, 104, 'FIGHT', () => g.toTape(), 'primary');
+    UI.button(W / 2 - 230, 470, 420, 100, 'QUICK FIGHT', () => g.toTape(), 'primary');
+    UI.button(W / 2 + 230, 470, 420, 100, 'TOURNAMENT', () => g.startTournament(), 'primary', 'BEAT EVERYONE');
     const s = BK.settings;
     const row = [
       ['DIFFICULTY', BK.DIFFS[s.difficulty], () => { s.difficulty = (s.difficulty + 1) % 3; }],
@@ -165,7 +166,7 @@
     ];
     row.forEach(([sub, val, fn], i) => UI.button(W / 2 + (i - 1.5) * 300, 620, 270, 92, val, () => { fn(); BK.saveSettings(); }, 'secondary', sub));
     const r = BK.record;
-    D.text(r.w + r.l + r.d ? `YOUR RECORD  ${r.w}-${r.l}-${r.d}  (${r.ko} KO)` : 'YOUR FIRST FIGHT', W / 2, 735, F.ui(30), PAL.bone);
+    D.text((r.w + r.l + r.d ? `YOUR RECORD  ${r.w}-${r.l}-${r.d}  (${r.ko} KO)` : 'YOUR FIRST FIGHT') + (r.champs ? `  ·  ${r.champs}x TOURNAMENT CHAMPION` : ''), W / 2, 735, F.ui(30), PAL.bone);
     D.text('Left thumb moves  ·  Right thumb punches, blocks and slips  ·  Keys: WASD, J K U I, hold B body, L block, Space sway, C clinch', W / 2, 800, F.ui(24, 500), 'rgba(239,230,210,0.65)');
   };
 
@@ -275,8 +276,57 @@
     if (g.roundLog.length) drawCards(g, 920, 400, 420);
     const rec = BK.record;
     D.text(`YOUR RECORD  ${rec.w}-${rec.l}-${rec.d}  (${rec.ko} KO)`, 1130, 600, F.ui(28), PAL.bone);
-    UI.button(W / 2 - 220, 765, 380, 88, 'REMATCH', () => g.toTape(), 'primary');
-    UI.button(W / 2 + 220, 765, 380, 88, 'MAIN MENU', () => g.toTitle());
+    if (g.tour) {
+      const t = g.tour;
+      D.text(`TOURNAMENT  ·  FIGHT ${t.index + 1} OF ${t.order.length}`, 1130, 650, F.ui(26), PAL.brass);
+      if (won) UI.button(W / 2, 765, 520, 88, t.index + 1 >= t.order.length ? 'CLAIM THE TITLE' : 'CONTINUE  ·  +10 HEALTH', () => g.tourNext(), 'primary');
+      else UI.button(W / 2, 765, 520, 88, 'KNOCKED OUT OF THE TOURNAMENT', () => g.toTitle());
+    } else {
+      UI.button(W / 2 - 220, 765, 380, 88, 'REMATCH', () => g.toTape(), 'primary');
+      UI.button(W / 2 + 220, 765, 380, 88, 'MAIN MENU', () => g.toTitle());
+    }
+  };
+
+  // ---------- tournament ----------
+  function medallion(key, x, y, r, state) {
+    const f = BK.game.p1.key === key ? BK.game.p1 : new BK.Fighter(key, 1);
+    D.circle(x, y, r); ctx.fillStyle = '#1c1512'; ctx.fill();
+    ctx.lineWidth = 5; ctx.strokeStyle = state === 'next' ? PAL.brass : state === 'beaten' ? '#555' : 'rgba(239,230,210,0.35)'; ctx.stroke();
+    ctx.save(); D.circle(x, y, r - 4); ctx.clip();
+    ctx.globalAlpha = state === 'beaten' ? 0.35 : 1;
+    f.drawPortrait(x, y + r * 0.22, r / 30, true);
+    ctx.restore();
+    if (state === 'beaten') { ctx.strokeStyle = '#e2584f'; ctx.lineWidth = 8; ctx.beginPath(); ctx.moveTo(x - r * 0.6, y - r * 0.6); ctx.lineTo(x + r * 0.6, y + r * 0.6); ctx.moveTo(x + r * 0.6, y - r * 0.6); ctx.lineTo(x - r * 0.6, y + r * 0.6); ctx.stroke(); }
+  }
+  BK.hud.ladder = g => {
+    dim(0.72);
+    const t = g.tour, next = t.order[t.index];
+    D.text('TOURNAMENT', W / 2, 90, F.display(72), PAL.brass);
+    D.text(`FIGHT ${t.index + 1} OF ${t.order.length}  ·  WIN THEM ALL TO TAKE THE TITLE`, W / 2, 148, F.ui(28), PAL.bone);
+    const n = t.order.length, gap = 250, x0 = W / 2 - (n - 1) * gap / 2;
+    t.order.forEach((k, i) => {
+      const x = x0 + i * gap, state = i < t.index ? 'beaten' : i === t.index ? 'next' : 'later';
+      medallion(k, x, 330, state === 'next' ? 92 : 72, state);
+      D.text(BK.FIGHTERS[k].name, x, 450, F.display(28), state === 'later' ? 'rgba(239,230,210,0.6)' : PAL.bone);
+      D.text(state === 'beaten' ? 'BEATEN' : state === 'next' ? 'NEXT UP' : i === n - 1 ? 'FINAL' : `FIGHT ${i + 1}`, x, 486, F.ui(22), state === 'next' ? PAL.brass : 'rgba(239,230,210,0.6)');
+    });
+    // your health going in
+    const bw = 600, bx = W / 2 - bw / 2, by = 560;
+    D.text(`${g.p1.look.name}  ·  HEALTH GOING IN`, W / 2, by - 24, F.ui(26), PAL.bone);
+    D.slant(bx, by, bw, 30, 12); ctx.fillStyle = '#3a1113'; ctx.fill();
+    D.slant(bx, by, bw * t.hp / 100, 30, 12); ctx.fillStyle = t.hp < 35 ? '#e2584f' : PAL.brass; ctx.fill();
+    D.text(`${Math.round(t.hp)}%`, bx + bw + 40, by + 16, F.display(32), PAL.bone, 'left');
+    D.text('+10 health after every win. Lose and you\'re out.', W / 2, by + 70, F.ui(24, 500), 'rgba(239,230,210,0.7)');
+    UI.button(W / 2, 760, 520, 92, `FIGHT ${BK.FIGHTERS[next].short}`, () => g.toTape(), 'primary');
+  };
+  BK.hud.champion = g => {
+    dim(0.55);
+    D.text('UNDISPUTED', W / 2, 150, F.ui(34), PAL.brass);
+    strokeText('TOURNAMENT CHAMPION', W / 2, 240, F.display(96), PAL.brass, 12);
+    medallion(g.p1.key, W / 2, 440, 120, 'next');
+    D.text(g.p1.look.name, W / 2, 610, F.display(56), PAL.bone);
+    D.text(`Beat ${g.tour.order.length} men in a row`, W / 2, 665, F.ui(28, 500), 'rgba(239,230,210,0.8)');
+    UI.button(W / 2, 770, 420, 90, 'MAIN MENU', () => g.toTitle(), 'primary');
   };
 
   BK.hud.pause = g => {

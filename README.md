@@ -4,13 +4,15 @@ A bare knuckle boxing game for Android phones and tablets, inspired by Fight Nig
 
 ## Fighters
 
-Pick any fighter for yourself and for the CPU on the main menu (tap the name to cycle). If both corners pick the same man, the CPU gets alternate colours.
+Pick any fighter for yourself and for the CPU on the main menu (tap the name to cycle). **Quick fight** is a single bout; **Tournament** runs you through everyone else in turn (Digger is the final boss). Your health carries over between tournament fights and you get +10% back after each win; lose (or draw) and you're out. If both corners pick the same man, the CPU gets alternate colours.
 
-| | Michael McD | John Joe | Big Joe |
+| | Kit | Style | Sway / special |
 |---|---|---|---|
-| Kit | Stained white tank top, tracksuit bottoms, beige desert boots, red hand wraps | Brown hoodie, jeans, black shoes, bare knuckles | White tank top over a big belly, black trousers and boots, gold chain, white hair and handlebar moustache |
-| Style | Pressure fighter: fast, good stamina | Counter puncher: heavy hands, good chin | Brawler: hardest puncher, best chin, slow, gasses early |
-| Sway | Leans back | Leans back | **Ducks and rolls** |
+| **Michael McD** | Stained white tank top, tracksuit bottoms, beige desert boots, red hand wraps | Pressure fighter: fast, good stamina | Leans back |
+| **John Joe** | Brown hoodie, jeans, black shoes | Counter puncher: heavy hands, good chin | Leans back |
+| **Big Joe** | White tank over a big belly, black trousers and boots, gold chain, white hair and handlebar moustache | Brawler: huge power, best chin, slow | Ducks and rolls |
+| **Skinny Arthur** | Shirtless, shorts, white shoes, skinhead | Speed merchant: fast hands and feet, light punches, best stamina recovery, **can't clinch** | **COMBO**: automatic jab-cross-left hook for 40% of his stamina (needs at least 40%) |
+| **Digger** | Grey tank, black jeans, desert boots, slicked-back hair, long beard, knuckle dusters | Knockout artist: the most power, low stamina, slow feet | **No sway.** His super is a knuckle-duster uppercut, once per round |
 
 ## Controls
 
@@ -29,7 +31,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 ## How a fight works
 
 - **Walkout.** Each fighter comes out of his lit entrance arch and walks down the ramp to his corner under a spotlight, ducks through the ropes and parades while the announcer calls him. The referee brings them to the centre to touch gloves, but one of them may refuse. Tap to skip.
-- **The referee** chips in at random moments, at most twice a round, with recorded lines (`audio/`): "Come on boys, fair knock", "Come on boys, few shlaaaps and then few pints later", "Come on boys, call it a draw now", also shown in a speech bubble.
+- **The referee** chips in at random moments, at most twice a round, with recorded lines (`audio/`): "Come on boys, fair knock", "Come on boys, few shlaaaps and then few pints later", "Come on boys, call it a draw now", 
 
 - **Stamina.** Every punch costs stamina; missing costs more. A tired fighter punches slower and weaker and his hands drop.
 - **Defence.** Blocking stops most of a jab or cross, but hooks and uppercuts partly break the guard. Swaying costs 15 stamina (more than any punch) and always comes back with a punch: a cross off the lean-back, a hook out of the duck-and-roll. If the sway made him miss, that punch lands as a counter. Leaning back and ducking both avoid head shots; a duck-and-roll sets up a bigger counter but walks straight into an uppercut. Neither gets you out of the way of a body shot.

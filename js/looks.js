@@ -48,8 +48,40 @@
       tape: { AGE: '46', HEIGHT: '6\'2"', WEIGHT: '19st 4lb', REACH: '76"', RECORD: '31-6 (24 KO)', STYLE: 'Brawler' },
       attr: { POWER: 95, SPEED: 64, CHIN: 92, STAMINA: 68 },
     },
+    skinny: {
+      name: 'SKINNY ARTHUR', short: 'ARTHUR', voice: { pitch: 138, formant: 1.06, breath: 0.35 },
+      skin: '#e8b99a', skinShade: '#c99878', hair: '#6b5a4a',
+      top: 'none', build: 'skinny', limbW: 0.74, torsoW: 0.8, topColor: '#e8b99a', topShade: '#c99878',
+      stains: [],
+      pants: '#2b3f6b', pantsShade: '#213153', pantsStripe: '#e8e8e8',
+      boots: '#f2f0ea', bootSole: '#bdb8ad',
+      wraps: null, wrapShade: null,
+      sleeves: 'none', legs: 'shorts', shoes: 'shoe', fist: 'bare', head: 'skin',
+      // SWAY is an automatic jab-cross-hook costing 40% of the stamina bar; can't clinch; quick on his feet
+      sway: 'combo', noClinch: true, move: 1.22, regen: 1.35,
+      alt: { pants: '#6b1f24', pantsShade: '#511519', boots: '#1c1c1f' },
+      tape: { AGE: '23', HEIGHT: '6\'0"', WEIGHT: '10st 3lb', REACH: '74"', RECORD: '8-2 (1 KO)', STYLE: 'Speed merchant' },
+      attr: { POWER: 58, SPEED: 97, CHIN: 70, STAMINA: 92 },
+    },
+    digger: {
+      name: 'DIGGER', short: 'DIGGER', voice: { pitch: 92, formant: 0.9, breath: 0.4 },
+      skin: '#d9a585', skinShade: '#b8835f', hair: '#141214',
+      top: 'tank', build: 'muscle', limbW: 1.2, torsoW: 1.12, topColor: '#6f7176', topShade: '#55575b',
+      stains: [[8, -34, 6, 4, 'rgba(40,30,20,0.3)']],
+      pants: '#1b1b1f', pantsShade: '#121215', pantsStripe: null,
+      boots: '#b99c70', bootSole: '#6d5a3e',
+      wraps: null, wrapShade: null,
+      sleeves: 'none', legs: 'jeans', shoes: 'desert', fist: 'dusters', head: 'slick', beard: 'long',
+      // no sway at all; his super is a knuckle-duster uppercut, once a round; heavy on his feet
+      sway: 'none', super: 'duster', superOnce: true, move: 0.8, regen: 0.8,
+      alt: { topColor: '#2c2c31', topShade: '#1d1d21', pants: '#3a2c22', pantsShade: '#2a2019' },
+      tape: { AGE: '38', HEIGHT: '6\'1"', WEIGHT: '17st 0lb', REACH: '75"', RECORD: '22-3 (20 KO)', STYLE: 'Knockout artist' },
+      attr: { POWER: 99, SPEED: 60, CHIN: 84, STAMINA: 58 },
+    },
   };
-  BK.FIGHTER_ORDER = ['michael', 'johnjoe', 'bigjoe'];
+  BK.FIGHTER_ORDER = ['michael', 'johnjoe', 'bigjoe', 'skinny', 'digger'];
+  // Tournament running order (your own fighter is skipped); Digger is the final boss.
+  BK.TOUR_ORDER = ['skinny', 'johnjoe', 'michael', 'bigjoe', 'digger'];
   BK.CORNERS = [
     { corner: 'RED CORNER', color: '#b3202a' },
     { corner: 'BLUE CORNER', color: '#23386b' },
@@ -80,7 +112,9 @@
     hook:  { hand: 'front', dur: 0.50, hitAt: 0.23, dmg: 12,  reach: 142, cost: 10, stun: 0.40, snap: 0.50, through: 0.35, power: true },
     upper: { hand: 'rear',  dur: 0.54, hitAt: 0.25, dmg: 14,  reach: 126, cost: 12, stun: 0.42, snap: 0.55, through: 0.45, power: true },
     // Finisher, only offered when the opponent is under 5% health. Can't be blocked, but can be slipped or missed.
-    ko:    { hand: 'rear',  dur: 0.95, hitAt: 0.55, dmg: 40,  reach: 190, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0,  power: true },
+    ko:    { hand: 'rear',  dur: 0.95, hitAt: 0.55, dmg: 40,  reach: 190, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0,  power: true, super: true },
+    // Digger's special: a big knuckle-duster uppercut, once a round, same trigger as the super punch
+    duster: { hand: 'rear', dur: 1.05, hitAt: 0.62, dmg: 45,  reach: 150, cost: 16, stun: 0.7,  snap: 1.1,  through: 1.0,  power: true, super: true },
   };
   BK.PUNCH_NAMES = { jab: 'JAB', cross: 'CROSS', hook: 'HOOK', upper: 'UPPERCUT' };
 
