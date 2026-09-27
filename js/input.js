@@ -57,7 +57,7 @@
     e.preventDefault();
     BK.audio.init();
     const hud = BK.toHud(e.clientX, e.clientY);
-    if (BK.game.onTap(hud.x, hud.y, e)) return; // menus, pause, get-up orbs
+    if (BK.game.onTap(hud.x, hud.y, e)) return; // menus, pause, get-up bar
     if (!BK.game.controlsActive()) return;
     try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* optional */ }
     const lay = IN.layout();

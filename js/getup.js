@@ -1,114 +1,115 @@
-// Get-up minigame, shown while the referee counts over the player.
-// Orbs appear one at a time with a ring closing in; tap the orb as the ring meets it.
-// Each clean hit lifts the fighter further off the canvas; a miss costs a step.
-// Every knockdown needs more hits, and the ring closes faster.
+// Get-up minigame, shown while the referee counts over a human fighter.
+// Rhythm bar: a marker sweeps back and forth; press (✕ on a pad, Space/Enter, or tap anywhere)
+// while it's inside the gold zone. Each hit lifts the fighter further off the canvas and moves the
+// zone; a miss costs a step and briefly locks you out, so mashing doesn't work.
+// The first two knockdowns are deliberately forgiving; after that the zone shrinks and the marker speeds up.
 (() => {
   'use strict';
-  const BK = window.BK, ctx = BK.ctx, D = BK.draw;
-  const { clamp, lerp } = BK;
-  const ORB_R = 50, PERFECT = 0.085, GOOD = 0.19;
+  const BK = window.BK, ctx = BK.ctx, D = BK.draw, PAL = BK.PAL, F = BK.FONT;
+  const { clamp } = BK;
+
+  // per knockdown: hits needed, zone width (share of the bar), marker speed (bar lengths per second)
+  const LEVELS = [
+    { needed: 2, zone: 0.34, speed: 0.45 },
+    { needed: 3, zone: 0.28, speed: 0.55 },
+    { needed: 4, zone: 0.17, speed: 0.85 },
+    { needed: 5, zone: 0.12, speed: 1.05 },
+  ];
+  const BAR = { x: 450, y: 650, w: 700, h: 44 };
 
   const G = BK.getup = { active: false, feedback: [] };
 
   G.start = (fighter, onDone) => {
-    const n = fighter.kdTotal;
+    const lv = LEVELS[clamp(fighter.kdTotal - 1, 0, LEVELS.length - 1)];
+    const hard = BK.settings.difficulty === 2 && fighter.kdTotal > 2 ? 1.1 : 1; // hard mode only bites from the 3rd
     Object.assign(G, {
       active: true, done: false, fighter, onDone,
-      needed: Math.min(7, 2 + n + (BK.settings.difficulty === 2 ? 1 : 0)),
-      approach: Math.max(0.55, 1.05 - 0.13 * (n - 1) - 0.05 * BK.settings.difficulty),
-      progress: 0, orb: null, gap: 0.5, last: null, feedback: [], streak: 0,
+      needed: lv.needed, zoneW: lv.zone / hard, speed: lv.speed * hard,
+      progress: 0, pos: 0, dir: 1, lock: 0, pause: 0.6, shake: 0, feedback: [],
     });
+    newZone();
   };
-  G.stop = () => { G.active = false; G.orb = null; };
+  G.stop = () => { G.active = false; };
 
-  function spawn() {
-    let x, y, tries = 0;
-    do { x = BK.rnd(430, 1170); y = BK.rnd(300, 640); tries++; }
-    while (G.last && Math.hypot(x - G.last.x, y - G.last.y) < 240 && tries < 20);
-    G.orb = { x, y, t: 0 };
-    G.last = { x, y };
+  // keep the new zone away from the marker, so every hit needs a fresh, timed press
+  function newZone() {
+    const half = G.zoneW / 2 + 0.04;
+    let c, tries = 0;
+    do { c = BK.rnd(half, 1 - half); tries++; }
+    while (Math.abs(c - G.pos) < G.zoneW && tries < 20);
+    G.zone = c;
   }
 
   G.update = dt => {
     for (const f of G.feedback) f.t += dt;
-    G.feedback = G.feedback.filter(f => f.t < 0.7);
+    G.feedback = G.feedback.filter(f => f.t < 0.8);
+    G.shake = Math.max(0, G.shake - dt * 3);
     if (!G.active || G.done) return;
-    if (!G.orb) { G.gap -= dt; if (G.gap <= 0) spawn(); return; }
-    G.orb.t += dt;
-    if (G.orb.t > G.approach + GOOD) miss('MISSED');
+    G.lock = Math.max(0, G.lock - dt);
+    if (G.pause > 0) { G.pause -= dt; return; }
+    G.pos += G.dir * G.speed * dt;
+    if (G.pos >= 1) { G.pos = 1; G.dir = -1; }
+    if (G.pos <= 0) { G.pos = 0; G.dir = 1; }
   };
 
-  function hit(label) {
-    G.progress++; G.streak++;
-    G.feedback.push({ text: label, x: G.orb.x, y: G.orb.y, t: 0, good: true, burst: true });
-    BK.audio.tick(true);
-    BK.vibrate(15);
-    G.fighter.liftTarget = 0.12 + 0.5 * G.progress / G.needed;
-    G.orb = null; G.gap = 0.22;
-    if (G.progress >= G.needed) { G.done = true; G.onDone(); }
-  }
-  function miss(label) {
-    G.progress = Math.max(0, G.progress - 1); G.streak = 0;
-    G.feedback.push({ text: label, x: G.orb.x, y: G.orb.y, t: 0, good: false });
-    BK.audio.tick(false);
-    G.fighter.liftTarget = G.progress ? 0.12 + 0.5 * G.progress / G.needed : 0;
-    G.orb = null; G.gap = 0.35;
-  }
-
-  // Touch: must land on the orb. Keyboard: timing only.
-  G.tap = (x, y, keyboard) => {
-    if (!G.active || G.done || !G.orb) return false;
-    const o = G.orb;
-    if (!keyboard && Math.hypot(x - o.x, y - o.y) > ORB_R * 2) return false;
-    const d = Math.abs(o.t - G.approach);
-    if (d < PERFECT) hit('PERFECT');
-    else if (d < GOOD) hit('GOOD');
-    else miss(o.t < G.approach ? 'TOO EARLY' : 'TOO LATE');
+  // Any tap / press counts (no position check). Returns true when the input was used.
+  G.tap = () => {
+    if (!G.active || G.done) return false;
+    if (G.lock > 0 || G.pause > 0) return true;
+    const off = Math.abs(G.pos - G.zone), half = G.zoneW / 2;
+    const x = BAR.x + G.pos * BAR.w;
+    if (off <= half) {
+      G.progress++;
+      G.feedback.push({ text: off < half * 0.35 ? 'PERFECT' : 'GOOD', x, good: true, t: 0 });
+      BK.audio.tick(true); BK.vibrate(15, G.fighter.side);
+      G.fighter.liftTarget = 0.12 + 0.5 * G.progress / G.needed;
+      if (G.progress >= G.needed) { G.done = true; G.onDone(); return true; }
+      G.pause = 0.25; newZone();
+    } else {
+      G.progress = Math.max(0, G.progress - 1);
+      G.feedback.push({ text: (G.zone - G.pos) * G.dir > 0 ? 'TOO EARLY' : 'TOO LATE', x, good: false, t: 0 });
+      BK.audio.tick(false);
+      G.lock = 0.45; G.shake = 1;
+      G.fighter.liftTarget = G.progress ? 0.12 + 0.5 * G.progress / G.needed : 0;
+    }
     return true;
   };
 
   G.draw = () => {
     if (!G.active) return;
-    // progress meter
-    const mw = 460, mx = BK.W / 2 - mw / 2, my = 250;
+    const pad = BK.pad && BK.pad.slotFor(G.fighter.side) >= 0;
     const who = BK.game.twoPlayer ? `${G.fighter.side ? 'BLUE' : 'RED'} CORNER: ` : '';
-    BK.strokeText(who + 'TAP THE ORBS TO GET UP' + (BK.pad.slotFor(G.fighter.side) >= 0 ? '  (✕ ON YOUR PAD)' : ''), BK.W / 2, my - 28, BK.FONT.ui(32), BK.PAL.bone, 6);
-    const seg = mw / G.needed;
+    BK.strokeText(`${who}${pad ? 'PRESS ✕' : 'TAP'} IN THE GOLD TO GET UP`, BK.W / 2, BAR.y - 64, F.ui(32), PAL.bone, 6);
+
+    // progress pips
+    const pw = 46, gap = 12, total = G.needed * pw + (G.needed - 1) * gap, px0 = BK.W / 2 - total / 2;
     for (let i = 0; i < G.needed; i++) {
-      D.slant(mx + i * seg + 4, my, seg - 8, 18, 6);
-      ctx.fillStyle = i < G.progress ? BK.PAL.brass : 'rgba(239,230,210,0.15)'; ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.6)'; ctx.lineWidth = 2; ctx.stroke();
+      D.slant(px0 + i * (pw + gap), BAR.y - 36, pw, 14, 5);
+      ctx.fillStyle = i < G.progress ? PAL.brass : 'rgba(239,230,210,0.18)'; ctx.fill();
     }
-    const o = G.orb;
-    if (o) {
-      const k = clamp(o.t / G.approach, 0, 1.3);
-      const ringR = lerp(ORB_R * 3.4, ORB_R, Math.min(1, k));
-      const close = Math.abs(o.t - G.approach) < GOOD;
-      const appear = Math.min(1, o.t / 0.12);
-      ctx.save();
-      ctx.globalAlpha = appear;
-      // glow
-      const glow = ctx.createRadialGradient(o.x, o.y, ORB_R * 0.5, o.x, o.y, ORB_R * 2.2);
-      glow.addColorStop(0, close ? 'rgba(255,214,120,0.55)' : 'rgba(217,164,65,0.3)'); glow.addColorStop(1, 'rgba(217,164,65,0)');
-      ctx.fillStyle = glow; D.circle(o.x, o.y, ORB_R * 2.2); ctx.fill();
-      // orb body
-      const g = ctx.createRadialGradient(o.x - 14, o.y - 16, 4, o.x, o.y, ORB_R);
-      g.addColorStop(0, '#fff1c8'); g.addColorStop(0.45, BK.PAL.brass); g.addColorStop(1, '#6d4a14');
-      D.circle(o.x, o.y, ORB_R * appear); ctx.fillStyle = g; ctx.fill();
-      ctx.strokeStyle = BK.PAL.ink; ctx.lineWidth = 4; ctx.stroke();
-      // closing ring
-      ctx.strokeStyle = close ? '#fff' : BK.PAL.bone; ctx.lineWidth = close ? 7 : 5;
-      D.circle(o.x, o.y, ringR); ctx.stroke();
-      D.text('TAP', o.x, o.y + 2, BK.FONT.display(26), BK.PAL.ink);
-      ctx.restore();
-    }
+
+    ctx.save(); ctx.translate((Math.random() - 0.5) * 14 * G.shake, 0);
+    // track
+    D.rr(BAR.x - 6, BAR.y - 6, BAR.w + 12, BAR.h + 12, 12); ctx.fillStyle = 'rgba(12,9,8,0.85)'; ctx.fill();
+    ctx.strokeStyle = 'rgba(239,230,210,0.35)'; ctx.lineWidth = 2; ctx.stroke();
+    // gold zone with a brighter "perfect" core
+    const zx = BAR.x + (G.zone - G.zoneW / 2) * BAR.w, zw = G.zoneW * BAR.w;
+    const g = ctx.createLinearGradient(zx, 0, zx + zw, 0);
+    g.addColorStop(0, 'rgba(217,164,65,0.55)'); g.addColorStop(0.5, 'rgba(240,199,90,0.95)'); g.addColorStop(1, 'rgba(217,164,65,0.55)');
+    D.rr(zx, BAR.y, zw, BAR.h, 8); ctx.fillStyle = g; ctx.fill();
+    ctx.fillStyle = 'rgba(255,245,210,0.55)';
+    ctx.fillRect(BAR.x + (G.zone - G.zoneW * 0.175) * BAR.w, BAR.y + 4, G.zoneW * 0.35 * BAR.w, BAR.h - 8);
+    // marker (dimmed while locked out after a miss)
+    const mx = BAR.x + G.pos * BAR.w, inZone = Math.abs(G.pos - G.zone) <= G.zoneW / 2;
+    ctx.globalAlpha = G.lock > 0 ? 0.35 : 1;
+    ctx.fillStyle = inZone ? '#fff' : PAL.bone;
+    if (inZone) { ctx.shadowColor = 'rgba(255,230,150,0.9)'; ctx.shadowBlur = 16; }
+    D.rr(mx - 5, BAR.y - 12, 10, BAR.h + 24, 4); ctx.fill();
+    ctx.restore();
+
     for (const f of G.feedback) {
-      const a = 1 - f.t / 0.7;
-      ctx.save(); ctx.globalAlpha = a;
-      if (f.burst) { ctx.strokeStyle = BK.PAL.brass; ctx.lineWidth = 6 * a; D.circle(f.x, f.y, ORB_R + f.t * 180); ctx.stroke(); }
-      ctx.lineWidth = 6; ctx.strokeStyle = BK.PAL.ink; ctx.font = BK.FONT.display(36); ctx.textAlign = 'center';
-      ctx.strokeText(f.text, f.x, f.y - 70 - f.t * 40);
-      ctx.fillStyle = f.good ? BK.PAL.brass : '#e2584f'; ctx.fillText(f.text, f.x, f.y - 70 - f.t * 40);
+      ctx.save(); ctx.globalAlpha = 1 - f.t / 0.8;
+      BK.strokeText(f.text, clamp(f.x, BAR.x + 90, BAR.x + BAR.w - 90), BAR.y + BAR.h + 42 + f.t * 20, F.display(34), f.good ? PAL.brass : '#e2584f', 6);
       ctx.restore();
     }
   };

@@ -18,7 +18,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 
 **Controller** (PS5 DualSense / PS4 DualShock over Bluetooth or USB, or any standard pad): left stick or D-pad moves; ✕ jab, ○ cross, □ hook, △ uppercut; L1 clinch; hold R1 for a body shot; L2 sway/duck/combo; hold R2 to block; R3 super punch; Options opens the pause menu (resume, controls, sound, rumble, quit); any face button skips replays and the walkout. Every menu works with the D-pad or stick (a gold cursor moves over the buttons), ✕ selects and ○ goes back; on the title screen L1/R1 cycle the red/blue fighter and △ starts a tournament. Hits rumble the pad. The keyboard's arrow keys and Enter drive the menus the same way.
 
-**Two players:** set PLAYERS to 2 on the menu. With two controllers, pad 1 is the red corner and pad 2 the blue; with one, the pad takes the blue corner and the touch screen / keyboard the red. Each player picks their own fighter (D-pad on their own pad), plays their own get-up orbs and corner scene, and gets rumble on their own pad. Keyboard player 2: arrows move, 1-4 jab/cross/hook/upper, 5 sway, 6 clinch, hold 7 body, hold 8 block, 9 super. Tournaments are always one player against the CPU, and two-player results don't count toward your record.
+**Two players:** set PLAYERS to 2 on the menu. With two controllers, pad 1 is the red corner and pad 2 the blue; with one, the pad takes the blue corner and the touch screen / keyboard the red. Each player picks their own fighter (D-pad on their own pad), plays their own get-up bar and corner scene, and gets rumble on their own pad. Keyboard player 2: arrows move, 1-4 jab/cross/hook/upper, 5 sway, 6 clinch, hold 7 body, hold 8 block, 9 super. Tournaments are always one player against the CPU, and two-player results don't count toward your record.
 
 **Touch and keyboard:**
 
@@ -50,7 +50,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 - **Combos.** Taps are queued (up to three) and thrown as soon as possible. Once a punch lands you can chain the next one before the arm comes back: switching hands is quickest. The punch buttons flash gold when the next punch is ready, and chained punches hit a little harder.
 - **Cuts.** As the face takes damage, cuts open (brow, nose, lip, cheek, forehead) and keep bleeding for the rest of the fight.
 - **Hurt.** A fighter below ~28 HP can be staggered by power shots and becomes easier to finish.
-- **Knockdowns.** At 0 HP a fighter goes down and the referee counts. To beat the count, **tap each orb as the closing ring meets it**. Perfect or good timing lifts you up; mistimed taps knock you back a step. Each knockdown needs more orbs and gives you less time, and lowers your maximum health for the rest of the fight. **Three knockdowns in one round is a TKO.**
+- **Knockdowns.** At 0 HP a fighter goes down and the referee counts. To beat the count, a marker sweeps along a bar: **press ✕ (or Space/Enter, or tap anywhere) while it's in the gold zone**. Each hit lifts you further up and moves the zone; a miss knocks you back a step and briefly locks you out, so mashing doesn't work. The first two knockdowns are forgiving (wide zone, slow marker, 2 then 3 hits). From the third, the zone shrinks, the marker speeds up and you need more hits. Every knockdown also lowers your maximum health for the rest of the fight. **Three knockdowns in one round is a TKO.**
 - **Rounds.** 90-second rounds (1, 3 or 5). Between rounds your corner shows fight stats, the judges' scorecards and advice.
 - **Corner.** Between rounds both fighters recover some health. Go *To the corner* for a 15-second scene on the stool and pick one boost: **dip your hands in diesel** (+5% power), **take a few slaps** (+7% chin) or **drink a beer** (+10% stamina). Boosts stack for the rest of the fight and show under your name. Baldy's corner picks one too.
 - **Scoring.** Three judges score each round on the 10-point must system: 10-9 to the round winner, and a point off for every knockdown. Fights that go the distance end in a unanimous, split or majority decision, or a draw.
@@ -82,7 +82,7 @@ Timing: every punch runs wind-up, then a fast snap to full extension, a held fol
 | `js/referee.js` | Referee movement, count and wave-off |
 | `js/replay.js` | Records the last few seconds and plays back knockdowns in slow motion |
 | `js/ai.js` | CPU opponent (Easy / Normal / Hard) |
-| `js/getup.js` | Get-up orb minigame |
+| `js/getup.js` | Get-up rhythm bar |
 | `js/walkout.js` | Walkouts, announcer and touching gloves before round 1 |
 | `js/corner.js` | Between-rounds corner scene: diesel, slaps or a beer |
 | `js/arena.js` | Crowd, lighting rig, ring, ropes |
