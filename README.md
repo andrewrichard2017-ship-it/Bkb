@@ -16,6 +16,11 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 
 ## Controls
 
+**Controller** (PS5 DualSense / PS4 DualShock over Bluetooth or USB, or any standard pad): left stick or D-pad moves; ✕ jab, ○ cross, □ hook, △ uppercut; L1 sway/duck/combo; R1 clinch; hold L2 block, hold R2 body shot; R3 (or L1+R1) super punch; Options pauses; any face button skips replays and the walkout. On the menu the D-pad picks your fighter and L1/R1 the CPU's; ✕ starts a quick fight, △ a tournament. In the corner ✕ / ○ / □ pick diesel / slaps / beer. Hits rumble the pad.
+
+**Touch and keyboard:**
+
+
 | Action | Touch | Keyboard |
 |---|---|---|
 | Move | Drag anywhere on the left half | WASD / arrows |

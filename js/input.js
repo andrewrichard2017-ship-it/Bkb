@@ -107,10 +107,34 @@
     for (const b of BTNS) if (IN.pressed['btn_' + b.id]) inp[b.id] = true;
     if (IN.pressed.btn_ko) inp.ko = true;
     IN.pressed = {};
+    if (BK.pad.connected) { // controller: merge sticks and buttons
+      const pd = BK.pad.fight();
+      if (Math.hypot(pd.mx, pd.my) > 0) { mx = pd.mx; my = pd.my; }
+      inp.mx = mx; inp.my = my;
+      for (const k of ['jab', 'cross', 'hook', 'upper', 'slip', 'clinch', 'ko']) if (pd[k]) inp[k] = true;
+      inp.block = inp.block || pd.block; inp.body = inp.body || pd.body;
+    }
     return inp;
   };
 
+  // Compact button legend while a controller is in use (screen space, bottom right).
+  IN.drawPadHint = player => {
+    const sc = BK.screen, L = player.look;
+    const rows = [['✕ Jab', '○ Cross', '□ Hook', '△ Upper'], [`L1 ${L.sway === 'duck' ? 'Duck' : L.sway === 'combo' ? 'Combo' : L.sway === 'none' ? '—' : 'Sway'}`, L.noClinch ? 'R1 —' : 'R1 Clinch', 'L2 Block', 'R2 Body']];
+    if (BK.game.koReady()) rows.push([`R3  ${L.super === 'duster' ? 'KNUCKLE DUSTER' : 'SUPER PUNCH'}  ▶`]);
+    ctx.save(); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.globalAlpha = 0.75;
+    let y = sc.h - sc.safe.b - 14;
+    for (let i = rows.length - 1; i >= 0; i--) {
+      ctx.font = BK.FONT.ui(i === 2 ? 22 : 15);
+      ctx.fillStyle = i === 2 ? '#f0c75a' : BK.PAL.bone;
+      ctx.fillText(rows[i].join('    '), sc.w - sc.safe.r - 18, y);
+      y -= i === 2 ? 30 : 20;
+    }
+    ctx.restore();
+  };
+
   IN.draw = (player) => {
+    if (BK.pad.active(BK.game.t)) { IN.drawPadHint(player); return; } // controller in use: no touch buttons
     const lay = IN.layout();
     ctx.save();
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';

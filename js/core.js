@@ -105,7 +105,7 @@
   BK.ROUND_OPTS = [1, 3, 5];
   BK.ROUND_LEN = 90;
 
-  BK.vibrate = ms => { if (!BK.settings.vibrate) return; try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { /* unsupported */ } };
+  BK.vibrate = ms => { if (!BK.settings.vibrate) return; try { navigator.vibrate && navigator.vibrate(ms); } catch (e) { /* unsupported */ } if (BK.pad) BK.pad.rumble(ms); };
 
   // ---------- drawing helpers (all take the shared ctx) ----------
   const D = BK.draw = {};

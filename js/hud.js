@@ -167,7 +167,8 @@
     row.forEach(([sub, val, fn], i) => UI.button(W / 2 + (i - 1.5) * 300, 620, 270, 92, val, () => { fn(); BK.saveSettings(); }, 'secondary', sub));
     const r = BK.record;
     D.text((r.w + r.l + r.d ? `YOUR RECORD  ${r.w}-${r.l}-${r.d}  (${r.ko} KO)` : 'YOUR FIRST FIGHT') + (r.champs ? `  ·  ${r.champs}x TOURNAMENT CHAMPION` : ''), W / 2, 735, F.ui(30), PAL.bone);
-    D.text('Left thumb moves  ·  Right thumb punches, blocks and slips  ·  Keys: WASD, J K U I, hold B body, L block, Space sway, C clinch', W / 2, 800, F.ui(24, 500), 'rgba(239,230,210,0.65)');
+    if (BK.pad.connected) D.text('Controller: stick moves  ·  ✕ jab  ○ cross  □ hook  △ upper  ·  L1 sway  R1 clinch  L2 block  R2 body  R3 super  ·  D-pad picks your fighter, L1/R1 the CPU', W / 2, 800, F.ui(22, 500), 'rgba(239,230,210,0.75)');
+    else D.text('Left thumb moves  ·  Right thumb punches, blocks and slips  ·  Keys: WASD, J K U I, hold B body, L block, Space sway, C clinch  ·  PS5 / PS4 controllers work too', W / 2, 800, F.ui(22, 500), 'rgba(239,230,210,0.65)');
   };
 
   // ---------- tale of the tape ----------

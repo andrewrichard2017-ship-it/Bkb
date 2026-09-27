@@ -518,6 +518,12 @@
       }
     }
     if (g.paused) { BK.ui.begin(); hud.pause(g); }
+    if (BK.pad.toast > 0) {
+      ctx.save(); ctx.globalAlpha = Math.min(1, BK.pad.toast * 2);
+      BK.draw.rr(W / 2 - 260, 120, 520, 56, 14); ctx.fillStyle = 'rgba(16,12,11,0.92)'; ctx.fill(); ctx.strokeStyle = BK.PAL.brass; ctx.lineWidth = 2; ctx.stroke();
+      BK.draw.text(BK.pad.connected ? '🎮  CONTROLLER CONNECTED' : 'CONTROLLER DISCONNECTED', W / 2, 149, BK.FONT.ui(26), BK.PAL.bone);
+      ctx.restore();
+    }
     ctx.restore();
 
     if (g.controlsActive()) BK.input.draw(g.p1);
@@ -528,6 +534,7 @@
   function frame(now) {
     const real = Math.min(0.05, (now - last) / 1000);
     last = now;
+    BK.pad.update(real, g.t);
     if (BK.replay.active) BK.replay.update(real);
     else if (!g.paused) {
       g.t += real;
