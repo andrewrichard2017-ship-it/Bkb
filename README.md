@@ -1,6 +1,6 @@
 # Bare Knuckle
 
-A bare knuckle boxing game for Android phones and tablets, inspired by Fight Night. It's an HTML5 canvas game, so it runs in Chrome with no install and no build step.
+A bare knuckle boxing game for Android phones and tablets. It's an HTML5 canvas game, so it runs in Chrome with no install and no build step.
 
 ## Fighters
 
