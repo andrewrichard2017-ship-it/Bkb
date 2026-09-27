@@ -1,0 +1,134 @@
+// Keyboard + multi-touch input. Touch layout: floating joystick on the left half,
+// a 3x2 button cluster on the right (SLIP HOOK UPPER / BLOCK JAB CROSS).
+(() => {
+  'use strict';
+  const BK = window.BK, ctx = BK.ctx, D = BK.draw;
+  const { clamp } = BK;
+  const IN = BK.input = { keys: {}, pressed: {}, stick: null, vec: { x: 0, y: 0 }, held: {}, pointers: new Map() };
+
+  const KEYMAP = { j: 'jab', k: 'cross', u: 'hook', i: 'upper', ' ': 'slip', shift: 'slip' };
+  const BTNS = [
+    { id: 'slip', label: 'SLIP', col: 0, row: 0, color: BK.PAL.teal },
+    { id: 'hook', label: 'HOOK', col: 1, row: 0, color: '#8a5a2b' },
+    { id: 'upper', label: 'UPPER', col: 2, row: 0, color: '#8a5a2b' },
+    { id: 'block', label: 'BLOCK', col: 0, row: 1, color: BK.PAL.navy },
+    { id: 'jab', label: 'JAB', col: 1, row: 1, color: '#9a6a34' },
+    { id: 'cross', label: 'CROSS', col: 2, row: 1, color: BK.PAL.blood },
+  ];
+
+  IN.layout = () => {
+    const sc = BK.screen, U = Math.min(sc.w, sc.h);
+    const r = clamp(U * 0.085, 28, 54), gap = r * 2.3;
+    const right = sc.w - sc.safe.r - 18 - r, bottom = sc.h - sc.safe.b - 16 - r;
+    return {
+      r,
+      buttons: BTNS.map(b => ({ ...b, x: right - (2 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 + (b.col === 0 ? 0 : 0) })),
+      stickR: clamp(U * 0.12, 40, 80),
+      stickHome: { x: sc.safe.l + 30 + clamp(U * 0.12, 40, 80) * 1.3, y: sc.h - sc.safe.b - 30 - clamp(U * 0.12, 40, 80) * 1.3 },
+    };
+  };
+
+  window.addEventListener('keydown', e => {
+    const k = e.key.toLowerCase();
+    if (!IN.keys[k]) IN.pressed[k] = true;
+    IN.keys[k] = true;
+    if (['arrowup', 'arrowdown', 'arrowleft', 'arrowright', ' '].includes(k)) e.preventDefault();
+    BK.game.onKey(k);
+  });
+  window.addEventListener('keyup', e => { IN.keys[e.key.toLowerCase()] = false; });
+
+  const canvas = BK.canvas;
+  canvas.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    BK.audio.init();
+    const hud = BK.toHud(e.clientX, e.clientY);
+    if (BK.game.onTap(hud.x, hud.y, e)) return; // menus, pause, get-up orbs
+    if (!BK.game.controlsActive()) return;
+    try { canvas.setPointerCapture(e.pointerId); } catch (err) { /* optional */ }
+    const lay = IN.layout();
+    for (const b of lay.buttons) {
+      if (Math.hypot(e.clientX - b.x, e.clientY - b.y) < lay.r * 1.12) {
+        IN.pointers.set(e.pointerId, { kind: 'btn', id: b.id });
+        IN.held[b.id] = true;
+        if (b.id !== 'block') IN.pressed['btn_' + b.id] = true;
+        return;
+      }
+    }
+    if (e.clientX < BK.screen.w * 0.5) {
+      IN.stick = { ox: e.clientX, oy: e.clientY };
+      IN.pointers.set(e.pointerId, { kind: 'stick' });
+    }
+  });
+  canvas.addEventListener('pointermove', e => {
+    const p = IN.pointers.get(e.pointerId);
+    if (!p || p.kind !== 'stick' || !IN.stick) return;
+    const max = IN.layout().stickR;
+    let dx = e.clientX - IN.stick.ox, dy = e.clientY - IN.stick.oy;
+    const d = Math.hypot(dx, dy);
+    if (d > max) { // origin follows the thumb
+      IN.stick.ox += dx * (1 - max / d); IN.stick.oy += dy * (1 - max / d);
+      dx = e.clientX - IN.stick.ox; dy = e.clientY - IN.stick.oy;
+    }
+    const dd = Math.hypot(dx, dy);
+    IN.vec = dd < max * 0.15 ? { x: 0, y: 0 } : { x: dx / max, y: dy / max };
+  });
+  const release = e => {
+    const p = IN.pointers.get(e.pointerId);
+    if (!p) return;
+    if (p.kind === 'stick') { IN.stick = null; IN.vec = { x: 0, y: 0 }; } else IN.held[p.id] = false;
+    IN.pointers.delete(e.pointerId);
+  };
+  canvas.addEventListener('pointerup', release);
+  canvas.addEventListener('pointercancel', release);
+  canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+  IN.releaseAll = () => { IN.pointers.clear(); IN.stick = null; IN.vec = { x: 0, y: 0 }; IN.held = {}; IN.pressed = {}; };
+
+  IN.player = () => {
+    const K = IN.keys;
+    let mx = IN.vec.x, my = IN.vec.y;
+    if (K.a || K.arrowleft) mx -= 1;
+    if (K.d || K.arrowright) mx += 1;
+    if (K.w || K.arrowup) my -= 1;
+    if (K.s || K.arrowdown) my += 1;
+    const m = Math.hypot(mx, my); if (m > 1) { mx /= m; my /= m; }
+    const inp = { mx, my, block: !!(K.l || IN.held.block) };
+    for (const [key, act] of Object.entries(KEYMAP)) if (IN.pressed[key]) inp[act] = true;
+    for (const b of BTNS) if (IN.pressed['btn_' + b.id]) inp[b.id] = true;
+    IN.pressed = {};
+    return inp;
+  };
+
+  IN.draw = (player) => {
+    const lay = IN.layout();
+    ctx.save();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const b of lay.buttons) {
+      const down = IN.held[b.id];
+      const cost = BK.PUNCHES[b.id] ? BK.PUNCHES[b.id].cost : 0;
+      const weak = cost && player.stamina < cost * 1.5;
+      ctx.globalAlpha = down ? 0.95 : weak ? 0.3 : 0.62;
+      const rr = lay.r * (down ? 0.92 : 1);
+      const g = ctx.createRadialGradient(b.x - rr * 0.3, b.y - rr * 0.4, rr * 0.1, b.x, b.y, rr);
+      g.addColorStop(0, BK.shade(b.color, 1.35)); g.addColorStop(1, b.color);
+      D.circle(b.x, b.y, rr); ctx.fillStyle = g; ctx.fill();
+      ctx.globalAlpha = 0.9; ctx.strokeStyle = BK.PAL.bone; ctx.lineWidth = 2; ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.font = BK.FONT.display(Math.round(lay.r * (b.label.length > 4 ? 0.36 : 0.42)));
+      ctx.fillStyle = BK.PAL.bone; ctx.fillText(b.label, b.x, b.y + 1);
+    }
+    const max = lay.stickR, st = IN.stick;
+    const ox = st ? st.ox : lay.stickHome.x, oy = st ? st.oy : lay.stickHome.y;
+    ctx.globalAlpha = st ? 0.55 : 0.28;
+    ctx.strokeStyle = BK.PAL.bone; ctx.lineWidth = 3;
+    D.circle(ox, oy, max); ctx.stroke();
+    ctx.fillStyle = BK.PAL.bone;
+    D.circle(ox + IN.vec.x * max, oy + IN.vec.y * max, max * 0.45); ctx.fill();
+    if (!st) {
+      ctx.globalAlpha = 0.6;
+      ctx.font = BK.FONT.ui(15);
+      ctx.fillText('DRAG TO MOVE', ox, oy - max - 16);
+    }
+    ctx.restore();
+  };
+})();
