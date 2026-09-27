@@ -1,5 +1,5 @@
 // Fight-night walkout before round 1.
-//   Red corner walks the aisle behind the ring under a spotlight, ducks through the ropes and
+//   Red corner walks the aisle behind the ring under a spotlight, ducks through the ropes (if there are any) and
 //   parades with arms up while the announcer calls him; then the blue corner does the same.
 //   The referee calls them to the centre to touch gloves - but one of them might refuse.
 // Tap to skip.
@@ -73,7 +73,8 @@
       if (T < 2 * ENTRANCE) {
         if (t < 0) { place(f, side, 0); step(f, dt, false); continue; }
         if (t < ENTRANCE) {
-          f.ropeDuck = place(f, side, t);
+          const duck = place(f, side, t);
+          f.ropeDuck = BK.arena.hasRopes() ? duck : 0; // no ropes to duck through in the yard
           f.celebrate = t > pathLen - 1.2; // arms up once he's in the ring
           step(f, dt, t < pathLen, t >= pathLen ? W / 2 : null);
           say('in' + side, () => {

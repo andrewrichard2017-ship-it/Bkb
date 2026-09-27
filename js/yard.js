@@ -1,7 +1,7 @@
 // The tyre yard: an outdoor venue out the back of a tyre and exhaust place, at night under floodlights.
 // It uses the same ring coordinates as the hall, so the fight, the walkout and the referee play the same;
-// only the scenery changes. The posts are stacks of tyres, the ropes are ratchet straps, a handful of
-// hooded onlookers stand round the edge, and the fighters walk out of the two workshop shutters.
+// only the scenery changes. There's no ring: they fight on the concrete, a handful of hooded onlookers
+// stand round the edge, and the fighters walk out of the two workshop shutters.
 (() => {
   'use strict';
   const BK = window.BK, ctx = BK.ctx, D = BK.draw, W = BK.W, H = BK.H, R = BK.RING;
@@ -397,75 +397,50 @@
     }
   };
 
-  // ---------- the fighting area: a concrete pad marked out in spray paint ----------
+  // ---------- the fighting area: no ring, just the yard's concrete ----------
+  // Worn lighter where the fights happen, a sprayed circle in the middle and a mark for each corner.
+  YD.ropes = false; // the walkout skips ducking through ropes here
   const STAINS = [];
   for (let i = 0; i < 16; i++) STAINS.push({ u: 0.08 + rnd() * 0.84, z: 0.06 + rnd() * 0.88, r: 16 + rnd() * 44, a: 0.08 + rnd() * 0.12 });
-  const pad = () => D.poly([[R.backL, R.backY], [R.backR, R.backY], [R.frontR, R.frontY], [R.frontL, R.frontY]]);
   YD.drawRing = () => {
-    // the pad sits a little proud of the yard
-    ctx.fillStyle = '#23211e';
-    D.poly([[R.backL - 10, R.backY - 3], [R.backR + 10, R.backY - 3], [R.backR + 10, R.backY + 8], [R.backL - 10, R.backY + 8]]); ctx.fill();
-    ctx.fillStyle = '#2b2824';
-    D.poly([[R.frontL - 8, R.frontY], [R.frontR + 8, R.frontY], [R.frontR + 14, R.frontY + 16], [R.frontL - 14, R.frontY + 16]]); ctx.fill();
-    const fl = ctx.createLinearGradient(0, R.backY, 0, R.frontY);
-    fl.addColorStop(0, '#6f6a61'); fl.addColorStop(1, '#948c7e');
-    ctx.fillStyle = fl; pad(); ctx.fill();
-    ctx.save(); pad(); ctx.clip();
+    const cy = BK.toScreenY(0.5);
+    ctx.save(); ctx.translate(W / 2, cy); ctx.scale(1, 0.34);
+    const worn = ctx.createRadialGradient(0, 0, 60, 0, 0, 760);
+    worn.addColorStop(0, 'rgba(150,142,128,0.55)'); worn.addColorStop(0.6, 'rgba(120,114,104,0.3)'); worn.addColorStop(1, 'rgba(120,114,104,0)');
+    ctx.fillStyle = worn; ctx.fillRect(-800, -800, 1600, 1600);
+    ctx.restore();
     for (const s of STAINS) {
       const x = BK.toScreenX(s.u, s.z), y = BK.toScreenY(s.z), k = BK.depthScale(s.z);
       ctx.fillStyle = `rgba(20,18,16,${s.a})`; ell(ctx, x, y, s.r * k, s.r * k * 0.3); ctx.fill();
     }
-    ctx.strokeStyle = 'rgba(0,0,0,0.18)'; ctx.lineWidth = 2; // expansion joints
+    ctx.strokeStyle = 'rgba(0,0,0,0.2)'; ctx.lineWidth = 2; // slab joints
     ctx.beginPath();
-    for (const u of [0.25, 0.5, 0.75]) { ctx.moveTo(BK.toScreenX(u, 0), R.backY); ctx.lineTo(BK.toScreenX(u, 1), R.frontY); }
-    ctx.moveTo(BK.ringL(0.5), BK.toScreenY(0.5)); ctx.lineTo(BK.ringR(0.5), BK.toScreenY(0.5));
+    for (const u of [0.25, 0.5, 0.75]) { ctx.moveTo(BK.toScreenX(u, -0.2), BK.toScreenY(-0.2)); ctx.lineTo(BK.toScreenX(u, 1.2), BK.toScreenY(1.2)); }
+    ctx.moveTo(BK.toScreenX(-0.3, 0.5), cy); ctx.lineTo(BK.toScreenX(1.3, 0.5), cy);
     ctx.stroke();
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
     const pool = ctx.createRadialGradient(W / 2, 600, 40, W / 2, 600, 640);
-    pool.addColorStop(0, 'rgba(255,238,200,0.26)'); pool.addColorStop(1, 'rgba(255,238,200,0)');
-    ctx.fillStyle = pool; ctx.fillRect(0, R.backY, W, R.frontY - R.backY);
+    pool.addColorStop(0, 'rgba(255,238,200,0.2)'); pool.addColorStop(1, 'rgba(255,238,200,0)');
+    ctx.fillStyle = pool; ctx.fillRect(0, R.backY - 100, W, R.frontY - R.backY + 200);
     ctx.restore();
-    // sprayed boundary and centre mark
-    ctx.strokeStyle = 'rgba(236,232,220,0.5)'; ctx.lineWidth = 5; ctx.lineJoin = 'round';
-    const ins = (u, z) => [BK.toScreenX(u, z), BK.toScreenY(z)];
-    D.poly([ins(0.03, 0.04), ins(0.97, 0.04), ins(0.97, 0.97), ins(0.03, 0.97)]); ctx.stroke();
+    // sprayed centre circle and corner marks
     ctx.strokeStyle = 'rgba(179,32,42,0.5)'; ctx.lineWidth = 7;
     ctx.beginPath(); ctx.ellipse(W / 2, 620, 150, 44, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.save(); ctx.translate(W / 2, 620); ctx.scale(1, 0.32);
     D.text('BKB', 0, 0, BK.FONT.display(80), 'rgba(179,32,42,0.5)');
     ctx.restore();
+    for (const [u, col] of [[0.1, 'rgba(210,50,58,0.6)'], [0.9, 'rgba(77,116,214,0.6)']]) {
+      const x = BK.toScreenX(u, 0.12), y = BK.toScreenY(0.12), k = BK.depthScale(0.12) * 22;
+      ctx.strokeStyle = col; ctx.lineWidth = 6;
+      ctx.beginPath(); ctx.moveTo(x - k, y - k * 0.3); ctx.lineTo(x + k, y + k * 0.3); ctx.moveTo(x + k, y - k * 0.3); ctx.lineTo(x - k, y + k * 0.3); ctx.stroke();
+    }
     // stencilled on the tarmac out front
     ctx.save(); ctx.translate(W / 2, R.frontY + 62); ctx.scale(1, 0.55);
     D.text('BARE  KNUCKLE', 0, 0, BK.FONT.display(60), 'rgba(236,232,220,0.3)');
     ctx.restore();
   };
-
-  // ---------- posts are stacks of tyres, ropes are ratchet straps ----------
-  const POST_H_FRONT = 170, POST_H_BACK = 128;
-  const STRAPS = [['#e2a51c', 0.34], ['#d9d3c2', 0.6], ['#dd6b1f', 0.86]];
-  const corner = (u, z, stripe) => ({ x: BK.toScreenX(u, z), y: BK.toScreenY(z), h: lerp(POST_H_BACK, POST_H_FRONT, z), z, stripe });
-  const C = { bl: corner(0, 0, '#c8303a'), br: corner(1, 0, '#3d5fb0'), fl: corner(0, 1, '#d9d3c2'), fr: corner(1, 1, '#d9d3c2') };
-  function post(c) {
-    const n = 6, h = (c.h + 8) / (n * 0.92), w = h * 3;
-    ctx.fillStyle = 'rgba(0,0,0,0.35)'; ell(ctx, c.x, c.y + 4, w * 0.6, h * 0.35); ctx.fill();
-    tyreStack(ctx, c.x, c.y + h * 0.35, w, n, h, c.stripe);
-  }
-  function strap(a, b, frac, color, w) {
-    const sag = 9, ax = a.x, ay = a.y - a.h * frac, bx = b.x, by = b.y - b.h * frac;
-    ctx.lineCap = 'butt';
-    ctx.strokeStyle = BK.PAL.ink; ctx.lineWidth = w + 3;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo((ax + bx) / 2, (ay + by) / 2 + sag, bx, by); ctx.stroke();
-    ctx.strokeStyle = color; ctx.lineWidth = w;
-    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.quadraticCurveTo((ax + bx) / 2, (ay + by) / 2 + sag, bx, by); ctx.stroke();
-    ctx.lineCap = 'round';
-  }
-  YD.drawBackRopes = () => {
-    post(C.bl); post(C.br);
-    for (const [col, f] of STRAPS) { strap(C.bl, C.br, f, col, 5); strap(C.bl, C.fl, f, col, 6); strap(C.br, C.fr, f, col, 6); }
-  };
-  YD.drawFrontRopes = () => {
-    post(C.fl); post(C.fr);
-    for (const [col, f] of STRAPS) strap(C.fl, C.fr, f, col, 7);
-  };
+  YD.drawBackRopes = () => {};
+  YD.drawFrontRopes = () => {};
 
   // Hooded lads along the front, backs to us, a couple filming on their phones.
   const FRONT = [];

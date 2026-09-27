@@ -256,4 +256,5 @@
   for (const k of ['update', 'drawBackdrop', 'drawRing', 'drawBackRopes', 'drawFrontRopes', 'drawFrontRow', 'drawAtmosphere']) {
     BK.arena[k] = (...a) => venue()[k](...a);
   }
+  BK.arena.hasRopes = () => venue().ropes !== false;
 })();
