@@ -47,7 +47,7 @@
       this.celebrate = false; this.regenDelay = 0; this.dripT = 0;
       this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false;
       this.buffer = []; this.chainHits = 0;
-      this.oof = null; this.oofW = 0; // out on his feet: { t } while it lasts; oofW eases the wobble in and out
+      this.dazedStand = false; this.dazeW = 0; // taking a standing count; dazeW eases the wobble in and out
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make(); this.tmp2 = BK.rig.make();
@@ -119,7 +119,7 @@
       const bodyF = clamp(1 - this.bodyDmg / 220, 0.5, 1);
       if (!this.punch && !this.slip && !this.combo.length) this.stamina = Math.min(this.maxSta, this.stamina + (this.blocking ? 6 : 15) / this.stamMul * bodyF * (this.look.regen || 1) * dt);
       this.regenDelay -= dt;
-      if (this.regenDelay <= 0 && this.hp < this.maxHp && !this.oof) this.hp = Math.min(this.maxHp, this.hp + 0.5 * dt);
+      if (this.regenDelay <= 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + 0.5 * dt);
 
       if (this.clinch) { this.clinchLogic(dt, input, opp); return; }
       if (this.stun > 0) { this.stun -= dt; this.punch = null; this.blocking = false; this.slip = null; this.grab = null; this.combo = []; this.buffer = []; this.moving = 0; return; }
@@ -130,8 +130,8 @@
       if (this.slip) {
         this.slip.t += dt;
         if (this.slip.t >= this.slip.dur) { // come back with a punch: a cross off the lean, a hook out of the roll
-          const { kind, drunk } = this.slip; this.slip = null;
-          if (!drunk && !this.punch && this.stagger <= 0 && !this.clinch) this.throwPunch(kind === 'duck' ? 'hook' : 'cross', { auto: true });
+          const kind = this.slip.kind; this.slip = null;
+          if (!this.punch && this.stagger <= 0 && !this.clinch) this.throwPunch(kind === 'duck' ? 'hook' : 'cross', { auto: true });
         }
       }
       const staggered = this.stagger > 0;
@@ -146,28 +146,12 @@
       spd *= (0.9 + 0.1 * this.speedMul) * (this.look.move || 1);
       let mx = input.mx || 0, my = input.my || 0;
       if (staggered) { mx += Math.sin(this.t * 5) * 0.5; my += Math.cos(this.t * 4) * 0.4; }
-      if (this.oof) { // out on his feet: legs gone, every step lurches somewhere he didn't mean
-        spd *= 0.4;
-        mx = mx * 0.5 + Math.sin(this.t * 2.1 + Math.sin(this.t * 0.7) * 2) * 0.9;
-        my = my * 0.5 + Math.cos(this.t * 1.6) * 0.5;
-      }
       const mag = Math.min(1, Math.hypot(mx, my));
       const w = BK.ringR(this.z) - BK.ringL(this.z);
       this.u = clamp(this.u + mx * 330 * spd * dt / w, BK.U_MIN, BK.U_MAX);
       this.z = clamp(this.z + my * 0.62 * spd * dt, BK.Z_MIN, BK.Z_MAX);
       this.moving = mag * spd;
       this.walk += dt * 11 * this.moving * ((mx * this.dir) >= 0 ? 1 : -1);
-      if (this.oof) { // can't punch, but he can half-block, lurch out of the way (anyone, even Digger) or grab hold
-        this.buffer.length = 0; this.combo = [];
-        if (input.slip && !this.slip && !this.grab && !this.blocking && this.stamina > 4) {
-          // a drunken dodge: which way he lurches is half luck, and there's nothing coming back behind it
-          this.slip = { t: 0, dur: 0.55, kind: Math.random() < 0.5 ? 'duck' : 'lean', drunk: true };
-          this.stamina = Math.max(0, this.stamina - 10 * this.stamMul);
-        }
-        if (this.grab) { this.grab.t += dt; if (this.grab.t >= this.grab.dur) { this.grab = null; this.resolveGrab(opp); } }
-        else if (input.clinch && this.stamina > 3) { this.grab = { t: 0, dur: 0.45 }; this.stamina -= 3; this.grunt('effortSmall'); }
-        return;
-      }
 
       // slip
       const sway = this.look.sway;
@@ -294,7 +278,7 @@
       const inRange = !opp.down && dx > 0 && dx < p.reach * this.fs && Math.abs(opp.z - this.z) < 0.12;
       if (!inRange) { this.whiff(); return; }
       const sl = opp.slip, ducking = sl && sl.kind === 'duck';
-      if (sl && !p.body && sl.t < (sl.drunk ? 0.42 : ducking ? 0.38 : 0.3)) {
+      if (sl && !p.body && sl.t < (ducking ? 0.38 : 0.3)) {
         if (ducking && p.type === 'upper') { // ran straight into it
           BK.fx.popup('CAUGHT DUCKING', opp.headX, opp.headY - 60, BK.PAL.brass, 36);
           opp.receive({ ...p, dmg: p.dmg * 1.4 }, this);
@@ -396,11 +380,8 @@
           BK.audio.roar(0.3);
         }
       }
-      if (this.oof && !blocked) { // nothing left to stop it: every clean one opens him up more
-        this.blood = Math.min(1, this.blood + 0.03);
-        if (!p.body) BK.fx.blood(this.headX, this.headY + 10 * this.fs, from.dir, this.sy, 1.4);
-      }
       if (this.hp <= 0 && !p.clinch) BK.game.onZeroHp(this, from, p.type);
+      else if (!blocked && !p.clinch && this.hp <= 15) BK.game.rockHit(p); // on the brink: every clean one rocks the picture
     }
 
     // Cuts open as the face takes damage; each one keeps bleeding for the rest of the fight.
@@ -423,7 +404,16 @@
       }
     }
 
+    // A knockdown he takes on his feet: out of it, swaying, while the referee counts.
+    standingKnockdown() {
+      this.punch = null; this.slip = null; this.blocking = false; this.stun = 0; this.stagger = 0;
+      this.grab = null; this.clinch = null; this.combo = []; this.buffer = [];
+      this.kdTotal++; this.kdRound++;
+      this.dazedStand = true;
+      this.grunt('down', true);
+    }
     knockDown() {
+      this.dazedStand = false;
       this.down = true; this.downT = 0; this.lift = 0; this.liftTarget = 0; this.rising = false;
       this.punch = null; this.slip = null; this.blocking = false; this.stun = 0; this.stagger = 0;
       this.grab = null; this.clinch = null; this.combo = [];
@@ -472,22 +462,15 @@
           T[front ? 'fY' : 'rY'] += 58 * w; T.py += 12 * w; T.lean += 8 * w;
         }
       }
-      // out on his feet: eased in as his legs go and out as he comes round, so it never snaps
-      this.oofW += ((this.oof ? 1 : 0) - this.oofW) * Math.min(1, dt * (this.oof ? 4 : 1.8));
-      if (this.oofW > 0.01) {
-        const UF = R.SUPER, w = this.oofW * (this.grab ? 0.35 : this.blocking ? 0.55 : 1); // upper body plus feet; a reach-in or a half guard shows through
+      // dazed on his feet for a standing count: eased in as his legs go and out as he comes round
+      this.dazeW += ((this.dazedStand ? 1 : 0) - this.dazeW) * Math.min(1, dt * (this.dazedStand ? 4 : 1.8));
+      if (this.dazeW > 0.01) {
+        const UF = R.SUPER, w = this.dazeW; // upper body plus the feet
         R.mix(this.tmp, PO.oofA, PO.oofB, (Math.sin(this.t * 2.3) + 1) / 2, UF);
         R.mixInto(T, this.tmp, w, UF);
         const lift = Math.pow(Math.max(0, Math.sin(this.t * 1.3)), 3) * 0.45 * w; // tries to get the hands up, can't hold them
         T.fY += (PO.guard.fY - T.fY) * lift; T.rY += (PO.guard.rY - T.rY) * lift;
         T.rot += Math.sin(this.t * 2.3) * 3.5 * w;
-        const shuffle = Math.sin(this.t * 3.1) * 10 * Math.min(1, this.moving * 2) * w;
-        T.ffX += shuffle; T.rfX -= shuffle;
-        if (this.slip && this.slip.drunk) { // the lurch, big and ragged, on top of the sway
-          const k = clamp(this.slip.t / this.slip.dur, 0, 1), s = Math.sin(PI * k), duck = this.slip.kind === 'duck';
-          R.mixInto(T, duck ? PO.duck : PO.slip, s, U);
-          T.rot += (duck ? 5 : -7) * s; T.px += (duck ? 6 : -14) * s;
-        }
       }
       if (this.stagger > 0) {
         R.mix(this.tmp, PO.staggerA, PO.staggerB, (Math.sin(this.t * 4.5) + 1) / 2, U);

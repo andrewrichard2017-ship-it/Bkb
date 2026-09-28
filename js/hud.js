@@ -162,15 +162,6 @@
       else BK.strokeText(`YOU'RE OUT ON YOUR FEET  ·  WATCH THE ${BK.superName(f.look)}!`, W / 2, 210 + f.side * 50, F.display(40), '#e2584f', 8); // the CPU's is loaded: sway it
       ctx.restore();
     }
-    // out on his feet: how long until the referee steps in
-    for (const f of [g.p1, g.p2]) {
-      if (!f.oof || g.state !== 'fight') continue;
-      const left = Math.max(1, Math.ceil(BK.OOF_LEN - f.oof.t)), a = 0.7 + Math.sin(performance.now() / 90) * 0.3;
-      const msg = g.isHuman(f) && !g.twoPlayer ? `OUT ON YOUR FEET  ·  SWAY, BLOCK OR CLINCH  ·  ${left}` : `${f.look.short} IS OUT ON HIS FEET  ·  ${left}`;
-      ctx.save(); ctx.globalAlpha = a;
-      BK.strokeText(msg, W / 2, 210 + f.side * 50, F.display(40), '#e2584f', 8);
-      ctx.restore();
-    }
     // pause button
     UI.buttons.push({ x: W / 2 - 40, y: 124, w: 80, h: 60, onTap: () => g.pause() });
     D.circle(W / 2, 150, 22); ctx.fillStyle = 'rgba(16,12,11,0.85)'; ctx.fill();
