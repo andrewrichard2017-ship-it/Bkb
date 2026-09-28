@@ -217,8 +217,9 @@
     g.roundLog.push(log);
     return log;
   }
-  // Super punch: offered when the CPU is under 5% health. It forces a knockdown (with a count).
-  g.koReadyFor = f => { const o = f === g.p1 ? g.p2 : g.p1; return g.state === 'fight' && !g.paused && g.isHuman(f) && !f.down && !f.clinch && f.superAvailable(o); };
+  // Super punch: offered when the other man is under 8% health. It forces a knockdown (with a count).
+  g.superReadyFor = f => { const o = f === g.p1 ? g.p2 : g.p1; return g.state === 'fight' && !g.paused && !f.down && !f.clinch && f.superAvailable(o); };
+  g.koReadyFor = f => g.isHuman(f) && g.superReadyFor(f);
   g.koReady = () => g.koReadyFor(g.p1);
   g.onKoPunch = (f, type) => {
     g.slowmo = Math.max(g.slowmo, 0.55);

@@ -153,11 +153,12 @@
     const low = g.clock <= 10 && g.state === 'fight';
     D.text(BK.fmtClock(g.clock), W / 2, 84, F.display(56), low ? '#e2584f' : PAL.bone);
     for (const f of [g.p1, g.p2]) {
-      if (!g.koReadyFor(f) || (f.punch && BK.PUNCHES[f.punch.type].super)) continue;
+      if (!g.superReadyFor(f) || (f.punch && BK.PUNCHES[f.punch.type].super)) continue;
       const a = 0.6 + Math.sin(performance.now() / 110) * 0.4;
       ctx.save(); ctx.globalAlpha = a;
       const who = g.twoPlayer ? `${f.side ? 'BLUE' : 'RED'}: ` : '';
-      BK.strokeText(`${who}HE'S OUT ON HIS FEET  ·  ${BK.superName(f.look)} READY`, W / 2, 210 + f.side * 50, F.display(40), PAL.brass, 8);
+      if (g.isHuman(f)) BK.strokeText(`${who}HE'S OUT ON HIS FEET  ·  ${BK.superName(f.look)} READY`, W / 2, 210 + f.side * 50, F.display(40), PAL.brass, 8);
+      else BK.strokeText(`YOU'RE OUT ON YOUR FEET  ·  WATCH THE ${BK.superName(f.look)}!`, W / 2, 210 + f.side * 50, F.display(40), '#e2584f', 8); // the CPU's is loaded: sway it
       ctx.restore();
     }
     // pause button

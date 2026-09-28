@@ -36,7 +36,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 | Clinch | CLINCH | C |
 | Block (hold) | BLOCK | L |
 | Sway (lean back or duck & roll, by fighter) | SWAY / DUCK | Space |
-| Super punch (opponent under 5% health) | SUPER (appears when ready) | O |
+| Super punch (opponent under 8% health) | SUPER (appears when ready) | O |
 | Pause | ⏸ under the clock | P / Esc |
 
 ## How a fight works
@@ -49,7 +49,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 - **Counters.** Land a punch while your opponent is mid-punch, or straight after a slip, for 1.6× damage.
 - **Body shots.** Hold BODY and throw any punch to go to the ribs. Little damage to health, but they drain stamina hard, get through a high guard more easily, and every one slows the opponent's stamina recovery for the rest of the fight.
 - **Clinch.** Tap CLINCH up close to grab. The reach-in can be **blocked** (you're pushed off) or **slipped** ("swayed", and he gets a counter). Locked up, punches become short body digs that do light damage and **can never knock anyone down**. Hold BLOCK in the clinch to tie his arms up and smother the digs. The grabber gets his breath back; the referee breaks it after a few seconds.
-- **Super punch.** When your opponent drops under 5% health a glowing **SUPER** button appears. It throws that fighter's own finisher (see the table above), aimed at the other man's head, that can't be blocked (but can be slipped or missed); if it lands it's a guaranteed knockdown, and the count decides the rest. The CPU always beats the count the first two times it goes down; after that the odds fall (about 75%, 50%, 30%, then 15%). Three knockdowns in one round is still a TKO.
+- **Super punch.** When your opponent drops under 8% health a glowing **SUPER** button appears. It throws that fighter's own finisher (see the table above), aimed at the other man's head, that can't be blocked (but can be slipped or missed); if it lands it's a guaranteed knockdown, and the count decides the rest. The CPU always beats the count the first two times it goes down; after that the odds fall (about 75%, 50%, 30%, then 15%). Three knockdowns in one round is still a TKO. The CPU uses its super on you too: when you're under 8% health a red warning appears, and after a short pause it lets its finisher go (more often on harder difficulties), so be ready to sway it.
 - **Replays.** Every knockdown and knockout is replayed TV-style: slow motion through the impact, a tilted close-up camera, letterbox bars. Tap to skip.
 - **Combos.** Taps are queued (up to three) and thrown as soon as possible. Once a punch lands you can chain the next one before the arm comes back: switching hands is quickest. The punch buttons flash gold when the next punch is ready, and chained punches hit a little harder.
 - **Cuts.** As the face takes damage, cuts open (brow, nose, lip, cheek, forehead) and keep bleeding for the rest of the fight.

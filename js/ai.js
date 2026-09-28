@@ -5,10 +5,11 @@
   const BK = window.BK;
   const { clamp } = BK;
 
+  // sup: chance of letting the super go each time it's lined up (it waits a beat first, so you can sway it)
   const LEVELS = [
-    { react: 0.18, rate: 0.75, block: 0.25, slip: 0.05, combo: 0.15, counter: 0.3 },
-    { react: 0.32, rate: 1.0, block: 0.42, slip: 0.12, combo: 0.35, counter: 0.6 },
-    { react: 0.5, rate: 1.35, block: 0.55, slip: 0.22, combo: 0.55, counter: 0.9 },
+    { react: 0.18, rate: 0.75, block: 0.25, slip: 0.05, combo: 0.15, counter: 0.3, sup: 0.45 },
+    { react: 0.32, rate: 1.0, block: 0.42, slip: 0.12, combo: 0.35, counter: 0.6, sup: 0.75 },
+    { react: 0.5, rate: 1.35, block: 0.55, slip: 0.22, combo: 0.55, counter: 0.9, sup: 1 },
   ];
   const COMBOS = [['jab', 'jab', 'cross'], ['jab', 'cross', 'hook'], ['jab', 'upper'], ['cross', 'hook'], ['jab', 'cross'], ['hook', 'upper']];
 
@@ -17,7 +18,7 @@
     reset() {
       this.lv = LEVELS[BK.settings.difficulty];
       this.cool = 1.2; this.blockT = 0; this.retreatT = 0; this.queue = []; this.sideStep = 0; this.sideT = 0;
-      this.seenPunch = null;
+      this.seenPunch = null; this.superT = null;
     }
     input(dt) {
       const me = this.me, foe = this.foe, lv = this.lv;
@@ -29,7 +30,9 @@
       const hurt = me.hp < 30 || me.stagger > 0, tired = me.stamina < 22;
       const foeHurt = foe.hp < 30 || foe.stagger > 0;
       const next = this.queue[0] || 'jab';
-      const want = (next === 'hook' || next === 'upper' ? 118 : 150) * me.fs;
+      const sup = BK.PUNCHES[me.look.super || 'ko'], supReady = me.superAvailable(foe);
+      // with a super loaded it walks in close enough to land it
+      const want = supReady ? Math.min(sup.reach * 0.6, 130) * me.fs : (next === 'hook' || next === 'upper' ? 118 : 150) * me.fs;
 
       // depth alignment plus the odd sidestep to work angles
       if (this.sideT <= 0) { this.sideStep = Math.random() < 0.35 ? BK.pick([-1, 1]) * 0.6 : 0; this.sideT = BK.rnd(0.6, 1.4); }
@@ -68,6 +71,19 @@
       }
       if (this.retreatT > 0 && tired) this.blockT = Math.max(this.blockT, 0.2);
       inp.block = this.blockT > 0;
+
+      // finish him: once you're under 8% health the CPU stops throwing anything else and loads up its own super
+      if (supReady && Math.abs(dz) < 0.1 && dist < sup.reach * me.fs * 0.85) {
+        inp.block = false; this.blockT = 0; this.queue = [];
+        if (this.superT === null) this.superT = BK.rnd(0.35, 0.9);
+        this.superT -= dt;
+        if (this.superT <= 0 && !me.punch && !me.combo.length) {
+          if (Math.random() < lv.sup) { this.superT = null; inp.ko = true; return inp; }
+          this.superT = BK.rnd(0.5, 1.1); // bottled it this time
+        }
+        return inp;
+      }
+      this.superT = null;
 
       // offence
       const inRange = dist < (next === 'hook' || next === 'upper' ? 138 : 178) * me.fs && Math.abs(dz) < 0.1;

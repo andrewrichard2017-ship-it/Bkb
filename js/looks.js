@@ -111,7 +111,7 @@
     cross: { hand: 'rear',  dur: 0.44, hitAt: 0.20, dmg: 9.5, reach: 182, cost: 8,  stun: 0.32, snap: 0.38, through: 0.14, power: true },
     hook:  { hand: 'front', dur: 0.50, hitAt: 0.23, dmg: 12,  reach: 142, cost: 10, stun: 0.40, snap: 0.50, through: 0.35, power: true },
     upper: { hand: 'rear',  dur: 0.54, hitAt: 0.25, dmg: 14,  reach: 126, cost: 12, stun: 0.42, snap: 0.55, through: 0.45, power: true },
-    // Super punches: finishers offered when the opponent is under 5% health. Can't be blocked, but can be slipped
+    // Super punches: finishers offered when the opponent is under 8% health. Can't be blocked, but can be slipped
     // or missed. Each fighter has his own (look.super). aim: how straight the arm is at contact (1 = locked out);
     // aimY nudges the target up (-) or down (+) from the middle of the head.
     ko:       { label: 'HAYMAKER',       hand: 'rear', dur: 0.98, hitAt: 0.56, dmg: 40, reach: 190, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0, power: true, super: true, aim: 0.84, aimY: 10 },

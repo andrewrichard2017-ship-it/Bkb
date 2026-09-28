@@ -191,8 +191,8 @@
       this.tickPunch(dt, opp);
     }
 
-    // Super punch is on offer when the opponent is under 5% health (Digger's only once a round).
-    superAvailable(opp) { return opp.hp < 5 && !opp.down && !(this.look.superOnce && this.superUsed); }
+    // Super punch is on offer when the opponent is under 8% health (Digger's only once a round).
+    superAvailable(opp) { return opp.hp < 8 && !opp.down && !(this.look.superOnce && this.superUsed); }
 
     // Free, or far enough through the current punch to chain the next one.
     // Switching hands chains straight after the impact; the same hand needs more of the recovery.
