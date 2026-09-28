@@ -100,7 +100,7 @@
     if (!g) return;
     const two = g.twoPlayer, mySide = two ? (GP.count >= 2 ? slot : 1) : 0;
     const any = e.cross || e.circle || e.square || e.triangle || e.options || e.share;
-    if (BK.replay.active || g.state === 'walkout') { if (any) g.onKey('enter'); return; }
+    if (BK.replay.active || g.state === 'walkout' || g.state === 'aftermath') { if (any) g.onKey('enter'); return; }
     if (e.options) { // pause menu (in a fight), or closes the controls screen elsewhere
       if (g.paused || ['fight', 'knockdown', 'roundIntro'].includes(g.state)) g.togglePause();
       else if (g.showControls) g.showControls = false;

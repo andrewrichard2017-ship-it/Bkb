@@ -85,6 +85,13 @@
   // Duster cross (Digger): brass knuckles loaded right back by the cheek, then everything behind a straight right.
   def('dusterA', { rX: -30, rY: -104, rB: 0.9, rZ: 1, rsh: -18, lean: -16, px: -18, py: 14, head: -4, fX: 50, fY: -112, ffX: 30, rfX: -48 });
   def('dusterX', { rX: 118, rY: -112, rB: 0.04, rZ: 1.35, rsh: 30, lean: 26, px: 26, py: 10, head: 8, fX: 26, fY: -110, fB: 0.9, ffX: 60, rfX: -40, rfY: -8 });
+  // after the knockout (aftermath.js): putting the boot in on a man who's down
+  def('stompA', { ffX: 62, ffY: -92, lean: 6, py: -4, head: 14, fX: 40, fY: -118, rX: 10, rY: -110 });
+  def('stompX', { ffX: 74, ffY: 0, lean: 14, py: 14, head: 22, fX: 44, fY: -104, rX: 18, rY: -96 });
+  def('kickA', { ffX: 6, ffY: -44, rfX: -28, lean: -8, px: -6, head: 10, fX: 44, fY: -118, rX: -10, rY: -104 });
+  def('kickX', { ffX: 118, ffY: -30, rfX: -40, lean: -16, px: -14, py: 4, head: 16, fX: 20, fY: -126, rX: -34, rY: -110 });
+  def('poundA', { lean: 36, py: 38, px: 8, head: 30, rX: 10, rY: -140, rB: 0.9, fX: 70, fY: -70, ffX: 44, rfX: -40, rTop: 1 });
+  def('poundX', { lean: 46, py: 46, px: 16, head: 36, rX: 118, rY: -26, rB: 0.3, rZ: 1.2, fX: 66, fY: -54, ffX: 46, rfX: -42, rTop: 1 });
   def('cardHold', { fX: 26, fY: -168, fB: 0.5, rX: 8, rY: -166, rB: 0.5, head: -6, lean: -2, py: 0, ffX: 22, rfX: -22 });
   // falling and getting up
   def('hurtBig', { lean: -32, head: -38, px: -26, py: 4, fX: 30, fY: -48, fB: 1, rX: -8, rY: -56, rB: 1, ffX: 44, rfX: -62 });
