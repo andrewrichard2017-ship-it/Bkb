@@ -157,7 +157,7 @@
       const a = 0.6 + Math.sin(performance.now() / 110) * 0.4;
       ctx.save(); ctx.globalAlpha = a;
       const who = g.twoPlayer ? `${f.side ? 'BLUE' : 'RED'}: ` : '';
-      BK.strokeText(`${who}HE'S OUT ON HIS FEET  ·  ${f.look.super === 'duster' ? 'KNUCKLE DUSTER' : 'SUPER PUNCH'} READY`, W / 2, 210 + f.side * 50, F.display(40), PAL.brass, 8);
+      BK.strokeText(`${who}HE'S OUT ON HIS FEET  ·  ${BK.superName(f.look)} READY`, W / 2, 210 + f.side * 50, F.display(40), PAL.brass, 8);
       ctx.restore();
     }
     // pause button

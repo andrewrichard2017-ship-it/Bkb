@@ -227,7 +227,7 @@
     g.slowmo = Math.max(g.slowmo, 0.55);
     BK.cam.kick = 0.08;
     BK.audio.roar(0.7);
-    BK.fx.popup(type === 'duster' ? 'KNUCKLE DUSTER!' : 'SUPER PUNCH!', f.headX, f.headY - 70, BK.PAL.brass, 58);
+    BK.fx.popup(`${BK.PUNCHES[type].label || 'SUPER PUNCH'}!`, f.headX, f.headY - 70, BK.PAL.brass, 58);
   };
 
   // ---------- clinch ----------

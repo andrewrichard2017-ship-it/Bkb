@@ -17,7 +17,7 @@
       pants: '#4d525c', pantsShade: '#3b3f47', pantsStripe: '#e8e8e8',
       boots: '#c9ad7f', bootSole: '#6d5a3e',
       wraps: '#c1272d', wrapShade: '#8e1a1f',
-      sleeves: 'none', legs: 'track', shoes: 'desert', fist: 'wraps', head: 'hair', sway: 'lean',
+      sleeves: 'none', legs: 'track', shoes: 'desert', fist: 'wraps', head: 'hair', sway: 'lean', super: 'ko',
       alt: { topColor: '#2c2c31', topShade: '#1d1d21', pants: '#2f3f63', pantsShade: '#24314d', wraps: '#e8e4da', wrapShade: '#b9b4a8' },
       tape: { AGE: '27', HEIGHT: '6\'1"', WEIGHT: '14st 2lb', REACH: '75"', RECORD: '11-0 (9 KO)', STYLE: 'Pressure fighter' },
       attr: { POWER: 78, SPEED: 88, CHIN: 80, STAMINA: 86 },
@@ -30,7 +30,7 @@
       pants: '#3d5d8f', pantsShade: '#2c466c', pantsStripe: null,
       boots: '#1e1e21', bootSole: '#050505',
       wraps: null, wrapShade: null,
-      sleeves: 'long', legs: 'jeans', shoes: 'shoe', fist: 'bare', head: 'bald', sway: 'lean',
+      sleeves: 'long', legs: 'jeans', shoes: 'shoe', fist: 'bare', head: 'bald', sway: 'lean', super: 'overhand',
       alt: { topColor: '#5d6470', topShade: '#454b55', pants: '#2b2b30', pantsShade: '#1e1e22' },
       tape: { AGE: '34', HEIGHT: '5\'11"', WEIGHT: '15st 6lb', REACH: '72"', RECORD: '19-4-1 (12 KO)', STYLE: 'Counter puncher' },
       attr: { POWER: 90, SPEED: 72, CHIN: 86, STAMINA: 76 },
@@ -43,7 +43,7 @@
       pants: '#1f1f24', pantsShade: '#141418', pantsStripe: null,
       boots: '#18181b', bootSole: '#060606',
       wraps: null, wrapShade: null,
-      sleeves: 'none', legs: 'trousers', shoes: 'boots', fist: 'bare', head: 'white', stache: 'handlebar', chain: true, sway: 'duck',
+      sleeves: 'none', legs: 'trousers', shoes: 'boots', fist: 'bare', head: 'white', stache: 'handlebar', chain: true, sway: 'duck', super: 'wrecker',
       alt: { topColor: '#2c2c31', topShade: '#1d1d21', pants: '#3a2c22', pantsShade: '#2a2019' },
       tape: { AGE: '46', HEIGHT: '6\'2"', WEIGHT: '19st 4lb', REACH: '76"', RECORD: '31-6 (24 KO)', STYLE: 'Brawler' },
       attr: { POWER: 95, SPEED: 64, CHIN: 92, STAMINA: 68 },
@@ -57,8 +57,8 @@
       boots: '#f2f0ea', bootSole: '#bdb8ad',
       wraps: null, wrapShade: null,
       sleeves: 'none', legs: 'shorts', shoes: 'shoe', fist: 'bare', head: 'skin',
-      // SWAY is an automatic jab-cross-hook costing 40% of the stamina bar; can't clinch; quick on his feet
-      sway: 'combo', noClinch: true, move: 1.22, regen: 1.35,
+      // SWAY is an automatic jab-cross-hook costing 40% of the stamina bar; quick on his feet
+      sway: 'combo', super: 'superman', move: 1.22, regen: 1.35,
       alt: { pants: '#6b1f24', pantsShade: '#511519', boots: '#1c1c1f' },
       tape: { AGE: '23', HEIGHT: '6\'0"', WEIGHT: '10st 3lb', REACH: '74"', RECORD: '8-2 (1 KO)', STYLE: 'Speed merchant' },
       attr: { POWER: 58, SPEED: 97, CHIN: 70, STAMINA: 92 },
@@ -72,7 +72,7 @@
       boots: '#b99c70', bootSole: '#6d5a3e',
       wraps: null, wrapShade: null,
       sleeves: 'none', legs: 'jeans', shoes: 'desert', fist: 'dusters', head: 'slick', beard: 'long',
-      // no sway at all; his super is a knuckle-duster uppercut, once a round; heavy on his feet
+      // no sway at all; his super is a knuckle-duster cross, once a round; heavy on his feet
       sway: 'none', super: 'duster', superOnce: true, move: 0.8, regen: 0.8,
       alt: { topColor: '#2c2c31', topShade: '#1d1d21', pants: '#3a2c22', pantsShade: '#2a2019' },
       tape: { AGE: '38', HEIGHT: '6\'1"', WEIGHT: '17st 0lb', REACH: '75"', RECORD: '22-3 (20 KO)', STYLE: 'Knockout artist' },
@@ -111,11 +111,17 @@
     cross: { hand: 'rear',  dur: 0.44, hitAt: 0.20, dmg: 9.5, reach: 182, cost: 8,  stun: 0.32, snap: 0.38, through: 0.14, power: true },
     hook:  { hand: 'front', dur: 0.50, hitAt: 0.23, dmg: 12,  reach: 142, cost: 10, stun: 0.40, snap: 0.50, through: 0.35, power: true },
     upper: { hand: 'rear',  dur: 0.54, hitAt: 0.25, dmg: 14,  reach: 126, cost: 12, stun: 0.42, snap: 0.55, through: 0.45, power: true },
-    // Finisher, only offered when the opponent is under 5% health. Can't be blocked, but can be slipped or missed.
-    ko:    { hand: 'rear',  dur: 0.95, hitAt: 0.55, dmg: 40,  reach: 190, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0,  power: true, super: true },
-    // Digger's special: a big knuckle-duster uppercut, once a round, same trigger as the super punch
-    duster: { hand: 'rear', dur: 1.05, hitAt: 0.62, dmg: 45,  reach: 150, cost: 16, stun: 0.7,  snap: 1.1,  through: 1.0,  power: true, super: true },
+    // Super punches: finishers offered when the opponent is under 5% health. Can't be blocked, but can be slipped
+    // or missed. Each fighter has his own (look.super). aim: how straight the arm is at contact (1 = locked out);
+    // aimY nudges the target up (-) or down (+) from the middle of the head.
+    ko:       { label: 'HAYMAKER',       hand: 'rear', dur: 0.98, hitAt: 0.56, dmg: 40, reach: 190, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0, power: true, super: true, aim: 0.84, aimY: 10 },
+    overhand: { label: 'SLEDGEHAMMER',   hand: 'rear', dur: 1.0,  hitAt: 0.58, dmg: 40, reach: 190, cost: 16, stun: 0.6,  snap: 0.95, through: 1.0, power: true, super: true, aim: 0.9,  aimY: -6 },
+    wrecker:  { label: 'WRECKING BALL',  hand: 'rear', dur: 1.05, hitAt: 0.6,  dmg: 42, reach: 170, cost: 16, stun: 0.65, snap: 1.0,  through: 1.0, power: true, super: true, aim: 0.74, aimY: 0 },
+    superman: { label: 'SUPERMAN PUNCH', hand: 'rear', dur: 0.9,  hitAt: 0.5,  dmg: 38, reach: 230, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0, power: true, super: true, aim: 0.93, aimY: 0 },
+    // Digger's: a big knuckle-duster cross, once a round
+    duster:   { label: 'DUSTER CROSS',   hand: 'rear', dur: 1.05, hitAt: 0.62, dmg: 45, reach: 200, cost: 16, stun: 0.7,  snap: 1.1,  through: 1.0, power: true, super: true, aim: 0.95, aimY: 2 },
   };
+  BK.superName = look => (BK.PUNCHES[look.super || 'ko'].label || 'SUPER PUNCH');
   BK.PUNCH_NAMES = { jab: 'JAB', cross: 'CROSS', hook: 'HOOK', upper: 'UPPERCUT' };
 
   BK.JUDGES = ['D. HARRIGAN', 'P. OKAFOR', 'S. LINDQVIST'];

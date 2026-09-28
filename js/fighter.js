@@ -49,7 +49,7 @@
       this.buffer = []; this.chainHits = 0;
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
-      this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make();
+      this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make(); this.tmp2 = BK.rig.make();
       this.blockW = 0; this.hurtW = 0; this.hurtKind = 'head'; this.sq = 0; this.sqV = 0;
       this.impact = 0; this.impactHand = 'front'; this.blinkT = BK.rnd(1, 4);
     }
@@ -75,6 +75,7 @@
     }
 
     update(dt, input, opp) {
+      this.opp = opp;
       this.logic(dt, input, opp);
       this.animate(dt);
     }
@@ -478,19 +479,46 @@
     }
 
     // wind-up -> snap to full extension -> held follow-through -> eased recovery
+    // Supers also swing through a mid pose (an arc, not a straight line) and are aimed at the opponent's head.
     punchPose(T) {
-      const R = BK.rig, PO = BK.POSES, U = R.UPPER, p = this.punch;
-      const A = PO[p.type + 'A'], X = PO[p.type + 'X'];
-      const tA = p.hitAt * (p.chain ? 0.35 : 0.5), hold = p.hitAt + (p.power ? 0.075 : 0.045);
+      const R = BK.rig, PO = BK.POSES, p = this.punch, U = p.super ? R.SUPER : R.UPPER;
+      const A = PO[p.type + 'A'], M = PO[p.type + 'M'], X = p.super ? this.aimed(PO[p.type + 'X']) : PO[p.type + 'X'];
+      const tA = p.hitAt * (p.chain ? 0.35 : 0.5), hold = p.hitAt + (p.super ? 0.12 : p.power ? 0.075 : 0.045);
       if (p.t < tA) R.mixInto(T, R.mix(this.tmp, p.from, A, BK.easeInOut(p.t / tA), U), 1, U);
       else if (p.t < p.hitAt) {
-        const k = (p.t - tA) / (p.hitAt - tA);
-        R.mixInto(T, R.mix(this.tmp, A, X, 1 - Math.pow(1 - k, 3), U), 1, U);
+        const k = (p.t - tA) / (p.hitAt - tA), e = 1 - Math.pow(1 - k, 3);
+        if (M) { R.mix(this.tmp, A, M, e, U); R.mix(this.tmp2, M, X, e, U); R.mix(this.tmp, this.tmp, this.tmp2, e, U); }
+        else R.mix(this.tmp, A, X, e, U);
+        R.mixInto(T, this.tmp, 1, U);
       } else if (p.t < hold) {
         R.mixInto(T, X, 1, U);
         const k = (p.t - p.hitAt) / (hold - p.hitAt);
         T.lean += 3 * Math.sin(k * PI); T.px += 3 * Math.sin(k * PI); // follow-through
       } else R.mixInto(T, X, 1 - BK.easeInOut((p.t - hold) / (p.dur - hold)), U);
+    }
+
+    // Moves a super's contact pose so the fist lands on the near side of the other man's head: steps in (or
+    // sits back) to get the arm the right length, then points the fist at him. Frozen at the moment of contact,
+    // so the follow-through doesn't chase him as he's knocked away.
+    aimed(X) {
+      const p = this.punch, o = this.opp;
+      if (p.aimQ) return p.aimQ;
+      const Q = Object.assign(p.aimTmp || (p.aimTmp = {}), X);
+      if (o && !o.down) {
+        const fs = this.fs, DEG = PI / 180;
+        const gx = (o.headX - this.sx) * this.dir / fs - 30 * o.fs / fs - 12 * X.rZ; // wrist, just short of his face
+        const gy = (o.headY - this.sy) / fs + (p.aimY || 0);
+        const c = Math.cos(Q.lean * DEG), s = Math.sin(Q.lean * DEG);
+        const shx = -12 + Q.rsh, shy = -80;
+        const Sx = Q.px + shx * c - shy * s, Sy = -120 + Q.py + shx * s + shy * c; // rear shoulder
+        const ideal = BK.rig.REACH * (p.aim || 0.9), dy = Sy - gy;
+        const shift = clamp(gx - Sx - Math.sqrt(Math.max(0, ideal * ideal - dy * dy)), -45, 85);
+        Q.px += shift; Q.ffX += Math.max(0, shift) * 0.6;
+        const ddx = gx - Q.px, ddy = gy - (-120 + Q.py);
+        Q.rX = ddx * c + ddy * s; Q.rY = -ddx * s + ddy * c;
+      }
+      if (p.t >= p.hitAt) p.aimQ = Object.assign({}, Q);
+      return Q;
     }
 
     // knocked down: recoil, topple, bounce, lie; then prop -> kneel -> stand as lift rises
@@ -522,7 +550,9 @@
 
     // Everything needed to draw this fighter on one frame (also what the replay records).
     snapshot() {
-      return { look: this.look, sx: this.sx, sy: this.sy, z: this.z, fs: this.fs, dir: this.dir,
+      // a super is drawn in front of the other man, so the fist lands on his face rather than disappearing behind him
+      const z = this.z + (this.punch && this.punch.super ? 0.004 : 0);
+      return { look: this.look, sx: this.sx, sy: this.sy, z, fs: this.fs, dir: this.dir,
         pose: BK.rig.copy(this.pose, {}), st: this.drawState(), flash: this.flash, headX: this.headX, headY: this.headY };
     }
     draw() { BK.drawFigure(this.snapshot()); }

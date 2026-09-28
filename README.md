@@ -8,13 +8,13 @@ A bare knuckle boxing game for Android phones and tablets. It's an HTML5 canvas 
 
 Pick any fighter for yourself and for the CPU on the main menu (tap the name to cycle). **Quick fight** is a single bout; **Tournament** runs you through everyone else in turn (Digger is the final boss). Your health carries over between tournament fights and you get +10% back after each win; lose (or draw) and you're out. If both corners pick the same man, the CPU gets alternate colours.
 
-| | Kit | Style | Sway / special |
-|---|---|---|---|
-| **Michael McD** | Stained white tank top, tracksuit bottoms, beige desert boots, red hand wraps | Pressure fighter: fast, good stamina | Leans back |
-| **John Joe** | Brown hoodie, jeans, black shoes | Counter puncher: heavy hands, good chin | Leans back |
-| **Big Joe** | White tank over a big belly, black trousers and boots, gold chain, white hair and handlebar moustache | Brawler: huge power, best chin, slow | Ducks and rolls |
-| **Skinny Arthur** | Shirtless, shorts, white shoes, skinhead | Speed merchant: fast hands and feet, light punches, best stamina recovery, **can't clinch** | **COMBO**: automatic jab-cross-left hook for 40% of his stamina (needs at least 40%) |
-| **Digger** | Grey tank, black jeans, desert boots, slicked-back hair, long beard, knuckle dusters | Knockout artist: the most power, low stamina, slow feet | **No sway.** His super is a knuckle-duster uppercut, once per round |
+| | Kit | Style | Sway / special | Super punch |
+|---|---|---|---|---|
+| **Michael McD** | Stained white tank top, tracksuit bottoms, beige desert boots, red hand wraps | Pressure fighter: fast, good stamina | Leans back | **Haymaker**: swung up from the hip into the jaw |
+| **John Joe** | Brown hoodie, jeans, black shoes | Counter puncher: heavy hands, good chin | Leans back | **Sledgehammer**: overhand right, over the top |
+| **Big Joe** | White tank over a big belly, black trousers and boots, gold chain, white hair and handlebar moustache | Brawler: huge power, best chin, slow | Ducks and rolls | **Wrecking ball**: a huge looping swing |
+| **Skinny Arthur** | Shirtless, shorts, white shoes, skinhead | Speed merchant: fast hands and feet, light punches, best stamina recovery | **COMBO**: automatic jab-cross-left hook for 40% of his stamina (needs at least 40%) | **Superman punch**: leaps in behind a flying cross |
+| **Digger** | Grey tank, black jeans, desert boots, slicked-back hair, long beard, knuckle dusters | Knockout artist: the most power, low stamina, slow feet | **No sway** | **Duster cross**: a big knuckle-duster cross, once per round |
 
 ## Controls
 
@@ -49,7 +49,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 - **Counters.** Land a punch while your opponent is mid-punch, or straight after a slip, for 1.6× damage.
 - **Body shots.** Hold BODY and throw any punch to go to the ribs. Little damage to health, but they drain stamina hard, get through a high guard more easily, and every one slows the opponent's stamina recovery for the rest of the fight.
 - **Clinch.** Tap CLINCH up close to grab. The reach-in can be **blocked** (you're pushed off) or **slipped** ("swayed", and he gets a counter). Locked up, punches become short body digs that do light damage and **can never knock anyone down**. Hold BLOCK in the clinch to tie his arms up and smother the digs. The grabber gets his breath back; the referee breaks it after a few seconds.
-- **Super punch.** When your opponent drops under 5% health a glowing **SUPER** button appears. It throws a loaded overhand that can't be blocked (but can be slipped or missed); if it lands it's a guaranteed knockdown, and the count decides the rest. The CPU always beats the count the first two times it goes down; after that the odds fall (about 75%, 50%, 30%, then 15%). Three knockdowns in one round is still a TKO.
+- **Super punch.** When your opponent drops under 5% health a glowing **SUPER** button appears. It throws that fighter's own finisher (see the table above), aimed at the other man's head, that can't be blocked (but can be slipped or missed); if it lands it's a guaranteed knockdown, and the count decides the rest. The CPU always beats the count the first two times it goes down; after that the odds fall (about 75%, 50%, 30%, then 15%). Three knockdowns in one round is still a TKO.
 - **Replays.** Every knockdown and knockout is replayed TV-style: slow motion through the impact, a tilted close-up camera, letterbox bars. Tap to skip.
 - **Combos.** Taps are queued (up to three) and thrown as soon as possible. Once a punch lands you can chain the next one before the arm comes back: switching hands is quickest. The punch buttons flash gold when the next punch is ready, and chained punches hit a little harder.
 - **Cuts.** As the face takes damage, cuts open (brow, nose, lip, cheek, forehead) and keep bleeding for the rest of the fight.

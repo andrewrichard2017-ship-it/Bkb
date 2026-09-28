@@ -9,6 +9,7 @@
 //   rX,rY,rB,rZ rear fist, same
 //   rsh         rear shoulder shift (torso turning into a cross)
 //   ffX,ffY     front foot on the ground; rfX,rfY rear foot
+//   rTop        over 0.5: draw the rear arm in front of the body (a big swing coming round at the camera)
 // Arms and legs are solved with two-bone IK. The elbow bend is continuous: values
 // between -1 and 1 shorten the limb, which reads as the elbow swinging through depth.
 //
@@ -21,11 +22,11 @@
   const DEG = Math.PI / 180, PI = Math.PI;
 
   // ---------------- poses ----------------
-  const FIELDS = ['px', 'py', 'lean', 'head', 'rot', 'rotX', 'sqx', 'sqy', 'fX', 'fY', 'fB', 'fZ', 'rX', 'rY', 'rB', 'rZ', 'rsh', 'ffX', 'ffY', 'rfX', 'rfY'];
-  const UPPER = ['px', 'py', 'lean', 'head', 'fX', 'fY', 'fB', 'fZ', 'rX', 'rY', 'rB', 'rZ', 'rsh'];
+  const FIELDS = ['px', 'py', 'lean', 'head', 'rot', 'rotX', 'sqx', 'sqy', 'fX', 'fY', 'fB', 'fZ', 'rX', 'rY', 'rB', 'rZ', 'rsh', 'ffX', 'ffY', 'rfX', 'rfY', 'rTop'];
+  const UPPER = ['px', 'py', 'lean', 'head', 'fX', 'fY', 'fB', 'fZ', 'rX', 'rY', 'rB', 'rZ', 'rsh', 'rTop'];
   const GUARD = { px: 0, py: 5, lean: 6, head: 2, rot: 0, rotX: 0, sqx: 1, sqy: 1,
     fX: 56, fY: -98, fB: 0.6, fZ: 1, rX: 36, rY: -104, rB: 0.7, rZ: 1, rsh: 0,
-    ffX: 32, ffY: 0, rfX: -34, rfY: 0 };
+    ffX: 32, ffY: 0, rfX: -34, rfY: 0, rTop: 0 };
   const P = BK.POSES = {};
   const def = (name, o, base = GUARD) => (P[name] = Object.assign({}, base, o));
 
@@ -60,11 +61,27 @@
   def('cmHold', { fX: 96, fY: -56, fB: 0.3, rX: -6, rY: -8, rB: 1, lean: 12, py: 4, ffX: 26, rfX: -22 });
   def('cmSlapBack', { fX: -24, fY: -96, fB: 0.6, rX: 20, rY: -40, rB: 1, lean: -6, py: 2, ffX: 26, rfX: -24 });
   def('cmSlapThru', { fX: 118, fY: -62, fB: 0.1, rX: 20, rY: -40, rB: 1, lean: 14, py: 4, ffX: 30, rfX: -24 });
-  // KO punch: a looping overhand haymaker, loaded way back
-  def('koA', { rX: -46, rY: -126, rB: -0.6, rsh: -10, lean: -16, px: -14, py: 10, head: -6, fX: 40, fY: -112 });
-  def('koX', { rX: 120, rY: -100, rB: 0.05, rZ: 1.6, rsh: 26, lean: 26, px: 26, py: 12, head: 10, fX: 22, fY: -96, fB: 1 });
-  def('dusterA', { rX: -2, rY: -28, rB: 1, rsh: -8, py: 28, lean: -14, px: -12, head: -6, fX: 40, fY: -112 });
-  def('dusterX', { rX: 82, rY: -150, rB: 1, rZ: 1.7, rsh: 18, py: -10, lean: 14, px: 18, head: -14, fX: 30, fY: -100 });
+  // Super punches, one per fighter. A = load, M = mid-swing (the fist arcs through it), X = contact.
+  // X is only a starting point: the fighter re-aims it at the other man's head, so it lands on him, not through him.
+  // Haymaker (Michael): dropped to the back hip, swung out wide and up into the jaw.
+  def('koA', { rX: -34, rY: -10, rB: 0.4, rZ: 0.9, rsh: -14, lean: -12, px: -14, py: 16, head: -2, fX: 46, fY: -112, fB: 0.7, ffX: 34, rfX: -44 });
+  def('koM', { rTop: 1, rX: 22, rY: -44, rB: -0.9, rZ: 1.35, rsh: 10, lean: 6, px: 2, py: 10, head: 2, fX: 40, fY: -108, ffX: 40, rfX: -42 });
+  def('koX', { rTop: 1, rX: 96, rY: -112, rB: -0.45, rZ: 1.3, rsh: 26, lean: 22, px: 20, py: 6, head: 8, fX: 26, fY: -100, fB: 1, ffX: 50, rfX: -40, rfY: -6 });
+  // Sledgehammer (John Joe): cocked up behind the ear and brought down over the top.
+  def('overhandA', { rX: -30, rY: -150, rB: 0.9, rZ: 1, rsh: -12, lean: -18, px: -12, py: 8, head: -8, fX: 46, fY: -112, ffX: 32, rfX: -42 });
+  def('overhandM', { rTop: 1, rX: 24, rY: -178, rB: 0.5, rZ: 1.2, rsh: 8, lean: -2, px: 0, py: 4, head: -2, fX: 40, fY: -108, ffX: 38, rfX: -42 });
+  def('overhandX', { rTop: 1, rX: 100, rY: -118, rB: 0.2, rZ: 1.3, rsh: 24, lean: 30, px: 22, py: 18, head: 14, fX: 28, fY: -92, fB: 1, ffX: 52, rfX: -46, rfY: -6 });
+  // Wrecking ball (Big Joe): arm flung out wide behind him and swung round in a huge loop.
+  def('wreckerA', { rX: -52, rY: -96, rB: -1, rZ: 1.15, rsh: -18, lean: -10, px: -16, py: 12, head: -2, fX: 50, fY: -108, ffX: 34, rfX: -44 });
+  def('wreckerM', { rTop: 1, rX: 8, rY: -108, rB: -1, rZ: 1.75, rsh: 6, lean: 8, px: 0, py: 10, head: 4, fX: 44, fY: -104, ffX: 40, rfX: -42 });
+  def('wreckerX', { rTop: 1, rX: 80, rY: -112, rB: -0.95, rZ: 1.4, rsh: 22, lean: 20, px: 18, py: 10, head: 8, fX: 30, fY: -96, fB: 1, ffX: 46, rfX: -38 });
+  // Superman punch (Arthur): knee up, spring off the back foot and fly in behind the cross.
+  def('supermanA', { rX: 22, rY: -98, rB: 0.8, rsh: -8, lean: -4, px: -6, py: 30, head: 0, fX: 48, fY: -110, ffX: 30, rfX: -12, rfY: -34 });
+  def('supermanM', { rX: 30, rY: -118, rB: 0.6, rsh: 4, lean: 10, px: 10, py: -34, head: 2, fX: 40, fY: -104, ffX: 44, ffY: -26, rfX: -72, rfY: -44 });
+  def('supermanX', { rX: 110, rY: -116, rB: 0.05, rZ: 1.25, rsh: 24, lean: 20, px: 30, py: -8, head: 6, fX: 18, fY: -96, fB: 1, ffX: 58, ffY: -6, rfX: -80, rfY: -30 });
+  // Duster cross (Digger): brass knuckles loaded right back by the cheek, then everything behind a straight right.
+  def('dusterA', { rX: -30, rY: -104, rB: 0.9, rZ: 1, rsh: -18, lean: -16, px: -18, py: 14, head: -4, fX: 50, fY: -112, ffX: 30, rfX: -48 });
+  def('dusterX', { rX: 118, rY: -112, rB: 0.04, rZ: 1.35, rsh: 30, lean: 26, px: 26, py: 10, head: 8, fX: 26, fY: -110, fB: 0.9, ffX: 60, rfX: -40, rfY: -8 });
   def('cardHold', { fX: 26, fY: -168, fB: 0.5, rX: 8, rY: -166, rB: 0.5, head: -6, lean: -2, py: 0, ffX: 22, rfX: -22 });
   // falling and getting up
   def('hurtBig', { lean: -32, head: -38, px: -26, py: 4, fX: 30, fY: -48, fB: 1, rX: -8, rY: -56, rB: 1, ffX: 44, rfX: -62 });
@@ -81,7 +98,8 @@
   def('refWaveB', { fX: -8, fY: -150, fB: 0.3, rX: 60, rY: -150, rB: 0.3, head: -4, py: 4, ffX: 26, rfX: -26 });
   def('refBox', { fX: 96, fY: -80, fB: 0.2, rX: -70, rY: -80, rB: 0.2, lean: 4, py: 4, ffX: 26, rfX: -26 });
 
-  const R = BK.rig = { FIELDS, UPPER };
+  const SUPER = UPPER.concat(['ffX', 'ffY', 'rfX', 'rfY']); // supers move the feet too
+  const R = BK.rig = { FIELDS, UPPER, SUPER, REACH: 89.5 };
   R.make = () => Object.assign({}, GUARD);
   R.copy = (src, dst) => { for (const k of FIELDS) dst[k] = src[k]; return dst; };
   R.mix = (dst, a, b, t, fields = FIELDS) => { for (const k of fields) dst[k] = a[k] + (b[k] - a[k]) * t; return dst; };
@@ -91,7 +109,7 @@
   const UA = 46, FA = 44, TH = 67, SH = 63;
   function arm(sx, sy, tx, ty, bend) {
     let dx = tx - sx, dy = ty - sy, d = Math.hypot(dx, dy) || 1;
-    const max = UA + FA - 0.5;
+    const max = R.REACH;
     if (d > max) { tx = sx + dx / d * max; ty = sy + dy / d * max; dx = tx - sx; dy = ty - sy; d = max; }
     const ux = dx / d, uy = dy / d;
     const x = (UA * UA - FA * FA + d * d) / (2 * d), h = Math.sqrt(Math.max(0, UA * UA - x * x));
@@ -678,7 +696,8 @@
     const torso = fn => { ctx.save(); ctx.translate(pelX, pelY); ctx.rotate(pose.lean * DEG); fn(); ctx.restore(); };
 
     drawLeg(L, hipR, legR, false);
-    torso(() => drawArm(L, pose, false, st));
+    const rearOnTop = pose.rTop > 0.5;
+    if (!rearOnTop) torso(() => drawArm(L, pose, false, st));
     drawLeg(L, hipF, legF, true);
     drawPelvis(L, pelX, pelY, st);
     torso(() => {
@@ -687,6 +706,7 @@
       ctx.save(); ctx.translate(4, -86); ctx.rotate(pose.head * DEG);
       drawHead(L, st);
       ctx.restore();
+      if (rearOnTop) drawArm(L, pose, false, st);
       drawArm(L, pose, true, st);
     });
     ctx.restore();

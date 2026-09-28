@@ -23,7 +23,7 @@
     const sc = BK.screen, U = Math.min(sc.w, sc.h);
     const r = clamp(U * 0.08, 27, 50), gap = r * 2.25;
     const right = sc.w - sc.safe.r - 18 - r, bottom = sc.h - sc.safe.b - 16 - r;
-    // buttons depend on the fighter: DUCK / SWAY / COMBO, no sway for Digger, no clinch for Arthur
+    // buttons depend on the fighter: DUCK / SWAY / COMBO, no sway for Digger
     const me = BK.game.p1, L = me ? me.look : {};
     const swayLabel = L.sway === 'duck' ? 'DUCK' : L.sway === 'combo' ? 'COMBO' : 'SWAY';
     const buttons = BTNS
@@ -145,7 +145,7 @@
   IN.drawPadHint = player => {
     const sc = BK.screen, L = player.look;
     const rows = [['✕ Jab', '○ Cross', '□ Hook', '△ Upper'], [L.noClinch ? 'L1 —' : 'L1 Clinch', 'R1 Body', `L2 ${L.sway === 'duck' ? 'Duck' : L.sway === 'combo' ? 'Combo' : L.sway === 'none' ? '—' : 'Sway'}`, 'R2 Block']];
-    if (BK.game.koReady()) rows.push([`R3  ${L.super === 'duster' ? 'KNUCKLE DUSTER' : 'SUPER PUNCH'}  ▶`]);
+    if (BK.game.koReady()) rows.push([`R3  ${BK.superName(L)}  ▶`]);
     ctx.save(); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.globalAlpha = 0.75;
     let y = sc.h - sc.safe.b - 14;
     for (let i = rows.length - 1; i >= 0; i--) {
