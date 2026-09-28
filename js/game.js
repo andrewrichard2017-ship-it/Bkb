@@ -420,7 +420,7 @@
     }
   }
 
-  function updateCamera() {
+  function updateCamera(dt) {
     const c = BK.cam, { p1, p2 } = g;
     const s = g.state;
     if (s === 'title' || s === 'tape' || s === 'ladder' || s === 'champion') { c.tx = W / 2; c.ty = 520; c.tz = 1.12 + Math.sin(g.t * 0.25) * 0.04; }
@@ -436,6 +436,12 @@
       c.tx = (p1.sx + p2.sx) / 2; c.ty = (p1.sy + p2.sy) / 2 - 150;
       c.tz = clamp(1.34 - dist / 1100, 1.0, 1.28);
     }
+    // Out on your feet (one player only; a shared two-player screen stays clear): the view rocks and swims.
+    const dazed = !g.twoPlayer && !BK.replay.active && p1.oof && ['fight', 'knockdown'].includes(s);
+    g.daze = (g.daze || 0) + ((dazed ? 1 : 0) - (g.daze || 0)) * Math.min(1, dt * (dazed ? 2.5 : 1.5));
+    const k = g.daze;
+    c.roll = k > 0.01 ? (Math.sin(g.t * 1.3) * 0.028 + Math.sin(g.t * 3.1) * 0.006) * k : 0;
+    c.tz *= 1 + 0.05 * k; c.ty += Math.sin(g.t * 0.9) * 12 * k; c.tx += Math.sin(g.t * 0.7) * 14 * k;
   }
 
   // ---------- input hooks ----------
@@ -500,6 +506,7 @@
   }
 
   // ---------- render ----------
+  const dazeBuf = document.createElement('canvas'), dazeCtx = dazeBuf.getContext('2d');
   function render() {
     const sc = BK.screen, v = BK.view, hud = BK.hud;
     ctx.setTransform(sc.dpr, 0, 0, sc.dpr, 0, 0);
@@ -540,6 +547,19 @@
     if (g.state === 'walkout') BK.walkout.drawWorld();
     BK.fx.drawPopups();
     ctx.restore();
+    if (g.daze > 0.01) { // double vision: a blurred copy of the world drifting over itself
+      // (blurred cheaply: shrunk to a quarter and stretched back, rather than a costly blur filter)
+      const k = g.daze, dpr = sc.dpr, cw = BK.canvas.width, ch = BK.canvas.height;
+      const bw = Math.max(1, cw >> 2), bh = Math.max(1, ch >> 2);
+      if (dazeBuf.width !== bw || dazeBuf.height !== bh) { dazeBuf.width = bw; dazeBuf.height = bh; }
+      dazeCtx.drawImage(BK.canvas, 0, 0, bw, bh);
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.globalAlpha = 0.5 * k;
+      ctx.drawImage(dazeBuf, Math.sin(g.t * 1.9) * 16 * k * dpr, Math.cos(g.t * 1.4) * 7 * k * dpr, cw, ch);
+      ctx.globalAlpha = 0.18 * k; ctx.fillStyle = '#2a0706'; ctx.fillRect(0, 0, cw, ch); // dark red wash
+      ctx.restore();
+    }
 
     hud.vignette();
     if (g.flashT > 0) { ctx.fillStyle = `rgba(255,250,235,${g.flashT * 3})`; ctx.fillRect(-W, -H, W * 3, H * 3); }
@@ -610,7 +630,7 @@
     }
     BK.audio.update(real);
     BK.arena.update(real, BK.audio.excitement);
-    updateCamera();
+    updateCamera(real);
     BK.updateCamera(real);
     render();
     requestAnimationFrame(frame);

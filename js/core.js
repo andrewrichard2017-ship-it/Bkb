@@ -90,6 +90,7 @@
     const c = BK.cam;
     const sx = (Math.random() - 0.5) * c.shake, sy = (Math.random() - 0.5) * c.shake;
     ctx.translate(BK.W / 2 + sx, BK.H / 2 + sy);
+    if (c.roll) ctx.rotate(c.roll); // rocking view while you're out on your feet
     ctx.scale(c.zoom + c.kick, c.zoom + c.kick);
     ctx.translate(-c.x, -c.y);
   };
