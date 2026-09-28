@@ -166,7 +166,7 @@
     for (const f of [g.p1, g.p2]) {
       if (!f.oof || g.state !== 'fight') continue;
       const left = Math.max(1, Math.ceil(BK.OOF_LEN - f.oof.t)), a = 0.7 + Math.sin(performance.now() / 90) * 0.3;
-      const msg = g.isHuman(f) && !g.twoPlayer ? `OUT ON YOUR FEET  ·  HANG ON  ${left}` : `${f.look.short} IS OUT ON HIS FEET  ·  ${left}`;
+      const msg = g.isHuman(f) && !g.twoPlayer ? `OUT ON YOUR FEET  ·  CLINCH TO HANG ON  ·  ${left}` : `${f.look.short} IS OUT ON HIS FEET  ·  ${left}`;
       ctx.save(); ctx.globalAlpha = a;
       BK.strokeText(msg, W / 2, 210 + f.side * 50, F.display(40), '#e2584f', 8);
       ctx.restore();

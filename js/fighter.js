@@ -47,7 +47,7 @@
       this.celebrate = false; this.regenDelay = 0; this.dripT = 0;
       this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false;
       this.buffer = []; this.chainHits = 0;
-      this.oof = null; // out on his feet: { t } while it lasts
+      this.oof = null; this.oofW = 0; // out on his feet: { t } while it lasts; oofW eases the wobble in and out
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make(); this.tmp2 = BK.rig.make();
@@ -157,7 +157,12 @@
       this.z = clamp(this.z + my * 0.62 * spd * dt, BK.Z_MIN, BK.Z_MAX);
       this.moving = mag * spd;
       this.walk += dt * 11 * this.moving * ((mx * this.dir) >= 0 ? 1 : -1);
-      if (this.oof) { this.buffer.length = 0; this.combo = []; this.slip = null; this.grab = null; return; } // can't throw, sway or grab
+      if (this.oof) { // can't throw or sway, but he can try to grab hold and ride it out (a clinch clears his head)
+        this.buffer.length = 0; this.combo = []; this.slip = null;
+        if (this.grab) { this.grab.t += dt; if (this.grab.t >= this.grab.dur) { this.grab = null; this.resolveGrab(opp); } }
+        else if (input.clinch && this.stamina > 3) { this.grab = { t: 0, dur: 0.45 }; this.stamina -= 3; this.grunt('effortSmall'); }
+        return;
+      }
 
       // slip
       const sway = this.look.sway;
@@ -199,7 +204,7 @@
     }
 
     // Super punch is on offer when the opponent is under 8% health (Digger's only once a round).
-    superAvailable(opp) { return opp.hp < 8 && !opp.down && !opp.oof && !(this.look.superOnce && this.superUsed); }
+    superAvailable(opp) { return opp.hp < 8 && !opp.down && !(this.look.superOnce && this.superUsed); }
 
     // Free, or far enough through the current punch to chain the next one.
     // Switching hands chains straight after the impact; the same hand needs more of the recovery.
@@ -238,7 +243,7 @@
 
     resolveGrab(opp) {
       const dx = (opp.sx - this.sx) * this.dir;
-      if (opp.down || opp.clinch || opp.oof || dx <= 0 || dx > 175 * this.fs || Math.abs(opp.z - this.z) > 0.14) { BK.audio.whoosh(); return; }
+      if (opp.down || opp.clinch || dx <= 0 || dx > 175 * this.fs || Math.abs(opp.z - this.z) > 0.14) { BK.audio.whoosh(); return; }
       if (opp.slip && opp.slip.t < 0.35) {
         opp.counterWindow = 0.8; this.stun = 0.3;
         BK.fx.popup('SWAYED', opp.headX, opp.headY - 40, BK.PAL.bone, 36);
@@ -462,14 +467,17 @@
           T[front ? 'fY' : 'rY'] += 58 * w; T.py += 12 * w; T.lean += 8 * w;
         }
       }
-      if (this.oof) {
-        const UF = R.SUPER; // upper body plus the feet
+      // out on his feet: eased in as his legs go and out as he comes round, so it never snaps
+      this.oofW += ((this.oof ? 1 : 0) - this.oofW) * Math.min(1, dt * (this.oof ? 4 : 1.8));
+      if (this.oofW > 0.01) {
+        const UF = R.SUPER, w = this.oofW * (this.grab ? 0.35 : 1); // upper body plus the feet; lets the reach-in show
         R.mix(this.tmp, PO.oofA, PO.oofB, (Math.sin(this.t * 2.3) + 1) / 2, UF);
-        R.mixInto(T, this.tmp, 1, UF);
-        const lift = Math.pow(Math.max(0, Math.sin(this.t * 1.3)), 3) * 0.45; // tries to get the hands up, can't hold them
+        R.mixInto(T, this.tmp, w, UF);
+        const lift = Math.pow(Math.max(0, Math.sin(this.t * 1.3)), 3) * 0.45 * w; // tries to get the hands up, can't hold them
         T.fY += (PO.guard.fY - T.fY) * lift; T.rY += (PO.guard.rY - T.rY) * lift;
-        T.rot = Math.sin(this.t * 2.3) * 3.5; T.rotX = 0;
-        T.ffX += Math.sin(this.t * 3.1) * 10 * Math.min(1, this.moving * 2); T.rfX -= Math.sin(this.t * 3.1) * 10 * Math.min(1, this.moving * 2);
+        T.rot += Math.sin(this.t * 2.3) * 3.5 * w;
+        const shuffle = Math.sin(this.t * 3.1) * 10 * Math.min(1, this.moving * 2) * w;
+        T.ffX += shuffle; T.rfX -= shuffle;
       }
       if (this.stagger > 0) {
         R.mix(this.tmp, PO.staggerA, PO.staggerB, (Math.sin(this.t * 4.5) + 1) / 2, U);

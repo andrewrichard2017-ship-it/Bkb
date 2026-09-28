@@ -6,10 +6,11 @@
   const { clamp } = BK;
 
   // sup: chance of letting the super go each time it's lined up (it waits a beat first, so you can sway it)
+  // hold: how keen it is (per second) to grab you when it's out on its feet
   const LEVELS = [
-    { react: 0.18, rate: 0.75, block: 0.25, slip: 0.05, combo: 0.15, counter: 0.3, sup: 0.45 },
-    { react: 0.32, rate: 1.0, block: 0.42, slip: 0.12, combo: 0.35, counter: 0.6, sup: 0.75 },
-    { react: 0.5, rate: 1.35, block: 0.55, slip: 0.22, combo: 0.55, counter: 0.9, sup: 1 },
+    { react: 0.18, rate: 0.75, block: 0.25, slip: 0.05, combo: 0.15, counter: 0.3, sup: 0.45, hold: 0.4 },
+    { react: 0.32, rate: 1.0, block: 0.42, slip: 0.12, combo: 0.35, counter: 0.6, sup: 0.75, hold: 0.8 },
+    { react: 0.5, rate: 1.35, block: 0.55, slip: 0.22, combo: 0.55, counter: 0.9, sup: 1, hold: 1.4 },
   ];
   const COMBOS = [['jab', 'jab', 'cross'], ['jab', 'cross', 'hook'], ['jab', 'upper'], ['cross', 'hook'], ['jab', 'cross'], ['hook', 'upper']];
 
@@ -50,6 +51,11 @@
         if (foe.punch && foe.punch !== this.seenPunch) { this.seenPunch = foe.punch; if (Math.random() < lv.react + 0.15) this.blockT = BK.rnd(0.5, 0.9); }
         if (this.blockT > 0) { inp.block = true; return inp; }
         if (this.cool <= 0 && Math.random() < 0.5) { inp[BK.pick(['hook', 'upper', 'jab'])] = true; this.cool = BK.rnd(0.35, 0.8); }
+        return inp;
+      }
+      if (me.oof) { // out on its feet: stumble in and try to tie you up to clear its head
+        inp.mx = Math.sign(dx) * 0.8;
+        if (!me.grab && dist < 165 * me.fs && Math.abs(dz) < 0.12 && Math.random() < dt * lv.hold) inp.clinch = true;
         return inp;
       }
       this.clinchCool = (this.clinchCool || 0) - dt;
