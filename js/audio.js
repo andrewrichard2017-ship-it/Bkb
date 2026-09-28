@@ -12,7 +12,11 @@
     A.master = c.createGain(); A.master.gain.value = BK.settings.sound ? 0.9 : 0;
     const lim = c.createDynamicsCompressor();
     lim.threshold.value = -10; lim.knee.value = 6; lim.ratio.value = 8; lim.attack.value = 0.003; lim.release.value = 0.15;
-    A.master.connect(lim).connect(c.destination);
+    // everything goes through a low-pass that closes up when you're rocked (the crowd sounds underwater);
+    // the heartbeat and the ringing go round it on a dry bus, so they stay sharp
+    A.muffle = c.createBiquadFilter(); A.muffle.type = 'lowpass'; A.muffle.frequency.value = 18000; A.muffle.Q.value = 0.7;
+    A.master.connect(A.muffle).connect(lim).connect(c.destination);
+    A.dry = c.createGain(); A.dry.gain.value = BK.settings.sound ? 0.9 : 0; A.dry.connect(lim);
 
     // Crowd bed: looping noise through two band filters, level follows excitement.
     const len = c.sampleRate * 3, buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
@@ -27,7 +31,34 @@
     A.loadClips();
   };
 
-  A.setEnabled = on => { if (A.master) A.master.gain.setTargetAtTime(on ? 0.9 : 0, A.ctx.currentTime, 0.05); if (!on) A.hush(); };
+  A.setEnabled = on => { if (A.master) { A.master.gain.setTargetAtTime(on ? 0.9 : 0, A.ctx.currentTime, 0.05); A.dry.gain.setTargetAtTime(on ? 0.9 : 0, A.ctx.currentTime, 0.05); } if (!on) A.hush(); };
+  // k 0..1: how rocked. Closes the low-pass from open (18 kHz) down to about 450 Hz.
+  let muffleK = 0;
+  A.setMuffle = k => {
+    if (!A.muffle || Math.abs(k - muffleK) < 0.01) return;
+    muffleK = k;
+    A.muffle.frequency.setTargetAtTime(18000 * Math.pow(450 / 18000, k), A.ctx.currentTime, 0.06);
+  };
+  function dryTone(f0, f1, len, gain, t0 = 0) {
+    const c = A.ctx, t = c.currentTime + t0;
+    const o = c.createOscillator(), g = c.createGain();
+    o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + len);
+    g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(gain, t + Math.min(0.02, len / 4));
+    g.gain.exponentialRampToValueAtTime(0.0008, t + len);
+    o.connect(g).connect(A.dry); o.start(t); o.stop(t + len + 0.02);
+  }
+  // Lub-dub, heavier the more rocked you are.
+  A.heartbeat = k => { if (A.ctx) { dryTone(62, 38, 0.2, 0.9 * k); dryTone(58, 36, 0.18, 0.65 * k, 0.24); } };
+  // A thin ringing in the ears that fades away (two close pitches, so it wavers).
+  A.ring = k => {
+    if (!A.ctx) return;
+    const c = A.ctx, t = c.currentTime;
+    for (const f of [3150, 3212]) {
+      const o = c.createOscillator(), g = c.createGain(); o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.linearRampToValueAtTime(0.035 * k, t + 0.05); g.gain.exponentialRampToValueAtTime(0.0005, t + 2.8);
+      o.connect(g).connect(A.dry); o.start(t); o.stop(t + 2.9);
+    }
+  };
 
   A.update = dt => {
     A.excitement = Math.max(0, A.excitement - dt * 0.18);

@@ -118,8 +118,19 @@
     const superHit = BK.PUNCHES[how] && BK.PUNCHES[how].super;
     g.onKnockdown(victim, attacker, how, !superHit && victim.kdRound < 2 && Math.random() < 0.5);
   };
-  // Hit clean while on the brink (15% or less): the picture rocks and swims for a moment.
-  g.rockHit = p => { if (g.state === 'fight') g.rockT = Math.max(g.rockT || 0, p.power ? 1.6 : 1.1); };
+  // Hit clean while on the brink (15% or less): the picture rocks and swims. It stacks: the first hit rocks him for
+  // 2.5 s and every follow-up adds more (up to 6 s), and the lower his health the harder it hits. Each one lands with a
+  // punch-in: the camera lurches in on him with a flash and a split second of slow motion, and his ears ring.
+  g.rockHit = (p, v) => {
+    if (g.state !== 'fight') return;
+    const fresh = !(g.rockT > 0);
+    g.rockT = fresh ? 2.5 + (p.power ? 0.3 : 0) : Math.min(6, g.rockT + 1.2);
+    g.rockLvl = Math.max(fresh ? 0 : g.rockLvl || 0, 0.6 + 0.4 * clamp(1 - v.hp / 15, 0, 1));
+    g.rockPunch = 0.45; g.rockFocus = v;
+    g.slowmo = Math.max(g.slowmo, 0.3); g.flashT = Math.max(g.flashT || 0, 0.1);
+    BK.cam.kick = Math.max(BK.cam.kick, 0.08);
+    BK.audio.ring(g.rockLvl);
+  };
   // CPU: always beats the first two counts; after that it's a bonus
   function cpuGetUpAt(victim) {
     if (g.isHuman(victim)) return 99;
@@ -249,7 +260,7 @@
     if (holder.hp > 0 && holder.hp <= 15 && !holder.clinchSaved && holder.maxHp > 20) {
       holder.clinchSaved = true;
       holder.hp = 20; holder.ghostHp = Math.max(holder.ghostHp, holder.hp); holder.regenDelay = 1;
-      g.rockT = 0;
+      g.rockT = 0; g.rockPunch = 0;
       BK.fx.popup('HANGS ON!', holder.headX, holder.headY - 90, BK.PAL.brass, 44);
     }
     for (const f of [holder, held]) { f.punch = null; f.grab = null; f.slip = null; f.blocking = false; }
@@ -418,11 +429,24 @@
     // Rocked: a clean hit on the brink rocks the view for a moment; a standing count holds it until he clears his head.
     g.rockT = Math.max(0, (g.rockT || 0) - dt);
     const standing = s === 'knockdown' && g.kd && g.kd.standing && !g.kd.rising && !g.kd.tko;
-    const want = BK.replay.active ? 0 : standing ? 1 : s === 'fight' && g.rockT > 0 ? 0.8 * Math.min(1, g.rockT / 0.6) : 0;
-    g.daze = (g.daze || 0) + (want - (g.daze || 0)) * Math.min(1, dt * (want > (g.daze || 0) ? 5 : 1.8));
+    const want = BK.replay.active ? 0 : standing ? 1 : s === 'fight' && g.rockT > 0 ? (g.rockLvl || 0.8) * Math.min(1, g.rockT / 0.8) : 0;
+    g.daze = (g.daze || 0) + (want - (g.daze || 0)) * Math.min(1, dt * (want > (g.daze || 0) ? 5 : 1.4));
     const k = g.daze;
-    c.roll = k > 0.01 ? (Math.sin(g.t * 1.3) * 0.028 + Math.sin(g.t * 3.1) * 0.006) * k : 0;
-    c.tz *= 1 + 0.05 * k; c.ty += Math.sin(g.t * 0.9) * 12 * k; c.tx += Math.sin(g.t * 0.7) * 14 * k;
+    c.roll = k > 0.01 ? (Math.sin(g.t * 1.3) * 0.04 + Math.sin(g.t * 3.1) * 0.009) * k : 0;
+    c.tz *= 1 + 0.07 * k; c.ty += Math.sin(g.t * 0.9) * 16 * k; c.tx += Math.sin(g.t * 0.7) * 20 * k;
+    // the punch-in: lurch the camera in on the man who's just been rocked, then let it drift back out
+    g.rockPunch = Math.max(0, (g.rockPunch || 0) - dt);
+    if (g.rockPunch > 0 && g.rockFocus && s === 'fight') {
+      const pk = g.rockPunch / 0.45, f = g.rockFocus;
+      c.tx += (f.sx - c.tx) * 0.6 * pk; c.ty += (f.headY + 60 - c.ty) * 0.4 * pk; c.tz *= 1 + 0.2 * pk;
+    }
+    // heartbeat and muffled ears while rocked (quiet while paused)
+    BK.audio.setMuffle(g.paused ? 0 : k * 0.95);
+    g.beatPulse = Math.max(0, (g.beatPulse || 0) - dt * 3);
+    if (k > 0.25 && !g.paused) {
+      g.beatT = (g.beatT || 0) + dt;
+      if (g.beatT >= 0.95 - 0.35 * k) { g.beatT = 0; g.beatPulse = 1; BK.audio.heartbeat(k); }
+    } else g.beatT = 0.6;
   }
 
   // ---------- input hooks ----------
@@ -540,6 +564,11 @@
       ctx.drawImage(dazeBuf, Math.sin(g.t * 1.9) * 16 * k * dpr, Math.cos(g.t * 1.4) * 7 * k * dpr, cw, ch);
       ctx.globalAlpha = 0.18 * k; ctx.fillStyle = '#2a0706'; ctx.fillRect(0, 0, cw, ch); // dark red wash
       ctx.restore();
+      // tunnel vision: the edges close in, and throb with the heartbeat
+      const r0 = BK.lerp(900, 330, k) * (1 - 0.08 * (g.beatPulse || 0));
+      const tv = ctx.createRadialGradient(W / 2, H / 2, r0, W / 2, H / 2, r0 + 520);
+      tv.addColorStop(0, 'rgba(10,2,2,0)'); tv.addColorStop(1, `rgba(10,2,2,${(0.9 * k).toFixed(3)})`);
+      ctx.fillStyle = tv; ctx.fillRect(-W, -H, W * 3, H * 3);
     }
 
     hud.vignette();

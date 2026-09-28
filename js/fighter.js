@@ -381,7 +381,7 @@
         }
       }
       if (this.hp <= 0 && !p.clinch) BK.game.onZeroHp(this, from, p.type);
-      else if (!blocked && !p.clinch && this.hp <= 15) BK.game.rockHit(p); // on the brink: every clean one rocks the picture
+      else if (!blocked && !p.clinch && this.hp <= 15) BK.game.rockHit(p, this); // on the brink: every clean one rocks the picture
     }
 
     // Cuts open as the face takes damage; each one keeps bleeding for the rest of the fight.
