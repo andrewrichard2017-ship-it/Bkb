@@ -115,7 +115,7 @@
   // At zero health it's a coin toss: down he goes, or he's out on his feet. Out on his feet he can't defend
   // himself for OOF_LEN seconds (every hit bleeds him more) and then the referee steps in for a standing count.
   // A super always puts him down, and so does a knockdown that would be the third of the round (a TKO).
-  const OOF_LEN = BK.OOF_LEN = 15;
+  const OOF_LEN = BK.OOF_LEN = 10;
   g.onZeroHp = (victim, attacker, how) => {
     if (g.state !== 'fight') return;
     if (victim.oof) return; // already gone: he just soaks it up until the ref steps in
