@@ -245,6 +245,13 @@
   // ---------- clinch ----------
   const CLINCH_LEN = 2.6;
   g.startClinch = (holder, held) => {
+    // on the brink (15% or less), grabbing hold gets him out of it: back above the line, once a round
+    if (holder.hp > 0 && holder.hp <= 15 && !holder.clinchSaved && holder.maxHp > 20) {
+      holder.clinchSaved = true;
+      holder.hp = 20; holder.ghostHp = Math.max(holder.ghostHp, holder.hp); holder.regenDelay = 1;
+      g.rockT = 0;
+      BK.fx.popup('HANGS ON!', holder.headX, holder.headY - 90, BK.PAL.brass, 44);
+    }
     for (const f of [holder, held]) { f.punch = null; f.grab = null; f.slip = null; f.blocking = false; }
     holder.clinch = { partner: held, role: 'holder', t: 0 };
     held.clinch = { partner: holder, role: 'held', t: 0 };

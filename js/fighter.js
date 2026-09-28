@@ -45,7 +45,7 @@
       this.walk = 0; this.moving = 0; this.t = Math.random() * 10;
       this.down = false; this.downT = 0; this.lift = 0; this.liftTarget = 0; this.rising = false;
       this.celebrate = false; this.regenDelay = 0; this.dripT = 0;
-      this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false;
+      this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false; this.clinchSaved = false;
       this.buffer = []; this.chainHits = 0;
       this.dazedStand = false; this.dazeW = 0; // taking a standing count; dazeW eases the wobble in and out
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
