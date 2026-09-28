@@ -65,16 +65,16 @@
   }
 
   // ---------- the static yard, pre-rendered once ----------
-  const S = 1.25;
+  const S = 1.25, MX = 480; // built out MX either side, for phones wider than 16:9
   const bg = document.createElement('canvas');
-  bg.width = W * S; bg.height = H * S;
+  bg.width = (W + 2 * MX) * S; bg.height = H * S;
   (() => {
     const c = bg.getContext('2d');
-    c.scale(S, S);
+    c.scale(S, S); c.translate(MX, 0);
     // night sky with a sodium glow low down
     const sky = c.createLinearGradient(0, 0, 0, GROUND);
     sky.addColorStop(0, '#0d1119'); sky.addColorStop(0.55, '#1e2430'); sky.addColorStop(1, '#4a3f3a');
-    c.fillStyle = sky; c.fillRect(0, 0, W, GROUND + 2);
+    c.fillStyle = sky; c.fillRect(-MX, 0, W + 2 * MX, GROUND + 2);
     const moon = c.createRadialGradient(1020, 44, 4, 1020, 44, 60);
     moon.addColorStop(0, 'rgba(230,228,215,0.9)'); moon.addColorStop(0.25, 'rgba(230,228,215,0.25)'); moon.addColorStop(1, 'rgba(230,228,215,0)');
     c.fillStyle = moon; c.fillRect(960, 0, 120, 110);
@@ -101,7 +101,7 @@
 
     // the two workshop units, each with a roller shutter at the top of a walkout path
     for (const side of [0, 1]) {
-      const x0 = side ? W - UNIT_EDGE : -20, x1 = side ? W + 20 : UNIT_EDGE;
+      const x0 = side ? W - UNIT_EDGE : -MX - 20, x1 = side ? W + MX + 20 : UNIT_EDGE;
       c.fillStyle = '#3f4955'; c.fillRect(x0, -20, x1 - x0, GROUND + 20);
       for (let x = x0; x < x1; x += 11) { c.fillStyle = 'rgba(255,255,255,0.05)'; c.fillRect(x, -20, 3, GROUND + 20); c.fillStyle = 'rgba(0,0,0,0.18)'; c.fillRect(x + 6, -20, 3, GROUND + 20); }
       const grime = c.createLinearGradient(0, GROUND - 60, 0, GROUND);
@@ -123,9 +123,9 @@
     // the yard: wet tarmac
     const gr = c.createLinearGradient(0, GROUND, 0, H);
     gr.addColorStop(0, '#2b2a28'); gr.addColorStop(0.4, '#3a3834'); gr.addColorStop(1, '#46423c');
-    c.fillStyle = gr; c.fillRect(0, GROUND, W, H - GROUND);
-    for (let i = 0; i < 260; i++) { // grit
-      const y = GROUND + rnd() * (H - GROUND), x = rnd() * W;
+    c.fillStyle = gr; c.fillRect(-MX, GROUND, W + 2 * MX, H - GROUND);
+    for (let i = 0; i < 340; i++) { // grit
+      const y = GROUND + rnd() * (H - GROUND), x = -MX + rnd() * (W + 2 * MX);
       c.fillStyle = rnd() < 0.5 ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.05)';
       c.fillRect(x, y, 2 + rnd() * 3 * scaleAt(y), 1 + rnd() * 2);
     }
@@ -382,7 +382,7 @@
 
   YD.drawBackdrop = (t, excitement) => {
     ctx.fillStyle = '#0d1119'; ctx.fillRect(-W, -H, W * 3, H * 3);
-    ctx.drawImage(bg, 0, 0, W, H);
+    ctx.drawImage(bg, -MX, 0, W + 2 * MX, H);
     for (const side of [0, 1]) {
       const sx = side ? W - UNIT_EDGE + 12 : 168;
       D.text('TYRES', sx + 65, 70, BK.FONT.display(34), '#1b1b1b');
