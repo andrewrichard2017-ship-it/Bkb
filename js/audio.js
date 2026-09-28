@@ -210,12 +210,12 @@
   // ---------- recorded clips (referee lines and the count) ----------
   // Decoded into Web Audio so they follow the sound setting and the master volume. If decoding isn't
   // possible (e.g. opened straight from disk) they fall back to a plain <audio> element.
-  const CLIPS = ['ref-real-boss', 'ref-started-it', 'ref-keep-it-going'];
+  const CLIPS = []; // referee lines go here too when there are recordings (see REF_LINES in game.js)
   for (let n = 1; n <= 10; n++) CLIPS.push(`count-${n}`);
   const clipBuf = {}, clipEl = {};
   A.loadClips = () => {
     for (const name of CLIPS) {
-      const url = `audio/${name}.mp3?v=2`; // bump ?v= (here and in index.html) when clips change, so browsers drop cached copies
+      const url = `audio/${name}.mp3?v=3`; // bump ?v= (here and in index.html) when clips change, so browsers drop cached copies
       if (!clipEl[name]) { try { clipEl[name] = new Audio(url); clipEl[name].preload = 'auto'; } catch (e) { /* optional */ } }
       if (!A.ctx || clipBuf[name]) continue;
       fetch(url).then(r => r.arrayBuffer()).then(b => A.ctx.decodeAudioData(b)).then(buf => { clipBuf[name] = buf; }).catch(() => {});

@@ -42,7 +42,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 ## How a fight works
 
 - **Walkout.** Each fighter comes out of his lit entrance arch and walks down the ramp to his corner under a spotlight, ducks through the ropes and parades while the announcer calls him. The referee brings them to the centre to touch gloves, but one of them may refuse. Tap to skip.
-- **The referee** chips in at random moments, at most twice a round, with recorded lines (`audio/`): "You're looking at a real boss here, I am the real boss", "It was you who started all this with the computers", "Come on lads, keep it going". The knockdown count (one to ten) is recorded too. 
+- **The referee** counts knockdowns with a recorded voice (`audio/count-1.mp3` to `count-10.mp3`). He can also chip in with recorded lines at random moments, at most twice a round, but there are none at the moment: add an mp3 to `audio/` and list it in `REF_LINES` (`js/game.js`) and `CLIPS` (`js/audio.js`). 
 
 - **Stamina.** Every punch costs stamina; missing costs more. A tired fighter punches slower and weaker and his hands drop.
 - **Defence.** Blocking stops most of a jab or cross, but hooks and uppercuts partly break the guard. Swaying costs 15 stamina (more than any punch) and always comes back with a punch: a cross off the lean-back, a hook out of the duck-and-roll. If the sway made him miss, that punch lands as a counter. Leaning back and ducking both avoid head shots; a duck-and-roll sets up a bigger counter but walks straight into an uppercut. Neither gets you out of the way of a body shot.

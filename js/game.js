@@ -181,20 +181,17 @@
   }
 
   // ---------- referee chatter ----------
-  // Recorded lines, at random moments, never more than twice a round.
-  const REF_LINES = [
-    ["You're looking at a real boss here. I am the real boss!", 'ref-real-boss'],
-    ['It was you who started all this with the computers!', 'ref-started-it'],
-    ['Come on lads, keep it going!', 'ref-keep-it-going'],
-  ];
+  // Recorded lines, at random moments, never more than twice a round. None at the moment: to add one, put the
+  // mp3 in audio/, add [text, name] here and the name to CLIPS in audio.js.
+  const REF_LINES = [];
   const REF_PER_ROUND = 2;
   function refChatter(dt) {
-    if (g.refTalks >= REF_PER_ROUND) return;
+    if (!REF_LINES.length || g.refTalks >= REF_PER_ROUND) return;
     g.refTalkT -= dt;
     if (g.refTalkT > 0 || g.p1.clinch) return;
     // don't repeat the last line straight away
     const lines = REF_LINES.filter(l => l[1] !== g.lastRefLine);
-    const clip = BK.pick(lines)[1];
+    const clip = BK.pick(lines.length ? lines : REF_LINES)[1];
     BK.audio.clip(clip);
     g.lastRefLine = clip; g.refTalks++;
     g.refTalkT = BK.rnd(18, 40);
