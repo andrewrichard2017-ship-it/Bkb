@@ -2,7 +2,7 @@
 // takes counters when it slips, and backs off when tired or hurt.
 (() => {
   'use strict';
-  const BK = window.BK;
+  const BK = window.BK, P = BK.PUNCHES;
   const { clamp } = BK;
 
   // sup: chance of letting the super go each time it's lined up (it waits a beat first, so you can sway it)
@@ -19,7 +19,7 @@
     reset() {
       this.lv = LEVELS[BK.settings.difficulty];
       this.cool = 1.2; this.blockT = 0; this.retreatT = 0; this.queue = []; this.sideStep = 0; this.sideT = 0;
-      this.seenPunch = null; this.superT = null;
+      this.seenPunch = null; this.superT = null; this.dodgeT = null;
     }
     input(dt) {
       const me = this.me, foe = this.foe, lv = this.lv;
@@ -53,9 +53,20 @@
         if (this.cool <= 0 && Math.random() < 0.5) { inp[BK.pick(['hook', 'upper', 'jab'])] = true; this.cool = BK.rnd(0.35, 0.8); }
         return inp;
       }
-      if (me.oof) { // out on its feet: stumble in and try to tie you up to clear its head
+      if (me.oof) { // out on its feet: stumble in and try to tie you up, lurching or covering up when you let go
         inp.mx = Math.sign(dx) * 0.8;
-        if (!me.grab && dist < 165 * me.fs && Math.abs(dz) < 0.12 && Math.random() < dt * lv.hold) inp.clinch = true;
+        const fp = foe.punch;
+        if (fp && fp !== this.seenPunch) {
+          this.seenPunch = fp;
+          // it spots a super more easily (it's slow and loaded up); a lurch is the only thing that beats one
+          if (dist < 260 * me.fs && Math.random() < lv.react + (P[fp.type].super ? 0.25 : 0)) {
+            // time the lurch to just before it lands (a super takes a while to arrive)
+            if (P[fp.type].super || Math.random() < 0.5) this.dodgeT = Math.max(0, fp.hitAt - fp.t - 0.14); else this.blockT = BK.rnd(0.4, 0.7);
+          }
+        }
+        if (this.dodgeT != null && (this.dodgeT -= dt) <= 0) { this.dodgeT = null; inp.slip = true; }
+        inp.block = this.blockT > 0 && !inp.slip && this.dodgeT == null;
+        if (!inp.slip && !inp.block && !me.grab && dist < 165 * me.fs && Math.abs(dz) < 0.12 && Math.random() < dt * lv.hold) inp.clinch = true;
         return inp;
       }
       this.clinchCool = (this.clinchCool || 0) - dt;

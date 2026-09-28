@@ -24,11 +24,12 @@
     const r = clamp(U * 0.08, 27, 50), gap = r * 2.25;
     const right = sc.w - sc.safe.r - 18 - r, bottom = sc.h - sc.safe.b - 16 - r;
     // buttons depend on the fighter: DUCK / SWAY / COMBO, no sway for Digger
-    const me = BK.game.p1, L = me ? me.look : {};
-    const swayLabel = L.sway === 'duck' ? 'DUCK' : L.sway === 'combo' ? 'COMBO' : 'SWAY';
+    // (out on his feet everyone gets a plain SWAY: a drunken dodge)
+    const me = BK.game.p1, L = me ? me.look : {}, rocked = !!(me && me.oof);
+    const swayLabel = rocked ? 'SWAY' : L.sway === 'duck' ? 'DUCK' : L.sway === 'combo' ? 'COMBO' : 'SWAY';
     const buttons = BTNS
-      .filter(b => !(b.id === 'slip' && L.sway === 'none') && !(b.id === 'clinch' && L.noClinch))
-      .map(b => ({ ...b, label: b.id === 'slip' ? swayLabel : b.label, weak: b.id === 'slip' && L.sway === 'combo' && me.stamina < 40, x: right - (3 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
+      .filter(b => !(b.id === 'slip' && L.sway === 'none' && !rocked) && !(b.id === 'clinch' && L.noClinch))
+      .map(b => ({ ...b, label: b.id === 'slip' ? swayLabel : b.label, weak: b.id === 'slip' && L.sway === 'combo' && !rocked && me.stamina < 40, x: right - (3 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
     if (BK.game.koReady()) buttons.push({ id: 'ko', label: L.super === 'duster' ? 'DUSTER' : 'SUPER', color: L.super === 'duster' ? '#8d8f96' : '#c98a1e', x: right - gap * 1.5, y: bottom - gap * 2.1, big: 1.3 });
     return {
       r,

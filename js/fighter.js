@@ -130,14 +130,14 @@
       if (this.slip) {
         this.slip.t += dt;
         if (this.slip.t >= this.slip.dur) { // come back with a punch: a cross off the lean, a hook out of the roll
-          const kind = this.slip.kind; this.slip = null;
-          if (!this.punch && this.stagger <= 0 && !this.clinch) this.throwPunch(kind === 'duck' ? 'hook' : 'cross', { auto: true });
+          const { kind, drunk } = this.slip; this.slip = null;
+          if (!drunk && !this.punch && this.stagger <= 0 && !this.clinch) this.throwPunch(kind === 'duck' ? 'hook' : 'cross', { auto: true });
         }
       }
       const staggered = this.stagger > 0;
       if (staggered) this.stagger -= dt;
 
-      this.blocking = !!input.block && !this.punch && !this.slip && !staggered && !this.oof;
+      this.blocking = !!input.block && !this.punch && !this.slip && !staggered;
 
       // movement
       let spd = this.punch ? 0.25 : this.blocking ? 0.45 : this.slip || this.grab ? 0.3 : 1;
@@ -157,8 +157,13 @@
       this.z = clamp(this.z + my * 0.62 * spd * dt, BK.Z_MIN, BK.Z_MAX);
       this.moving = mag * spd;
       this.walk += dt * 11 * this.moving * ((mx * this.dir) >= 0 ? 1 : -1);
-      if (this.oof) { // can't throw or sway, but he can try to grab hold and ride it out (a clinch clears his head)
-        this.buffer.length = 0; this.combo = []; this.slip = null;
+      if (this.oof) { // can't punch, but he can half-block, lurch out of the way (anyone, even Digger) or grab hold
+        this.buffer.length = 0; this.combo = [];
+        if (input.slip && !this.slip && !this.grab && !this.blocking && this.stamina > 4) {
+          // a drunken dodge: which way he lurches is half luck, and there's nothing coming back behind it
+          this.slip = { t: 0, dur: 0.55, kind: Math.random() < 0.5 ? 'duck' : 'lean', drunk: true };
+          this.stamina = Math.max(0, this.stamina - 10 * this.stamMul);
+        }
         if (this.grab) { this.grab.t += dt; if (this.grab.t >= this.grab.dur) { this.grab = null; this.resolveGrab(opp); } }
         else if (input.clinch && this.stamina > 3) { this.grab = { t: 0, dur: 0.45 }; this.stamina -= 3; this.grunt('effortSmall'); }
         return;
@@ -289,7 +294,7 @@
       const inRange = !opp.down && dx > 0 && dx < p.reach * this.fs && Math.abs(opp.z - this.z) < 0.12;
       if (!inRange) { this.whiff(); return; }
       const sl = opp.slip, ducking = sl && sl.kind === 'duck';
-      if (sl && !p.body && sl.t < (ducking ? 0.38 : 0.3)) {
+      if (sl && !p.body && sl.t < (sl.drunk ? 0.42 : ducking ? 0.38 : 0.3)) {
         if (ducking && p.type === 'upper') { // ran straight into it
           BK.fx.popup('CAUGHT DUCKING', opp.headX, opp.headY - 60, BK.PAL.brass, 36);
           opp.receive({ ...p, dmg: p.dmg * 1.4 }, this);
@@ -470,7 +475,7 @@
       // out on his feet: eased in as his legs go and out as he comes round, so it never snaps
       this.oofW += ((this.oof ? 1 : 0) - this.oofW) * Math.min(1, dt * (this.oof ? 4 : 1.8));
       if (this.oofW > 0.01) {
-        const UF = R.SUPER, w = this.oofW * (this.grab ? 0.35 : 1); // upper body plus the feet; lets the reach-in show
+        const UF = R.SUPER, w = this.oofW * (this.grab ? 0.35 : this.blocking ? 0.55 : 1); // upper body plus feet; a reach-in or a half guard shows through
         R.mix(this.tmp, PO.oofA, PO.oofB, (Math.sin(this.t * 2.3) + 1) / 2, UF);
         R.mixInto(T, this.tmp, w, UF);
         const lift = Math.pow(Math.max(0, Math.sin(this.t * 1.3)), 3) * 0.45 * w; // tries to get the hands up, can't hold them
@@ -478,6 +483,11 @@
         T.rot += Math.sin(this.t * 2.3) * 3.5 * w;
         const shuffle = Math.sin(this.t * 3.1) * 10 * Math.min(1, this.moving * 2) * w;
         T.ffX += shuffle; T.rfX -= shuffle;
+        if (this.slip && this.slip.drunk) { // the lurch, big and ragged, on top of the sway
+          const k = clamp(this.slip.t / this.slip.dur, 0, 1), s = Math.sin(PI * k), duck = this.slip.kind === 'duck';
+          R.mixInto(T, duck ? PO.duck : PO.slip, s, U);
+          T.rot += (duck ? 5 : -7) * s; T.px += (duck ? 6 : -14) * s;
+        }
       }
       if (this.stagger > 0) {
         R.mix(this.tmp, PO.staggerA, PO.staggerB, (Math.sin(this.t * 4.5) + 1) / 2, U);
