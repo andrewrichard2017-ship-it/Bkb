@@ -16,6 +16,7 @@
 
   WO.start = g => {
     const touch = Math.random() < 0.65;
+    const top = BK.arena.rampTop(); PATH[0] = [top[0], top[1], 0]; // this venue's entrance
     Object.assign(WO, { active: true, g, t: 0, touch, refuser: touch ? null : (Math.random() < 0.5 ? g.p1 : g.p2),
       said: {}, touched: false });
     for (const [f, side] of [[g.p1, 0], [g.p2, 1]]) {
@@ -149,7 +150,7 @@
   // spotlight on the fighter walking out (world space)
   WO.drawWorld = () => {
     const f = WO.walker();
-    if (!f) return;
+    if (!f || BK.arena.daylight()) return;
     const x = f.sx, y = f.sy - 120 * f.fs;
     const g = ctx.createRadialGradient(x, y, 90, x, y, 420);
     g.addColorStop(0, 'rgba(8,6,5,0)'); g.addColorStop(1, 'rgba(8,6,5,0.62)');

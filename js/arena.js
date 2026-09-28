@@ -248,13 +248,15 @@
 
   // ---------- venues ----------
   // Every venue draws the same layers over the same ring coordinates, so fighters, the walkout and the
-  // referee don't care which one is up. js/yard.js adds the tyre yard; BK.settings.arena picks one.
+  // referee don't care which one is up. js/yard.js adds the tyre yard, js/heap.js the heap; BK.settings.arena picks one.
   BK.VENUES = { hall: AR };
-  BK.ARENAS = [['hall', 'THE HALL'], ['yard', 'TYRE YARD']];
+  BK.ARENAS = [['hall', 'THE HALL'], ['yard', 'TYRE YARD'], ['heap', 'THE HEAP']];
   const venue = () => BK.VENUES[BK.settings.arena] || AR;
   BK.arena = {};
   for (const k of ['update', 'drawBackdrop', 'drawRing', 'drawBackRopes', 'drawFrontRopes', 'drawFrontRow', 'drawAtmosphere']) {
     BK.arena[k] = (...a) => venue()[k](...a);
   }
   BK.arena.hasRopes = () => venue().ropes !== false;
+  BK.arena.rampTop = () => venue().rampTop || BK.RAMP.top; // where the walkout starts (a venue can move it)
+  BK.arena.daylight = () => !!venue().daylight;             // no walkout spotlight out in the daylight
 })();

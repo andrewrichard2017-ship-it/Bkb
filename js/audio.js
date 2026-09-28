@@ -62,7 +62,7 @@
 
   A.update = dt => {
     A.excitement = Math.max(0, A.excitement - dt * 0.18);
-    const few = BK.settings.arena === 'yard' ? 0.45 : 1; // a handful of onlookers, not a full hall
+    const few = BK.settings.arena !== 'hall' ? 0.45 : 1; // a handful of onlookers, not a full hall
     if (A.crowd) A.crowd.gain.setTargetAtTime((0.05 + A.excitement * 0.28) * few, A.ctx.currentTime, 0.2);
   };
   A.excite = v => { A.excitement = Math.min(1, A.excitement + v); };
