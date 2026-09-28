@@ -84,7 +84,7 @@
   // Recovery between rounds for both fighters; the corner scene adds one boost on top.
   const recover = (f, hp) => {
     f.hp = Math.min(f.maxHp, f.hp + hp); f.ghostHp = f.hp;
-    f.stamina = 100; f.damage = Math.max(0, f.damage - 0.08);
+    f.stamina = f.maxSta; f.damage = Math.max(0, f.damage - 0.08);
   };
   g.workCorner = () => {
     if (g.twoPlayer) { // red corner picks, then blue
@@ -112,6 +112,47 @@
 
   // ---------- knockdowns ----------
   const idx = f => (f === g.p1 ? 0 : 1);
+  // At zero health it's a coin toss: down he goes, or he's out on his feet. Out on his feet he can't defend
+  // himself for OOF_LEN seconds (every hit bleeds him more) and then the referee steps in for a standing count.
+  // A super always puts him down, and so does a knockdown that would be the third of the round (a TKO).
+  const OOF_LEN = BK.OOF_LEN = 15;
+  g.onZeroHp = (victim, attacker, how) => {
+    if (g.state !== 'fight') return;
+    if (victim.oof) return; // already gone: he just soaks it up until the ref steps in
+    const superHit = BK.PUNCHES[how] && BK.PUNCHES[how].super;
+    if (!superHit && victim.kdRound < 2 && Math.random() < 0.5) outOnFeet(victim, attacker);
+    else g.onKnockdown(victim, attacker, how);
+  };
+  function outOnFeet(victim, attacker) {
+    victim.oof = { t: 0 };
+    victim.hp = 0; victim.punch = null; victim.blocking = false; victim.slip = null; victim.grab = null; victim.stagger = 0;
+    victim.maxSta = Math.max(50, victim.maxSta - 5); // costs him 5% of his stamina for the rest of the fight
+    victim.stamina = Math.min(victim.stamina, victim.maxSta);
+    victim.blood = Math.min(1, victim.blood + 0.1);
+    BK.fx.blood(victim.headX, victim.headY, attacker.dir, victim.sy, 2.5);
+    BK.fx.popup('OUT ON HIS FEET!', victim.sx, victim.sy - 330 * victim.fs, '#e2584f', 58);
+    victim.grunt('down', true);
+    g.slowmo = 0.7; BK.cam.shake = 18;
+    BK.audio.thump(); BK.audio.roar(1);
+    BK.vibrate([60, 40, 90], victim.side);
+  }
+  function standingCount(victim) {
+    const attacker = victim === g.p1 ? g.p2 : g.p1;
+    victim.kdTotal++; victim.kdRound++; attacker.stats.kd++; // scored as a knockdown
+    victim.punch = null; victim.blocking = false;
+    g.kd = { victim, attacker, t: 0, count: 0, next: 1.2, rising: false, resumeAt: 0, tko: false, getUpAt: cpuGetUpAt(victim), standing: true };
+    g.ref.victim = victim; g.ref.mode = 'count';
+    BK.fx.popup('STANDING COUNT', victim.sx, victim.sy - 330 * victim.fs, BK.PAL.bone, 56);
+    BK.audio.roar(0.6);
+    setState('knockdown');
+  }
+  // CPU: always beats the first two counts; after that it's a bonus
+  function cpuGetUpAt(victim) {
+    if (g.isHuman(victim)) return 99;
+    const later = [0.75, 0.5, 0.3, 0.15][Math.min(3, victim.kdTotal - 3)];
+    const chance = victim.kdTotal <= 2 ? 1 : later * [0.85, 1, 1.12][BK.settings.difficulty];
+    return Math.random() < chance ? Math.floor(BK.rnd(3, 9.99)) : 99;
+  }
   g.onKnockdown = (victim, attacker, how) => {
     if (g.state !== 'fight') return;
     const replay = { at: g.t + 1.25, tHit: g.t, v: idx(victim), a: idx(attacker) };
@@ -129,12 +170,7 @@
     BK.fx.popup(tko ? 'THIRD KNOCKDOWN!' : 'DOWN!', victim.sx, victim.sy - 330 * victim.fs, BK.PAL.blood, 64);
     g.ref.victim = victim;
     if (tko) g.ref.waveOff(); else g.ref.mode = 'count';
-    if (!g.isHuman(victim)) {
-      // CPU: always beats the first two counts; after that it's a bonus
-      const later = [0.75, 0.5, 0.3, 0.15][Math.min(3, victim.kdTotal - 3)];
-      const chance = victim.kdTotal <= 2 ? 1 : later * [0.85, 1, 1.12][BK.settings.difficulty];
-      g.kd.getUpAt = Math.random() < chance ? Math.floor(BK.rnd(3, 9.99)) : 99;
-    }
+    g.kd.getUpAt = cpuGetUpAt(victim);
     setState('knockdown');
   };
   function rise() {
@@ -142,7 +178,8 @@
     kd.rising = true; kd.resumeAt = kd.t + 1.7;
     v.getUp(Math.max(20, 58 - 13 * (v.kdTotal - 1)));
     BK.audio.roar(0.5);
-    BK.fx.popup(`UP AT ${kd.count}`, v.sx, v.sy - 330 * v.fs, BK.PAL.brass, 54);
+    if (kd.standing) { v.oof = null; v.rising = false; } // shakes his head clear and puts his hands up
+    BK.fx.popup(kd.standing ? `CLEARS HIS HEAD AT ${kd.count}` : `UP AT ${kd.count}`, v.sx, v.sy - 330 * v.fs, BK.PAL.brass, 54);
   }
   function updateKnockdown(dt) {
     const kd = g.kd, v = kd.victim, a = kd.attacker;
@@ -159,7 +196,10 @@
         if (!BK.audio.clip(`count-${kd.count}`)) BK.audio.say(String(kd.count));
         if (kd.count === 1 && g.isHuman(v)) BK.getup.start(v, rise);
         if (!g.isHuman(v) && kd.count === kd.getUpAt) rise();
-        if (kd.count >= 10 && !kd.rising) { stoppage('KNOCKOUT', 'Counted out'); return; }
+        if (kd.count >= 10 && !kd.rising) {
+          if (kd.standing) { v.oof = null; v.knockDown(); stoppage('KNOCKOUT', 'Counted out on his feet'); return; } // and down he goes
+          stoppage('KNOCKOUT', 'Counted out'); return;
+        }
       }
     } else if (kd.t >= kd.resumeAt) {
       BK.getup.stop();
@@ -344,6 +384,8 @@
         if (p1.clinch) updateClinch(dt); else separate(p1, p2);
         ref.update(dt, p1, p2);
         if (g.state !== 'fight') break;
+        for (const f of [p1, p2]) if (f.oof && (f.oof.t += dt) >= OOF_LEN) { standingCount(f); break; }
+        if (g.state !== 'fight') break;
         g.clock -= dt;
         refChatter(dt);
         if (g.clock <= 10 && !g.clapped) { g.clapped = true; BK.audio.tick(false); setTimeout(() => BK.audio.tick(false), 150); setTimeout(() => BK.audio.tick(false), 300); }
@@ -523,8 +565,8 @@
       if (s === 'knockdown' && g.kd) {
         const kd = g.kd;
         if (kd.tko) hud.banner('STOPPED!', 'THE REFEREE WAVES IT OFF', Math.min(1, kd.t * 3), '#e2584f', 130);
-        else if (kd.count > 0 && !kd.rising) hud.count(kd.count, g.isHuman(kd.victim) ? null : `${kd.victim.look.short} IS DOWN`);
-        else if (kd.count === 0) hud.banner('KNOCKDOWN!', null, Math.min(1, kd.t * 4), '#e2584f', 120);
+        else if (kd.count > 0 && !kd.rising) hud.count(kd.count, kd.standing ? 'STANDING COUNT' : g.isHuman(kd.victim) ? null : `${kd.victim.look.short} IS DOWN`);
+        else if (kd.count === 0) hud.banner(kd.standing ? 'STANDING COUNT' : 'KNOCKDOWN!', kd.standing ? 'THE REFEREE STEPS IN' : null, Math.min(1, kd.t * 4), '#e2584f', 120);
         BK.getup.draw();
       }
     }

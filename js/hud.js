@@ -128,6 +128,7 @@
     // stamina
     const sw = bw * 0.72, sx = left ? x : x + bw - sw, sy = y + h + 8;
     D.slant(sx, sy, sw, 10, sk * 0.3); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fill();
+    if (f.maxSta < 100) { const lw = sw * (100 - f.maxSta) / 100; D.slant(left ? sx + sw - lw : sx, sy, lw, 10, sk * 0.3); ctx.fillStyle = '#3a1113'; ctx.fill(); } // gone for this fight
     const sv = sw * f.stamina / 100;
     D.slant(left ? sx : sx + sw - sv, sy, sv, 10, sk * 0.3);
     ctx.fillStyle = f.stamina < 25 ? '#c98a2e' : PAL.teal; ctx.fill();
@@ -159,6 +160,15 @@
       const who = g.twoPlayer ? `${f.side ? 'BLUE' : 'RED'}: ` : '';
       if (g.isHuman(f)) BK.strokeText(`${who}HE'S OUT ON HIS FEET  ·  ${BK.superName(f.look)} READY`, W / 2, 210 + f.side * 50, F.display(40), PAL.brass, 8);
       else BK.strokeText(`YOU'RE OUT ON YOUR FEET  ·  WATCH THE ${BK.superName(f.look)}!`, W / 2, 210 + f.side * 50, F.display(40), '#e2584f', 8); // the CPU's is loaded: sway it
+      ctx.restore();
+    }
+    // out on his feet: how long until the referee steps in
+    for (const f of [g.p1, g.p2]) {
+      if (!f.oof || g.state !== 'fight') continue;
+      const left = Math.max(1, Math.ceil(BK.OOF_LEN - f.oof.t)), a = 0.7 + Math.sin(performance.now() / 90) * 0.3;
+      const msg = g.isHuman(f) && !g.twoPlayer ? `OUT ON YOUR FEET  ·  HANG ON  ${left}` : `${f.look.short} IS OUT ON HIS FEET  ·  ${left}`;
+      ctx.save(); ctx.globalAlpha = a;
+      BK.strokeText(msg, W / 2, 210 + f.side * 50, F.display(40), '#e2584f', 8);
       ctx.restore();
     }
     // pause button

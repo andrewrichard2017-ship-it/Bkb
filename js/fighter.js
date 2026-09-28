@@ -26,7 +26,7 @@
     }
 
     resetFight() {
-      this.hp = 100; this.maxHp = 100; this.ghostHp = 100; this.stamina = 100;
+      this.hp = 100; this.maxHp = 100; this.ghostHp = 100; this.stamina = 100; this.maxSta = 100;
       this.damage = 0; this.kdTotal = 0; this.ko = false;
       this.stats = { thrown: 0, landed: 0, pthrown: 0, planded: 0, counters: 0, kd: 0 };
       this.sweat = 0; this.blood = 0; // build up over the whole fight
@@ -47,6 +47,7 @@
       this.celebrate = false; this.regenDelay = 0; this.dripT = 0;
       this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false;
       this.buffer = []; this.chainHits = 0;
+      this.oof = null; // out on his feet: { t } while it lasts
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make(); this.tmp2 = BK.rig.make();
@@ -116,9 +117,9 @@
 
       // recovery
       const bodyF = clamp(1 - this.bodyDmg / 220, 0.5, 1);
-      if (!this.punch && !this.slip && !this.combo.length) this.stamina = Math.min(100, this.stamina + (this.blocking ? 6 : 15) / this.stamMul * bodyF * (this.look.regen || 1) * dt);
+      if (!this.punch && !this.slip && !this.combo.length) this.stamina = Math.min(this.maxSta, this.stamina + (this.blocking ? 6 : 15) / this.stamMul * bodyF * (this.look.regen || 1) * dt);
       this.regenDelay -= dt;
-      if (this.regenDelay <= 0 && this.hp < this.maxHp) this.hp = Math.min(this.maxHp, this.hp + 0.5 * dt);
+      if (this.regenDelay <= 0 && this.hp < this.maxHp && !this.oof) this.hp = Math.min(this.maxHp, this.hp + 0.5 * dt);
 
       if (this.clinch) { this.clinchLogic(dt, input, opp); return; }
       if (this.stun > 0) { this.stun -= dt; this.punch = null; this.blocking = false; this.slip = null; this.grab = null; this.combo = []; this.buffer = []; this.moving = 0; return; }
@@ -136,7 +137,7 @@
       const staggered = this.stagger > 0;
       if (staggered) this.stagger -= dt;
 
-      this.blocking = !!input.block && !this.punch && !this.slip && !staggered;
+      this.blocking = !!input.block && !this.punch && !this.slip && !staggered && !this.oof;
 
       // movement
       let spd = this.punch ? 0.25 : this.blocking ? 0.45 : this.slip || this.grab ? 0.3 : 1;
@@ -145,12 +146,18 @@
       spd *= (0.9 + 0.1 * this.speedMul) * (this.look.move || 1);
       let mx = input.mx || 0, my = input.my || 0;
       if (staggered) { mx += Math.sin(this.t * 5) * 0.5; my += Math.cos(this.t * 4) * 0.4; }
+      if (this.oof) { // out on his feet: legs gone, every step lurches somewhere he didn't mean
+        spd *= 0.4;
+        mx = mx * 0.5 + Math.sin(this.t * 2.1 + Math.sin(this.t * 0.7) * 2) * 0.9;
+        my = my * 0.5 + Math.cos(this.t * 1.6) * 0.5;
+      }
       const mag = Math.min(1, Math.hypot(mx, my));
       const w = BK.ringR(this.z) - BK.ringL(this.z);
       this.u = clamp(this.u + mx * 330 * spd * dt / w, BK.U_MIN, BK.U_MAX);
       this.z = clamp(this.z + my * 0.62 * spd * dt, BK.Z_MIN, BK.Z_MAX);
       this.moving = mag * spd;
       this.walk += dt * 11 * this.moving * ((mx * this.dir) >= 0 ? 1 : -1);
+      if (this.oof) { this.buffer.length = 0; this.combo = []; this.slip = null; this.grab = null; return; } // can't throw, sway or grab
 
       // slip
       const sway = this.look.sway;
@@ -192,7 +199,7 @@
     }
 
     // Super punch is on offer when the opponent is under 8% health (Digger's only once a round).
-    superAvailable(opp) { return opp.hp < 8 && !opp.down && !(this.look.superOnce && this.superUsed); }
+    superAvailable(opp) { return opp.hp < 8 && !opp.down && !opp.oof && !(this.look.superOnce && this.superUsed); }
 
     // Free, or far enough through the current punch to chain the next one.
     // Switching hands chains straight after the impact; the same hand needs more of the recovery.
@@ -221,7 +228,7 @@
       this.slip = null; this.grab = null; this.moving = 0; this.stun = 0;
       this.blocking = !!input.block && !this.punch; // tie his arms up
       if (c.role === 'holder') { // leaning on him buys time
-        this.stamina = Math.min(100, this.stamina + 14 * dt);
+        this.stamina = Math.min(this.maxSta, this.stamina + 14 * dt);
         this.stagger = Math.max(0, this.stagger - dt * 1.5);
       } else this.stamina = Math.max(0, this.stamina - 3 * dt);
       const want = ['jab', 'cross', 'hook', 'upper'].find(k => input[k]);
@@ -231,7 +238,7 @@
 
     resolveGrab(opp) {
       const dx = (opp.sx - this.sx) * this.dir;
-      if (opp.down || opp.clinch || dx <= 0 || dx > 175 * this.fs || Math.abs(opp.z - this.z) > 0.14) { BK.audio.whoosh(); return; }
+      if (opp.down || opp.clinch || opp.oof || dx <= 0 || dx > 175 * this.fs || Math.abs(opp.z - this.z) > 0.14) { BK.audio.whoosh(); return; }
       if (opp.slip && opp.slip.t < 0.35) {
         opp.counterWindow = 0.8; this.stun = 0.3;
         BK.fx.popup('SWAYED', opp.headX, opp.headY - 40, BK.PAL.bone, 36);
@@ -379,7 +386,11 @@
           BK.audio.roar(0.3);
         }
       }
-      if (this.hp <= 0 && !p.clinch) BK.game.onKnockdown(this, from, p.type);
+      if (this.oof && !blocked) { // nothing left to stop it: every clean one opens him up more
+        this.blood = Math.min(1, this.blood + 0.03);
+        if (!p.body) BK.fx.blood(this.headX, this.headY + 10 * this.fs, from.dir, this.sy, 1.4);
+      }
+      if (this.hp <= 0 && !p.clinch) BK.game.onZeroHp(this, from, p.type);
     }
 
     // Cuts open as the face takes damage; each one keeps bleeding for the rest of the fight.
@@ -414,7 +425,7 @@
       this.maxHp = Math.max(45, this.maxHp - 12);
       this.hp = Math.min(this.maxHp, hp);
       this.ghostHp = this.hp;
-      this.stamina = Math.max(this.stamina, 55);
+      this.stamina = Math.min(this.maxSta, Math.max(this.stamina, 55));
       this.stagger = 0.8;
     }
 
@@ -450,6 +461,15 @@
           const w = this.punchExt(), front = P[this.punch.type].hand === 'front';
           T[front ? 'fY' : 'rY'] += 58 * w; T.py += 12 * w; T.lean += 8 * w;
         }
+      }
+      if (this.oof) {
+        const UF = R.SUPER; // upper body plus the feet
+        R.mix(this.tmp, PO.oofA, PO.oofB, (Math.sin(this.t * 2.3) + 1) / 2, UF);
+        R.mixInto(T, this.tmp, 1, UF);
+        const lift = Math.pow(Math.max(0, Math.sin(this.t * 1.3)), 3) * 0.45; // tries to get the hands up, can't hold them
+        T.fY += (PO.guard.fY - T.fY) * lift; T.rY += (PO.guard.rY - T.rY) * lift;
+        T.rot = Math.sin(this.t * 2.3) * 3.5; T.rotX = 0;
+        T.ffX += Math.sin(this.t * 3.1) * 10 * Math.min(1, this.moving * 2); T.rfX -= Math.sin(this.t * 3.1) * 10 * Math.min(1, this.moving * 2);
       }
       if (this.stagger > 0) {
         R.mix(this.tmp, PO.staggerA, PO.staggerB, (Math.sin(this.t * 4.5) + 1) / 2, U);

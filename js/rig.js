@@ -50,6 +50,9 @@
   def('hookX', { fX: 76, fY: -110, fB: -0.85, fZ: 1.35, lean: 15, px: 8, head: 6, rX: 34, rY: -108 });
   def('upperA', { rX: 8, rY: -46, rB: 1, py: 18, lean: -9, px: -6, head: -4 });
   def('upperX', { rX: 74, rY: -118, rB: 1, rZ: 1.25, rsh: 12, py: -4, lean: 8, px: 10, head: -8 });
+  // out on his feet: hands hanging, head rolling, knees going, swaying from one side to the other
+  def('oofA', { lean: -12, head: -24, px: -12, py: 18, fX: 36, fY: -30, fB: 1, rX: 14, rY: -26, rB: 1, ffX: 26, rfX: -40 });
+  def('oofB', { lean: 14, head: 20, px: 8, py: 22, fX: 42, fY: -36, fB: 1, rX: 22, rY: -30, rB: 1, ffX: 40, rfX: -26 });
   // body shot reaction and the clinch
   def('hurtBody', { lean: 24, head: 18, px: -6, py: 14, fX: 40, fY: -44, fB: 1, rX: 26, rY: -38, rB: 1 });
   def('grab', { fX: 100, fY: -96, fB: 0.3, rX: 92, rY: -86, rB: 0.3, lean: 18, px: 10, head: 8 });
