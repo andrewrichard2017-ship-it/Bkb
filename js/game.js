@@ -178,7 +178,7 @@
       if (kd.t >= kd.next) {
         kd.next += 1.05; kd.count++;
         g.ref.countGesture();
-        if (!BK.audio.clip(`count-${kd.count}`)) BK.audio.say(String(kd.count));
+        if (!BK.audio.clip(`count-${kd.count}`)) BK.audio.sayCount(kd.count);
         if (kd.count === 1 && g.isHuman(v)) BK.getup.start(v, rise);
         if (!g.isHuman(v) && kd.count === kd.getUpAt) rise();
         if (kd.count >= 10 && !kd.rising) {

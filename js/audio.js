@@ -219,7 +219,7 @@
       if (!vs.length) return null;
       const score = v => (/natural|neural|enhanced|premium|online/i.test(v.name) ? 5 : 0) + (/google/i.test(v.name) ? 3 : 0)
         + (/male|daniel|george|arthur|oliver|james|david|guy|ryan|thomas|liam|connor/i.test(v.name) && !/female/i.test(v.name) ? 3 : 0)
-        + (/en-(IE|GB)/i.test(v.lang) ? 2 : 0) - (/female|samantha|karen|victoria|zira|susan/i.test(v.name) ? 3 : 0) - (v.localService === false ? 0 : 0);
+        + (/en-IE/i.test(v.lang) ? 6 : /en-GB/i.test(v.lang) ? 2 : 0) - (/female|samantha|karen|victoria|zira|susan/i.test(v.name) ? 3 : 0) - (v.localService === false ? 0 : 0);
       bestVoice = vs.slice().sort((a, b) => score(b) - score(a))[0];
     } catch (e) { bestVoice = null; }
     return bestVoice;
@@ -238,6 +238,8 @@
     } catch (e) { /* speech is optional */ }
   }
   A.say = text => speak(text, 1.0, 0.85);
+  // the count, if a recorded clip is missing: low, hard and Irish where the phone has an Irish voice
+  A.sayCount = n => speak(String(n), 0.92, 0.45, true);
   // ---------- recorded clips (referee lines and the count) ----------
   // Decoded into Web Audio so they follow the sound setting and the master volume. If decoding isn't
   // possible (e.g. opened straight from disk) they fall back to a plain <audio> element.
@@ -246,7 +248,7 @@
   const clipBuf = {}, clipEl = {};
   A.loadClips = () => {
     for (const name of CLIPS) {
-      const url = `audio/${name}.mp3?v=3`; // bump ?v= (here and in index.html) when clips change, so browsers drop cached copies
+      const url = `audio/${name}.mp3?v=4`; // bump ?v= (here and in index.html) when clips change, so browsers drop cached copies
       if (!clipEl[name]) { try { clipEl[name] = new Audio(url); clipEl[name].preload = 'auto'; } catch (e) { /* optional */ } }
       if (!A.ctx || clipBuf[name]) continue;
       fetch(url).then(r => r.arrayBuffer()).then(b => A.ctx.decodeAudioData(b)).then(buf => { clipBuf[name] = buf; }).catch(() => {});
