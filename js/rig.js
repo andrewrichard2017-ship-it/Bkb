@@ -53,6 +53,9 @@
   // dazed on his feet (standing count): hands hanging, head rolling, knees going, swaying side to side
   def('oofA', { lean: -12, head: -24, px: -12, py: 18, fX: 36, fY: -30, fB: 1, rX: 14, rY: -26, rB: 1, ffX: 26, rfX: -40 });
   def('oofB', { lean: 14, head: 20, px: 8, py: 22, fX: 42, fY: -36, fB: 1, rX: 22, rY: -30, rB: 1, ffX: 40, rfX: -26 });
+  // Dessie's spit and eye rake
+  def('spitA', { lean: 16, head: 18, px: 8, py: 6, fX: 40, fY: -104, rX: 24, rY: -100 });
+  def('rakeX', { fX: 112, fY: -122, fB: -0.5, fZ: 1.15, lean: 20, px: 14, head: 10, rX: 20, rY: -98 });
   // body shot reaction and the clinch
   def('hurtBody', { lean: 24, head: 18, px: -6, py: 14, fX: 40, fY: -44, fB: 1, rX: 26, rY: -38, rB: 1 });
   def('grab', { fX: 100, fY: -96, fB: 0.3, rX: 92, rY: -86, rB: 0.3, lean: 18, px: 10, head: 8 });
@@ -82,6 +85,10 @@
   def('supermanA', { rX: 22, rY: -98, rB: 0.8, rsh: -8, lean: -4, px: -6, py: 30, head: 0, fX: 48, fY: -110, ffX: 30, rfX: -12, rfY: -34 });
   def('supermanM', { rX: 30, rY: -118, rB: 0.6, rsh: 4, lean: 10, px: 10, py: -34, head: 2, fX: 40, fY: -104, ffX: 44, ffY: -26, rfX: -72, rfY: -44 });
   def('supermanX', { rX: 110, rY: -116, rB: 0.05, rZ: 1.25, rsh: 24, lean: 20, px: 30, py: -8, head: 6, fX: 18, fY: -96, fB: 1, ffX: 58, ffY: -6, rfX: -80, rfY: -30 });
+  // Scalding kettle (Dessie): the kettle comes up from the hip, swings over and tips out in his face.
+  def('kettleA', { rX: -24, rY: -40, rB: 0.9, rZ: 1, rsh: -14, lean: -10, px: -12, py: 14, head: -4, fX: 44, fY: -110, ffX: 30, rfX: -46 });
+  def('kettleM', { rX: 10, rY: -150, rB: 0.6, rZ: 1.1, rsh: 6, lean: 2, px: 0, py: 6, head: 0, fX: 40, fY: -106, ffX: 36, rfX: -42, rTop: 1 });
+  def('kettleX', { rX: 104, rY: -126, rB: 0.1, rZ: 1.15, rsh: 26, lean: 22, px: 22, py: 8, head: 8, fX: 26, fY: -100, fB: 1, ffX: 52, rfX: -40, rfY: -6, rTop: 1 });
   // Duster cross (Digger): brass knuckles loaded right back by the cheek, then everything behind a straight right.
   def('dusterA', { rX: -30, rY: -104, rB: 0.9, rZ: 1, rsh: -18, lean: -16, px: -18, py: 14, head: -4, fX: 50, fY: -112, ffX: 30, rfX: -48 });
   def('dusterX', { rX: 118, rY: -112, rB: 0.04, rZ: 1.35, rsh: 30, lean: 26, px: 26, py: 10, head: 8, fX: 26, fY: -110, fB: 0.9, ffX: 60, rfX: -40, rfY: -8 });
@@ -514,8 +521,15 @@
       else { ctx.lineTo(37, -22); ctx.quadraticCurveTo(35, -18, 29, -19); }
       ctx.closePath();
     }, L.skin, { outline: 3, noRim: true });
+    if (st.scald) { // scalded: angry red down the near side of the face and neck, blistering
+      ctx.fillStyle = 'rgba(215,70,50,0.5)'; ctx.beginPath(); ctx.moveTo(6, -56); ctx.quadraticCurveTo(34, -50, 36, -20); ctx.quadraticCurveTo(34, 4, 20, 10); ctx.quadraticCurveTo(10, -10, 6, -56); ctx.closePath(); ctx.fill();
+      ctx.fillStyle = 'rgba(255,225,200,0.6)';
+      for (const [x, y, r] of [[24, -40, 2.5], [30, -26, 2], [20, -12, 2.2], [28, -4, 1.6], [14, -30, 1.5]]) { ctx.beginPath(); ctx.arc(x, y, r, 0, PI * 2); ctx.fill(); }
+    }
+    if (st.spitOn) { ctx.fillStyle = 'rgba(190,225,120,0.75)'; ctx.beginPath(); ctx.ellipse(21, -31, 6, 4.5, 0.3, 0, PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(24, -22, 2, 5, 0.2, 0, PI * 2); ctx.fill(); }
     // eye
-    const swollen = st.damage > 0.8, blink = st.blink;
+    const swollen = st.damage > 0.8, blink = st.blink || st.blind;
+    if (st.blind && !st.dazed) { ctx.fillStyle = 'rgba(200,70,70,0.5)'; ctx.beginPath(); ctx.ellipse(19, -33, 9, 7, 0, 0, PI * 2); ctx.fill(); } // raked raw
     if (st.dazed && !swollen) {
       line(15, -37, 22, -30, INK, 3); line(22, -37, 15, -30, INK, 3);
     } else if (swollen || blink) {
@@ -580,6 +594,19 @@
         ctx.strokeStyle = 'rgba(120,115,105,0.35)'; ctx.lineWidth = 2;
         for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(18 - i * 7, -60 + i); ctx.quadraticCurveTo(4 - i * 6, -58, -12 - i * 3, -40 + i * 3); ctx.stroke(); }
       } });
+    } else if (L.head === 'curls') {
+      // tight dark curls close to the scalp, a ragged fringe over the brow
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-21, -14);
+        ctx.bezierCurveTo(-33, -34, -26, -64, -2, -66);
+        ctx.quadraticCurveTo(16, -68, 26, -56); ctx.quadraticCurveTo(22, -50, 14, -50);
+        ctx.quadraticCurveTo(4, -48, 0, -40); ctx.quadraticCurveTo(-3, -28, -1, -20);
+        ctx.quadraticCurveTo(-10, -12, -21, -14); ctx.closePath();
+      }, L.hair, { outline: 3.5, detail: () => {
+        ctx.fillStyle = 'rgba(255,255,255,0.13)'; ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 1.2;
+        const pts = [[-16, -30], [-12, -46], [-2, -58], [10, -60], [20, -54], [-20, -20], [-6, -34], [4, -46], [16, -46], [-10, -56], [8, -54], [22, -60]];
+        for (const [x, y] of pts) { ctx.beginPath(); ctx.arc(x, y, 4.2, 0, PI * 2); ctx.stroke(); ctx.beginPath(); ctx.arc(x - 1, y - 1, 2, 0, PI * 2); ctx.fill(); }
+      } });
     } else if (L.head === 'grey') {
       cel(() => {
         ctx.beginPath(); ctx.moveTo(-20, -16); ctx.bezierCurveTo(-30, -34, -24, -60, -2, -62);
@@ -587,6 +614,16 @@
         ctx.quadraticCurveTo(-2, -30, 0, -22); ctx.quadraticCurveTo(-10, -14, -20, -16); ctx.closePath();
       }, '#b9b5ae', { outline: 3 });
       line(22, -15, 30, -16, '#9a958d', 4); // moustache
+    }
+    if (L.stubble) { // a few days of stubble over the jaw and lip
+      ctx.fillStyle = 'rgba(40,28,20,0.4)';
+      for (let i = 0; i < 46; i++) ctx.fillRect(4 + (i * 29) % 30, -22 + (i * 17) % 32, 1.4, 1.4);
+    }
+    if (L.dirty) { // muck on the cheek and brow
+      ctx.fillStyle = 'rgba(60,44,30,0.28)';
+      ctx.beginPath(); ctx.ellipse(18, -30, 8, 5, 0.3, 0, PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(2, -50, 6, 3, -0.2, 0, PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(26, -8, 4, 3, 0, 0, PI * 2); ctx.fill();
     }
     if (L.beard === 'long') {
       // long black beard from the ears, over the jaw, down onto the chest
@@ -644,7 +681,10 @@
         cel(rrect(len * 0.72, -13, 11, 26, 4), BK.shade(L.topColor, 0.72), { outline: 3 });
         ctx.save(); ctx.translate(len * 0.78, 0); cel(limbPath(len * 0.22, 15, 14), skin, { outline: 3 }); ctx.restore();
       } else {
-        cel(limbPath(len, 22 * lw, 15 * lw, 4 * lw, 3, 0.25), skin, { detail: () => line(len * 0.2, -3, len * 0.7, -2, 'rgba(255,235,210,0.25)', 3) });
+        cel(limbPath(len, 22 * lw, 15 * lw, 4 * lw, 3, 0.25), skin, { detail: () => {
+          line(len * 0.2, -3, len * 0.7, -2, 'rgba(255,235,210,0.25)', 3);
+          if (!front && st.scald) { ctx.fillStyle = 'rgba(215,70,50,0.55)'; ctx.beginPath(); ctx.ellipse(len * 0.55, 0, len * 0.4, 8, 0, 0, PI * 2); ctx.fill(); }
+        } });
       }
       ctx.save(); ctx.translate(len, 0); ctx.scale(z, z);
       drawFist(L, front, st);
@@ -658,7 +698,20 @@
     ctx.fillStyle = `rgba(140,14,22,${Math.min(0.75, b)})`;
     for (const [x, y, r] of [[18, -6, 5], [20, 4, 4], [10, -10, 3.5], [14, 9, 3]].slice(0, 1 + Math.floor(b * 4))) { ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0.3, 0, PI * 2); ctx.fill(); }
   }
+  // A battered tin kettle held by the handle, spout forward, for Dessie's super. Drawn in fist space.
+  function drawKettle(st) {
+    ctx.save(); ctx.translate(6, 8); ctx.rotate(-0.35 - (st.kettleTip || 0) * 1.1);
+    cel(() => { ctx.beginPath(); ctx.moveTo(-20, 0); ctx.quadraticCurveTo(-24, -26, -4, -30); ctx.lineTo(16, -30); ctx.quadraticCurveTo(30, -26, 26, 0); ctx.quadraticCurveTo(4, 6, -20, 0); ctx.closePath(); }, '#8b9096', { outline: 3.5, detail: () => {
+      ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(-18, -8, 42, 3); ctx.fillStyle = 'rgba(255,255,255,0.22)'; ctx.fillRect(-14, -26, 6, 18);
+      ctx.fillStyle = 'rgba(90,60,40,0.4)'; ctx.beginPath(); ctx.ellipse(12, -6, 6, 4, 0, 0, PI * 2); ctx.fill(); // rust
+    } });
+    cel(() => { ctx.beginPath(); ctx.moveTo(24, -22); ctx.quadraticCurveTo(38, -26, 44, -40); ctx.lineTo(50, -38); ctx.quadraticCurveTo(42, -20, 26, -14); ctx.closePath(); }, '#7d8288', { outline: 3 }); // spout
+    cel(() => { ctx.beginPath(); ctx.moveTo(-6, -30); ctx.quadraticCurveTo(0, -50, 14, -30); ctx.lineTo(10, -30); ctx.quadraticCurveTo(2, -42, -2, -30); ctx.closePath(); }, '#2a2a2c', { outline: 3 }); // handle
+    cel(ellipse(2, -31, 5, 3), '#2a2a2c', { outline: 2.5 }); // lid knob
+    ctx.restore();
+  }
   function drawFist(L, front, st) {
+    if (!front && st.kettle) { drawKettle(st); return; }
     const fist = () => {
       ctx.beginPath(); ctx.moveTo(-6, -13);
       ctx.quadraticCurveTo(14, -17, 22, -10); ctx.quadraticCurveTo(28, 0, 22, 11);

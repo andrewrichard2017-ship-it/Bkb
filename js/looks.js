@@ -78,10 +78,28 @@
       tape: { AGE: '38', HEIGHT: '6\'1"', WEIGHT: '17st 0lb', REACH: '75"', RECORD: '22-3 (20 KO)', STYLE: 'Knockout artist' },
       attr: { POWER: 99, SPEED: 60, CHIN: 84, STAMINA: 58 },
     },
+    dessie: {
+      name: 'DESSIE', short: 'DESSIE', voice: { pitch: 112, formant: 0.97, breath: 0.5 },
+      skin: '#d6a483', skinShade: '#b3825f', hair: '#2a1d14',
+      top: 'hoodie', topColor: '#6a6560', topShade: '#4e4a45',
+      // years of muck on the hoodie
+      stains: [[-12, -52, 12, 8, 'rgba(40,30,22,0.55)'], [16, -34, 9, 11, 'rgba(60,44,28,0.5)'], [-2, -16, 14, 6, 'rgba(30,24,18,0.5)'],
+               [20, -62, 6, 5, 'rgba(90,60,30,0.5)'], [-20, -28, 7, 9, 'rgba(50,38,26,0.45)']],
+      pants: '#4b4741', pantsShade: '#36332e', pantsStripe: null,
+      boots: '#5c4a3a', bootSole: '#2b2320',
+      wraps: null, wrapShade: null,
+      sleeves: 'long', legs: 'trousers', shoes: 'boots', fist: 'bare', head: 'curls', stubble: true, dirty: true,
+      // SWAY is a spit in the eye and a rake across it (blinds him for a moment); super is the scalding kettle,
+      // which takes the other man's right hand (cross and uppercut) away for a while. Heavy stumbling gait.
+      sway: 'spit', super: 'kettle', superOnce: true, move: 0.9, stumble: true, regen: 1.15,
+      alt: { topColor: '#4a5560', topShade: '#353d46', pants: '#2c2c30', pantsShade: '#1f1f22' },
+      tape: { AGE: '31', HEIGHT: '5\'10"', WEIGHT: '13st 9lb', REACH: '71"', RECORD: '14-5 (6 KO)', STYLE: 'Dirty fighter' },
+      attr: { POWER: 74, SPEED: 70, CHIN: 88, STAMINA: 90 },
+    },
   };
-  BK.FIGHTER_ORDER = ['michael', 'johnjoe', 'bigjoe', 'skinny', 'digger'];
+  BK.FIGHTER_ORDER = ['michael', 'johnjoe', 'bigjoe', 'skinny', 'digger', 'dessie'];
   // Tournament running order (your own fighter is skipped); Digger is the final boss.
-  BK.TOUR_ORDER = ['skinny', 'johnjoe', 'michael', 'bigjoe', 'digger'];
+  BK.TOUR_ORDER = ['skinny', 'johnjoe', 'dessie', 'michael', 'bigjoe', 'digger'];
   BK.CORNERS = [
     { corner: 'RED CORNER', color: '#b3202a' },
     { corner: 'BLUE CORNER', color: '#23386b' },
@@ -118,6 +136,8 @@
     overhand: { label: 'SLEDGEHAMMER',   hand: 'rear', dur: 1.0,  hitAt: 0.58, dmg: 40, reach: 190, cost: 16, stun: 0.6,  snap: 0.95, through: 1.0, power: true, super: true, aim: 0.9,  aimY: -6 },
     wrecker:  { label: 'WRECKING BALL',  hand: 'rear', dur: 1.05, hitAt: 0.6,  dmg: 42, reach: 170, cost: 16, stun: 0.65, snap: 1.0,  through: 1.0, power: true, super: true, aim: 0.74, aimY: 0 },
     superman: { label: 'SUPERMAN PUNCH', hand: 'rear', dur: 0.9,  hitAt: 0.5,  dmg: 38, reach: 230, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0, power: true, super: true, aim: 0.93, aimY: 0 },
+    // Dessie's: a kettle of scalding water, once a round. Lands like a big power shot and burns the right hand off him.
+    kettle:   { label: 'SCALDING KETTLE', hand: 'rear', dur: 1.1,  hitAt: 0.6,  dmg: 34, reach: 210, cost: 16, stun: 0.9,  snap: 0.8,  through: 1.0, power: true, super: true, aim: 0.8,  aimY: -4, scald: true },
     // Digger's: a big knuckle-duster cross, once a round
     duster:   { label: 'DUSTER CROSS',   hand: 'rear', dur: 1.05, hitAt: 0.62, dmg: 45, reach: 200, cost: 16, stun: 0.7,  snap: 1.1,  through: 1.0, power: true, super: true, aim: 0.95, aimY: 2 },
   };

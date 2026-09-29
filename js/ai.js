@@ -90,6 +90,8 @@
       if (me.counterWindow > 0 && inRange && !me.punch && Math.random() < lv.counter) {
         inp[BK.pick(['cross', 'hook'])] = true; inp.block = false; this.blockT = 0; return inp;
       }
+      // Dessie gets the spit in when he's close and you're open
+      if (me.look.sway === 'spit' && inRange && me.stamina > 30 && !me.slip && !me.punch && foe.blind <= 0 && Math.random() < dt * 0.35) { inp.slip = true; return inp; }
       // Skinny Arthur opens up with his combo when he has the gas for it
       if (me.look.sway === 'combo' && inRange && me.stamina > 60 && !me.combo.length && !me.punch && Math.random() < dt * 0.5) { inp.slip = true; return inp; }
       if (!inp.block && !me.punch && inRange) {

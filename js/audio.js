@@ -99,6 +99,8 @@
     const f = noiseBurst(0.18, 600, 'bandpass', 0.35);
     f.frequency.exponentialRampToValueAtTime(2400, A.ctx.currentTime + 0.15);
   };
+  // scalding water on skin: a hiss of steam with a splash under it
+  A.sizzle = () => { if (A.ctx) { noiseBurst(0.9, 5200, 'highpass', 0.5); noiseBurst(0.25, 900, 'bandpass', 0.6); tone(220, 80, 0.2, 0.2, 'triangle'); } };
   A.thump = () => { if (A.ctx) { noiseBurst(0.3, 200, 'lowpass', 1.2); tone(70, 28, 0.4, 0.9); } };
 
   // Boxing bell: inharmonic partials with a long decay, struck `times` times.

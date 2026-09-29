@@ -25,11 +25,11 @@
     const right = sc.w - sc.safe.r - 18 - r, bottom = sc.h - sc.safe.b - 16 - r;
     // buttons depend on the fighter: DUCK / SWAY / COMBO, no sway for Digger
     const me = BK.game.p1, L = me ? me.look : {};
-    const swayLabel = L.sway === 'duck' ? 'DUCK' : L.sway === 'combo' ? 'COMBO' : 'SWAY';
+    const swayLabel = L.sway === 'duck' ? 'DUCK' : L.sway === 'combo' ? 'COMBO' : L.sway === 'spit' ? 'SPIT' : 'SWAY';
     const buttons = BTNS
       .filter(b => !(b.id === 'slip' && L.sway === 'none') && !(b.id === 'clinch' && L.noClinch))
       .map(b => ({ ...b, label: b.id === 'slip' ? swayLabel : b.label, weak: b.id === 'slip' && L.sway === 'combo' && me.stamina < 40, x: right - (3 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
-    if (BK.game.koReady()) buttons.push({ id: 'ko', label: L.super === 'duster' ? 'DUSTER' : 'SUPER', color: L.super === 'duster' ? '#8d8f96' : '#c98a1e', x: right - gap * 1.5, y: bottom - gap * 2.1, big: 1.3 });
+    if (BK.game.koReady()) buttons.push({ id: 'ko', label: L.super === 'duster' ? 'DUSTER' : L.super === 'kettle' ? 'KETTLE' : 'SUPER', color: L.super === 'duster' ? '#8d8f96' : L.super === 'kettle' ? '#c4562a' : '#c98a1e', x: right - gap * 1.5, y: bottom - gap * 2.1, big: 1.3 });
     return {
       r,
       buttons,
@@ -144,7 +144,7 @@
   // Compact button legend while a controller is in use (screen space, bottom right).
   IN.drawPadHint = player => {
     const sc = BK.screen, L = player.look;
-    const rows = [['✕ Jab', '○ Cross', '□ Hook', '△ Upper'], [L.noClinch ? 'L1 —' : 'L1 Clinch', 'R1 Body', `L2 ${L.sway === 'duck' ? 'Duck' : L.sway === 'combo' ? 'Combo' : L.sway === 'none' ? '—' : 'Sway'}`, 'R2 Block']];
+    const rows = [['✕ Jab', '○ Cross', '□ Hook', '△ Upper'], [L.noClinch ? 'L1 —' : 'L1 Clinch', 'R1 Body', `L2 ${L.sway === 'duck' ? 'Duck' : L.sway === 'combo' ? 'Combo' : L.sway === 'spit' ? 'Spit' : L.sway === 'none' ? '—' : 'Sway'}`, 'R2 Block']];
     if (BK.game.koReady()) rows.push([`R3  ${BK.superName(L)}  ▶`]);
     ctx.save(); ctx.textAlign = 'right'; ctx.textBaseline = 'bottom'; ctx.globalAlpha = 0.75;
     let y = sc.h - sc.safe.b - 14;

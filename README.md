@@ -15,6 +15,7 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 | **Big Joe** | White tank over a big belly, black trousers and boots, gold chain, white hair and handlebar moustache | Brawler: huge power, best chin, slow | Ducks and rolls | **Wrecking ball**: a huge looping swing |
 | **Skinny Arthur** | Shirtless, shorts, white shoes, skinhead | Speed merchant: fast hands and feet, light punches, best stamina recovery | **COMBO**: automatic jab-cross-left hook for 40% of his stamina (needs at least 40%) | **Superman punch**: leaps in behind a flying cross |
 | **Digger** | Grey tank, black jeans, desert boots, slicked-back hair, long beard, knuckle dusters | Knockout artist: the most power, low stamina, slow feet | **No sway** | **Duster cross**: a big knuckle-duster cross, once per round |
+| **Dessie** | Filthy grey hoodie, work trousers, boots, tight dark curls, stubble, muck on his face | Dirty fighter: great stamina and chin, decent power, a heavy stumbling walk | **SPIT**: a gob in the eye and a rake across it, blinding him for a couple of seconds (he blocks worse and swings wild) | **Scalding kettle** (once a round): a kettle of boiling water in the face. Puts him down, and burns his right hand out of the fight for 14 seconds (no cross or uppercut) |
 
 ## Controls
 
