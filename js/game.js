@@ -525,23 +525,6 @@
 
   // ---------- render ----------
   const dazeBuf = document.createElement('canvas'), dazeCtx = dazeBuf.getContext('2d');
-  // Depth of field: the front row is nearest the camera, so it's drawn soft. It's rendered into a small buffer
-  // (which is what blurs it) only every few frames, since it barely moves, then stretched over the scene.
-  const rowBuf = document.createElement('canvas'), rowCtx = rowBuf.getContext('2d');
-  let rowFrame = 0;
-  function drawFrontRowSoft(ex) {
-    if (!BK.arena.frontBlur()) { BK.arena.drawFrontRow(g.t, ex); return; }
-    const m = ctx.getTransform(), sc = 0.25, cw = BK.canvas.width, ch = BK.canvas.height;
-    const bw = Math.max(1, Math.round(cw * sc)), bh = Math.max(1, Math.round(ch * sc));
-    if (rowBuf.width !== bw || rowBuf.height !== bh) { rowBuf.width = bw; rowBuf.height = bh; rowFrame = 0; }
-    if (rowFrame++ % 3 === 0) {
-      rowCtx.setTransform(m.a * sc, m.b * sc, m.c * sc, m.d * sc, m.e * sc, m.f * sc); rowCtx.clearRect(-1e5, -1e5, 2e5, 2e5);
-      BK.arena.drawFrontRowTo(rowCtx, g.t, ex);
-    }
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true;
-    ctx.drawImage(rowBuf, 0, 0, cw, ch);
-    ctx.restore();
-  }
   function render() {
     const sc = BK.screen, v = BK.view, hud = BK.hud;
     ctx.setTransform(sc.dpr, 0, 0, sc.dpr, 0, 0);
@@ -559,7 +542,7 @@
       BK.arena.drawBackRopes();
       drawEnts();
       BK.arena.drawFrontRopes();
-      drawFrontRowSoft(ex);
+      BK.arena.drawFrontRow(g.t, ex);
       BK.arena.drawAtmosphere(g.t);
     };
     if (BK.replay.active) {
@@ -649,6 +632,7 @@
   // ---------- loop ----------
   let last = performance.now();
   function frame(now) {
+    BK.quality.tick(now - last);
     const real = Math.min(0.05, (now - last) / 1000);
     last = now;
     BK.pad.update(real, g.t);

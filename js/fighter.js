@@ -668,20 +668,15 @@
     const g = ctx.createRadialGradient(-f.dir * 130 * s * ly, 0, 4, -f.dir * 130 * s * ly, 0, ((f.shadow || 64) + 120 * ly) * s);
     g.addColorStop(0, `rgba(20,12,6,${0.3 * L.shadow + 0.12})`); g.addColorStop(1, 'rgba(20,12,6,0)');
     ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(-f.dir * 130 * s * ly, 0, ((f.shadow || 64) + 120 * ly) * s * 1.3, 15 * s, 0, 0, Math.PI * 2); ctx.fill();
-    // cast shadow: the figure again in flat black, flattened along the floor and leaning away from the light
+    // cast shadow: a long soft smear along the floor, thrown away from the venue's light (cheap: two ellipses)
     if (ly < 0.5 && !f.noCast && L.shadow > 0.05) {
-      ctx.save();
-      ctx.transform(1, 0, L.dx * L.spread, 0.18 * L.spread, 0, 0);
-      ctx.scale(s * f.dir, s);
-      ctx.globalAlpha = L.shadow * (1 - ly * 2);
-      ctx.globalCompositeOperation = 'darken'; // anything drawn light (eyes, marks) can only darken the floor, so the shadow stays solid
-      BK.rig.silhouette(f.look, f.pose);
-      ctx.restore();
+      const reach = L.dx * L.spread * 170 * s, a = L.shadow * 0.55 * (1 - ly * 2);
+      ctx.fillStyle = `rgba(10,6,4,${a.toFixed(3)})`;
+      ctx.beginPath(); ctx.ellipse(-reach * 0.5, 2 * s, (48 + Math.abs(reach) * 0.55 / s) * s, 13 * s, 0, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.ellipse(-reach * 0.9, 3 * s, (26 + Math.abs(reach) * 0.25 / s) * s, 9 * s, 0, 0, Math.PI * 2); ctx.fill();
     }
     ctx.scale(s * f.dir, s);
-    BK.rig.setRim(ly < 0.5 ? L.rim : null);
     BK.rig.draw(f.look, f.pose, f.st);
-    BK.rig.setRim(null);
     if (f.extra) f.extra();
     ctx.restore();
     if (f.flash > 0) {

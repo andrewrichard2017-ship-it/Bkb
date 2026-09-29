@@ -52,14 +52,21 @@
 
   // ---------- canvas, view (hud) and camera (world) ----------
   const canvas = BK.canvas = document.getElementById('game');
-  const ctx = BK.ctx = canvas.getContext('2d');
+  // opaque canvas (every frame paints the whole thing), which saves the browser a compositing pass
+  const ctx = BK.ctx = canvas.getContext('2d', { alpha: false }) || canvas.getContext('2d');
   BK.screen = { w: 0, h: 0, dpr: 1, safe: { l: 0, r: 0, t: 0, b: 0 } };
   BK.view = { s: 1, ox: 0, oy: 0 };
 
+  // Render resolution. The whole game is drawn at `sc.dpr` canvas pixels per CSS pixel. Phones report 2.5-3,
+  // but past ~1.5x the 1600x900 stage there's no visible gain, only more pixels to fill, so it's capped, and
+  // BK.quality lowers it further on the fly if frames run slow (and raises it again when there's headroom).
+  const Q = BK.quality = { scale: 1, min: 0.72, frames: 0, slow: 0, fast: 0 };
   BK.resize = () => {
     const sc = BK.screen;
-    sc.dpr = Math.min(window.devicePixelRatio || 1, 2);
     sc.w = canvas.clientWidth; sc.h = canvas.clientHeight;
+    const native = Math.min(window.devicePixelRatio || 1, 2);
+    const cap = Math.min(native, 1920 / Math.max(1, sc.w), 1.5); // never more than ~1920 canvas pixels across
+    sc.dpr = Math.max(0.5, cap * Q.scale);
     canvas.width = Math.round(sc.w * sc.dpr); canvas.height = Math.round(sc.h * sc.dpr);
     // Notch / gesture-bar insets, read from a probe element (custom properties don't resolve env()).
     let probe = document.getElementById('safe-probe');
@@ -74,6 +81,17 @@
     BK.view = { s, ox: (sc.w - BK.W * s) / 2, oy: (sc.h - BK.H * s) / 2 };
   };
   window.addEventListener('resize', BK.resize);
+  // Called once per frame with the real time between frames. Averages over about a second; if we're
+  // well under 60 fps it steps the resolution down, and after a good long run it tries a step back up.
+  BK.quality.tick = ms => {
+    if (ms > 250 || ms <= 0) return; // tab was hidden or the clock jumped
+    Q.frames++; Q.avg = Q.avg ? Q.avg * 0.95 + ms * 0.05 : ms;
+    if (Q.frames < 45) return; // let it settle after a change
+    if (Q.avg > 21 && Q.scale > Q.min) { Q.slow++; if (Q.slow > 20) { Q.scale = Math.max(Q.min, Q.scale - 0.12); Q.frames = 0; Q.slow = 0; Q.fast = 0; BK.resize(); } }
+    else Q.slow = 0;
+    if (Q.avg < 15 && Q.scale < 1) { Q.fast++; if (Q.fast > 600) { Q.scale = Math.min(1, Q.scale + 0.08); Q.frames = 0; Q.fast = 0; BK.resize(); } }
+    else Q.fast = 0;
+  };
   BK.toHud = (cx, cy) => ({ x: (cx - BK.view.ox) / BK.view.s, y: (cy - BK.view.oy) / BK.view.s });
 
   // Hand-held camera: it follows its target with a little lag and overshoot (a spring), drifts and breathes
