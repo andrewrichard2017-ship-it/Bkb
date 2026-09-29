@@ -112,6 +112,45 @@
       noiseBurst(0.02, 3000, 'highpass', 0.3, t0);
     }
   };
+  // Footsteps: canvas thuds, concrete scuffs, gravel crunches. Quieter for the man further away.
+  A.step = (surface, near = 1) => {
+    if (!A.ctx) return;
+    const v = 0.22 * near;
+    if (surface === 'gravel') { noiseBurst(0.09, 3200, 'bandpass', v * 1.3); noiseBurst(0.05, 5200, 'highpass', v * 0.6, 0.02); }
+    else if (surface === 'concrete') { noiseBurst(0.06, 1400, 'bandpass', v * 0.9); tone(180, 120, 0.05, v * 0.4, 'triangle'); }
+    else { noiseBurst(0.08, 260, 'lowpass', v * 1.2); tone(95, 60, 0.09, v * 0.5); } // canvas over boards
+  };
+  // The crowd reacting to what actually happens: a sharp intake of breath, a swell, jeers and a few voices in it.
+  A.crowdGasp = () => {
+    if (!A.ctx) return;
+    const c = A.ctx, t = c.currentTime;
+    const s = c.createBufferSource(); s.buffer = A.noiseBuf;
+    const f = c.createBiquadFilter(); f.type = 'bandpass'; f.frequency.value = 1900; f.Q.value = 1.2;
+    const g = c.createGain(); g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(0.5, t + 0.12); g.gain.exponentialRampToValueAtTime(0.001, t + 0.5);
+    s.connect(f).connect(g).connect(A.master); s.start(t); s.stop(t + 0.55);
+  };
+  A.crowdOoh = () => { // that "oooh" when a big one lands
+    if (!A.ctx) return;
+    const c = A.ctx, t = c.currentTime;
+    for (const f0 of [330, 415, 500]) { const o = c.createOscillator(), g = c.createGain(); o.type = 'sawtooth';
+      o.frequency.setValueAtTime(f0 * 1.06, t); o.frequency.exponentialRampToValueAtTime(f0 * 0.9, t + 0.7);
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 700;
+      g.gain.setValueAtTime(0.001, t); g.gain.exponentialRampToValueAtTime(0.06, t + 0.15); g.gain.exponentialRampToValueAtTime(0.001, t + 0.8);
+      o.connect(lp).connect(g).connect(A.master); o.start(t); o.stop(t + 0.85); }
+    A.roar(0.35);
+  };
+  A.crowdJeer = () => { // boos and whistles when something dirty happens
+    if (!A.ctx) return;
+    const c = A.ctx, t = c.currentTime;
+    for (let i = 0; i < 4; i++) { const o = c.createOscillator(), g = c.createGain(); o.type = 'square';
+      const f0 = 180 + i * 37; o.frequency.setValueAtTime(f0, t + i * 0.05); o.frequency.linearRampToValueAtTime(f0 * 0.8, t + 1.1);
+      const lp = c.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 500;
+      g.gain.setValueAtTime(0.001, t + i * 0.05); g.gain.exponentialRampToValueAtTime(0.035, t + 0.2 + i * 0.05); g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+      o.connect(lp).connect(g).connect(A.master); o.start(t + i * 0.05); o.stop(t + 1.3); }
+    tone(2400, 2900, 0.35, 0.05, 'sine', 0.3); tone(2600, 2100, 0.3, 0.04, 'sine', 0.75); // a couple of whistles
+  };
+  // one voice shouting over the rest, at random (a shape, not words)
+  A.crowdShout = () => { if (!A.ctx) return; const v = { pitch: BK.rnd(95, 150), formant: BK.rnd(0.9, 1.1), breath: 0.3 }; A.voice(v, BK.pick(['effortBig', 'effort'])); };
   A.roar = (amt = 0.6) => {
     A.excite(amt);
     if (!A.ctx) return;
@@ -153,7 +192,7 @@
       for (let i = 0; i < 1024; i++) { const x = i / 511.5 - 1; strainCurve[i] = Math.tanh(x * 2.2) / Math.tanh(2.2); }
     }
   }
-  A.voice = (v, kind) => {
+  A.voice = (v, kind, near = 1) => {
     if (!A.ctx || !v) return;
     const c = A.ctx; voiceParts(c);
     const [va, vb, len0, p0, p1, loud, breath0, strain] = BK.pick(GRUNTS[kind] || GRUNTS.effort);
@@ -169,9 +208,10 @@
     const shaper = c.createWaveShaper(); shaper.curve = strainCurve;
     const drive = c.createGain(); drive.gain.value = 1 + strain * 3;
     const trim = c.createGain(); trim.gain.value = 1 / (1 + strain * 1.5);
-    const post = c.createBiquadFilter(); post.type = 'lowpass'; post.frequency.value = 3800;
+    const post = c.createBiquadFilter(); post.type = 'lowpass'; post.frequency.value = 2200 + 1800 * near; // closer to the mic: brighter and louder
+    const prox = c.createGain(); prox.gain.value = 0.7 + 0.5 * near;
     drive.connect(shaper).connect(trim).connect(post).connect(out);
-    out.connect(A.master);
+    out.connect(prox).connect(A.master);
 
     // formant bank the voice and breath both pass through, gliding from one vowel to the next
     const bank = c.createGain();

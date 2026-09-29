@@ -6,9 +6,11 @@
   'use strict';
   const BK = window.BK, ctx = BK.ctx, D = BK.draw, W = BK.W, H = BK.H, R = BK.RING;
   const { lerp, clamp } = BK;
+  const circleOn = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); };
+  const rrOn = (c, x, y, w, h, r) => { r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
   // The walkout starts lower than in the hall (rampTop), so the flat is shallow and the heap fills the top of the
   // picture behind the fight, like it does from the edge of the crowd.
-  const HP = BK.VENUES.heap = { flashes: [], ropes: false, daylight: true, rampTop: [-0.35, -0.3] };
+  const HP = BK.VENUES.heap = { flashes: [], ropes: false, daylight: true, rampTop: [-0.35, -0.3], floor: 'gravel', light: { dx: -0.12, dy: 0, rim: 'rgba(230,235,240,0.22)', shadow: 0.22, spread: 1.6 } }; // overcast: soft, faint, wide shadows
 
   // own random stream, so building the scene doesn't shift anyone else's BK.srand() sequence
   let seed = 90210;
@@ -339,28 +341,30 @@
     FRONT.push({ x: left ? 50 + j * 96 + rnd() * 24 : 1090 + j * 96 + rnd() * 24, r: 30 + rnd() * 8, ph: rnd() * 6,
       bang: rnd() < 0.6, phone: rnd() < 0.3, top: BK.shade(lk.top, 0.55), hair: BK.shade(HAIR[Math.floor(rnd() * HAIR.length)], 0.8), skin: BK.shade(SKIN[i % SKIN.length], 0.6) });
   }
-  HP.drawFrontRow = (t, excitement) => {
+  HP.drawFrontRow = (t, excitement, c = ctx) => {
     for (const f of FRONT) {
       const y = 874 + Math.sin(f.ph) * 6, up = excitement > 0.3 && f.bang && !f.phone;
       const bob = up ? Math.max(0, Math.sin(t * 9 + f.ph)) * 8 : 0;
-      ctx.strokeStyle = f.top; ctx.lineWidth = f.r * 0.55; ctx.lineCap = 'round';
+      c.strokeStyle = f.top; c.lineWidth = f.r * 0.55; c.lineCap = 'round';
       if (up) {
-        ctx.beginPath(); ctx.moveTo(f.x - f.r * 0.8, y + f.r); ctx.lineTo(f.x - f.r * 1.1, y - f.r * 2.2 - bob);
-        ctx.moveTo(f.x + f.r * 0.8, y + f.r); ctx.lineTo(f.x + f.r * 1.1, y - f.r * 2.2 + bob); ctx.stroke();
+        c.beginPath(); c.moveTo(f.x - f.r * 0.8, y + f.r); c.lineTo(f.x - f.r * 1.1, y - f.r * 2.2 - bob);
+        c.moveTo(f.x + f.r * 0.8, y + f.r); c.lineTo(f.x + f.r * 1.1, y - f.r * 2.2 + bob); c.stroke();
       }
       if (f.phone) {
         const px = f.x + f.r * 0.9, py = y - f.r * 2.1;
-        ctx.beginPath(); ctx.moveTo(f.x + f.r * 0.7, y + f.r); ctx.lineTo(px, py + 10); ctx.stroke();
-        D.rr(px - 13, py - 24, 26, 44, 4); ctx.fillStyle = '#0b0b0d'; ctx.fill();
-        ctx.fillStyle = '#b9c7d8'; ctx.fillRect(px - 10, py - 20, 20, 36);
-        ctx.fillStyle = 'rgba(60,50,45,0.7)'; ctx.fillRect(px - 6, py - 6, 12, 14);
+        c.beginPath(); c.moveTo(f.x + f.r * 0.7, y + f.r); c.lineTo(px, py + 10); c.stroke();
+        rrOn(c, px - 13, py - 24, 26, 44, 4); c.fillStyle = '#0b0b0d'; c.fill();
+        c.fillStyle = '#b9c7d8'; c.fillRect(px - 10, py - 20, 20, 36);
+        c.fillStyle = 'rgba(60,50,45,0.7)'; c.fillRect(px - 6, py - 6, 12, 14);
       }
-      ctx.fillStyle = f.top; ctx.beginPath(); ctx.ellipse(f.x, y + f.r * 1.9, f.r * 1.6, f.r * 1.2, 0, 0, Math.PI * 2); ctx.fill();
-      ctx.fillStyle = f.skin; ell(ctx, f.x, y + f.r * 0.9, f.r * 0.45, f.r * 0.4); ctx.fill(); // neck
-      ell(ctx, f.x, y - bob * 0.5, f.r * 0.95, f.r * 1.05); ctx.fill();
-      ctx.fillStyle = f.hair; ctx.beginPath(); ctx.ellipse(f.x, y - bob * 0.5 - f.r * 0.1, f.r * 0.97, f.r * 0.95, 0, Math.PI * 0.95, Math.PI * 2.05); ctx.fill();
+      c.fillStyle = f.top; c.beginPath(); c.ellipse(f.x, y + f.r * 1.9, f.r * 1.6, f.r * 1.2, 0, 0, Math.PI * 2); c.fill();
+      c.fillStyle = f.skin; ell(ctx, f.x, y + f.r * 0.9, f.r * 0.45, f.r * 0.4); c.fill(); // neck
+      ell(ctx, f.x, y - bob * 0.5, f.r * 0.95, f.r * 1.05); c.fill();
+      c.fillStyle = f.hair; c.beginPath(); c.ellipse(f.x, y - bob * 0.5 - f.r * 0.1, f.r * 0.97, f.r * 0.95, 0, Math.PI * 0.95, Math.PI * 2.05); c.fill();
     }
-  };
+  };  // same, into another context (the blur buffer)
+  HP.drawFrontRowTo = (c, t, ex) =>   HP.drawFrontRow(t, ex, c);
+
 
   // grey daylight: a flat wash and a bit of dust blowing across
   const DUST = [];

@@ -6,7 +6,9 @@
   'use strict';
   const BK = window.BK, ctx = BK.ctx, D = BK.draw, W = BK.W, H = BK.H, R = BK.RING;
   const { lerp, clamp } = BK;
-  const YD = BK.VENUES.yard = { flashes: [], open: [0.3, 0.3] };
+  const circleOn = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); };
+  const rrOn = (c, x, y, w, h, r) => { r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
+  const YD = BK.VENUES.yard = { flashes: [], open: [0.3, 0.3], floor: 'concrete', light: { dx: 0.45, dy: -0.1, rim: 'rgba(210,225,255,0.3)', shadow: 0.5, spread: 1.5 } }; // floodlights up high, off to the sides
 
   // own random stream, so building the yard doesn't shift anyone else's BK.srand() sequence
   let seed = 4242;
@@ -449,34 +451,36 @@
     FRONT.push({ x: left ? 50 + j * 96 + rnd() * 24 : 1090 + j * 96 + rnd() * 24, r: 30 + rnd() * 8, ph: rnd() * 6,
       bang: rnd() < 0.6, phone: rnd() < 0.3, hood: BK.shade(HOODS[Math.floor(rnd() * HOODS.length)], 0.45) });
   }
-  YD.drawFrontRow = (t, excitement) => {
+  YD.drawFrontRow = (t, excitement, c = ctx) => {
     for (const f of FRONT) {
       const y = 874 + Math.sin(f.ph) * 6, up = excitement > 0.3 && f.bang && !f.phone;
       const bob = up ? Math.max(0, Math.sin(t * 9 + f.ph)) * 8 : 0;
-      ctx.strokeStyle = f.hood; ctx.lineWidth = f.r * 0.55; ctx.lineCap = 'round';
+      c.strokeStyle = f.hood; c.lineWidth = f.r * 0.55; c.lineCap = 'round';
       if (up) {
-        ctx.beginPath(); ctx.moveTo(f.x - f.r * 0.8, y + f.r); ctx.lineTo(f.x - f.r * 1.1, y - f.r * 2.2 - bob);
-        ctx.moveTo(f.x + f.r * 0.8, y + f.r); ctx.lineTo(f.x + f.r * 1.1, y - f.r * 2.2 + bob); ctx.stroke();
+        c.beginPath(); c.moveTo(f.x - f.r * 0.8, y + f.r); c.lineTo(f.x - f.r * 1.1, y - f.r * 2.2 - bob);
+        c.moveTo(f.x + f.r * 0.8, y + f.r); c.lineTo(f.x + f.r * 1.1, y - f.r * 2.2 + bob); c.stroke();
       }
       if (f.phone) { // arm up, screen facing back at us
         const px = f.x + f.r * 0.9, py = y - f.r * 2.1;
-        ctx.beginPath(); ctx.moveTo(f.x + f.r * 0.7, y + f.r); ctx.lineTo(px, py + 10); ctx.stroke();
-        D.rr(px - 13, py - 24, 26, 44, 4); ctx.fillStyle = '#0b0b0d'; ctx.fill();
-        const sc = ctx.createLinearGradient(0, py - 20, 0, py + 16);
+        c.beginPath(); c.moveTo(f.x + f.r * 0.7, y + f.r); c.lineTo(px, py + 10); c.stroke();
+        rrOn(c, px - 13, py - 24, 26, 44, 4); c.fillStyle = '#0b0b0d'; c.fill();
+        const sc = c.createLinearGradient(0, py - 20, 0, py + 16);
         sc.addColorStop(0, '#9fb6d8'); sc.addColorStop(1, '#6f7f9a');
-        ctx.fillStyle = sc; ctx.fillRect(px - 10, py - 20, 20, 36);
-        ctx.fillStyle = 'rgba(40,30,28,0.7)'; ctx.fillRect(px - 6, py - 6, 12, 14); // the fight, tiny
+        c.fillStyle = sc; c.fillRect(px - 10, py - 20, 20, 36);
+        c.fillStyle = 'rgba(40,30,28,0.7)'; c.fillRect(px - 6, py - 6, 12, 14); // the fight, tiny
       }
-      ctx.fillStyle = f.hood;
-      ctx.beginPath(); ctx.ellipse(f.x, y + f.r * 1.9, f.r * 1.6, f.r * 1.2, 0, 0, Math.PI * 2); ctx.fill();
-      ell(ctx, f.x, y - bob * 0.5, f.r * 1.05, f.r * 1.2); ctx.fill();
-      poly(ctx, [[f.x - f.r * 0.35, y - bob * 0.5 - f.r * 1.08], [f.x, y - bob * 0.5 - f.r * 1.34], [f.x + f.r * 0.35, y - bob * 0.5 - f.r * 1.08]]); ctx.fill();
-      ctx.strokeStyle = 'rgba(0,0,0,0.35)'; ctx.lineWidth = 2; // hood seam
-      ctx.beginPath(); ctx.moveTo(f.x, y - bob * 0.5 - f.r * 1.25); ctx.lineTo(f.x, y - bob * 0.5 + f.r * 0.9); ctx.stroke();
-      ctx.fillStyle = 'rgba(210,220,240,0.13)'; // floodlight rim
-      ctx.beginPath(); ctx.arc(f.x, y - bob * 0.5, f.r * 1.05, Math.PI * 1.15, Math.PI * 1.85); ctx.lineTo(f.x, y - bob * 0.5); ctx.fill();
+      c.fillStyle = f.hood;
+      c.beginPath(); c.ellipse(f.x, y + f.r * 1.9, f.r * 1.6, f.r * 1.2, 0, 0, Math.PI * 2); c.fill();
+      ell(ctx, f.x, y - bob * 0.5, f.r * 1.05, f.r * 1.2); c.fill();
+      poly(ctx, [[f.x - f.r * 0.35, y - bob * 0.5 - f.r * 1.08], [f.x, y - bob * 0.5 - f.r * 1.34], [f.x + f.r * 0.35, y - bob * 0.5 - f.r * 1.08]]); c.fill();
+      c.strokeStyle = 'rgba(0,0,0,0.35)'; c.lineWidth = 2; // hood seam
+      c.beginPath(); c.moveTo(f.x, y - bob * 0.5 - f.r * 1.25); c.lineTo(f.x, y - bob * 0.5 + f.r * 0.9); c.stroke();
+      c.fillStyle = 'rgba(210,220,240,0.13)'; // floodlight rim
+      c.beginPath(); c.arc(f.x, y - bob * 0.5, f.r * 1.05, Math.PI * 1.15, Math.PI * 1.85); c.lineTo(f.x, y - bob * 0.5); c.fill();
     }
-  };
+  };  // same, into another context (the blur buffer)
+  YD.drawFrontRowTo = (c, t, ex) =>   YD.drawFrontRow(t, ex, c);
+
 
   // Floodlight beams and a bit of drizzle falling through them.
   const RAIN = [];

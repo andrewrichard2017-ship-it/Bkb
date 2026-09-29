@@ -76,22 +76,36 @@
   window.addEventListener('resize', BK.resize);
   BK.toHud = (cx, cy) => ({ x: (cx - BK.view.ox) / BK.view.s, y: (cy - BK.view.oy) / BK.view.s });
 
-  BK.cam = { x: BK.W / 2, y: BK.H / 2, zoom: 1, tx: BK.W / 2, ty: BK.H / 2, tz: 1, shake: 0, kick: 0 };
+  // Hand-held camera: it follows its target with a little lag and overshoot (a spring), drifts and breathes
+  // when nothing's happening, and jolts on big hits (impulse) rather than just rattling.
+  BK.cam = { x: BK.W / 2, y: BK.H / 2, zoom: 1, tx: BK.W / 2, ty: BK.H / 2, tz: 1, shake: 0, kick: 0, vx: 0, vy: 0, vz: 0, jx: 0, jy: 0, jr: 0, t: 0, hand: 1 };
   BK.updateCamera = dt => {
-    const c = BK.cam, k = 1 - Math.pow(0.02, dt);
-    c.zoom = lerp(c.zoom, c.tz, k);
-    c.x = lerp(c.x, c.tx, k); c.y = lerp(c.y, c.ty, k);
+    const c = BK.cam;
+    c.t += dt;
+    // spring toward the target: stiffness and damping tuned so it settles with a slight overshoot
+    const K = 90, Dm = 15;
+    c.vx += ((c.tx - c.x) * K - c.vx * Dm) * dt; c.vy += ((c.ty - c.y) * K - c.vy * Dm) * dt; c.vz += ((c.tz - c.zoom) * K - c.vz * Dm) * dt;
+    c.x += c.vx * dt; c.y += c.vy * dt; c.zoom += c.vz * dt;
+    // the jolt from a hit: a decaying impulse in position and a roll
+    c.jx *= Math.pow(0.002, dt); c.jy *= Math.pow(0.002, dt); c.jr *= Math.pow(0.003, dt);
     const hw = BK.W / 2 / c.zoom, hh = BK.H / 2 / c.zoom;
     c.x = clamp(c.x, hw, BK.W - hw); c.y = clamp(c.y, hh, BK.H - hh);
     c.shake = Math.max(0, c.shake - dt * 40);
     c.kick = Math.max(0, c.kick - dt * 0.5);
   };
+  // A knock to the camera: direction and size, plus a bit of roll.
+  BK.cam.jolt = (dx, dy, amt) => { const c = BK.cam; c.jx += dx * amt; c.jy += dy * amt; c.jr += (Math.random() - 0.5) * amt * 0.0025; };
   BK.applyCamera = () => {
-    const c = BK.cam;
+    const c = BK.cam, t = c.t, h = c.hand;
     const sx = (Math.random() - 0.5) * c.shake, sy = (Math.random() - 0.5) * c.shake;
-    ctx.translate(BK.W / 2 + sx, BK.H / 2 + sy);
-    if (c.roll) ctx.rotate(c.roll); // rocking view while you're out on your feet
-    ctx.scale(c.zoom + c.kick, c.zoom + c.kick);
+    // operator's hands: slow drift plus a faster tremor, scaled by how zoomed in we are
+    const dx = (Math.sin(t * 0.9) * 5 + Math.sin(t * 2.3 + 1) * 2.2 + Math.sin(t * 7.1) * 0.7) * h;
+    const dy = (Math.cos(t * 0.7) * 3.5 + Math.sin(t * 1.9 + 2) * 1.6 + Math.cos(t * 6.3) * 0.6) * h;
+    const dr = (Math.sin(t * 0.5) * 0.004 + Math.sin(t * 1.7) * 0.0015) * h;
+    const breathe = 1 + Math.sin(t * 0.6) * 0.006 * h;
+    ctx.translate(BK.W / 2 + sx + dx + c.jx, BK.H / 2 + sy + dy + c.jy);
+    ctx.rotate((c.roll || 0) + dr + c.jr); // rocking view while you're out on your feet, plus the hand
+    ctx.scale((c.zoom + c.kick) * breathe, (c.zoom + c.kick) * breathe);
     ctx.translate(-c.x, -c.y);
   };
 

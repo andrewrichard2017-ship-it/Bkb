@@ -3,6 +3,8 @@
   'use strict';
   const BK = window.BK, ctx = BK.ctx, D = BK.draw, W = BK.W, H = BK.H, R = BK.RING;
   const { lerp } = BK;
+  const circleOn = (c, x, y, r) => { c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); };
+  const rrOn = (c, x, y, w, h, r) => { r = Math.min(r, w / 2, h / 2); c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r); c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath(); };
   const AR = { flashes: [], fans: [] };
 
   // ---------- crowd, pre-rendered once (it reads as a soft background at any zoom) ----------
@@ -213,23 +215,25 @@
     const left = i < 8, j = i % 8;
     FRONT.push({ x: left ? 40 + j * 70 + BK.srand() * 20 : 1070 + j * 70 + BK.srand() * 20, r: 30 + BK.srand() * 8, ph: BK.srand() * 6, bang: BK.srand() < 0.6 });
   }
-  AR.drawFrontRow = (t, excitement) => {
+  AR.drawFrontRow = (t, excitement, c = ctx) => {
     for (const f of FRONT) {
       const y = 872 + Math.sin(f.ph) * 6;
       const up = excitement > 0.3 && f.bang;
       const slap = up ? Math.max(0, Math.sin(t * 11 + f.ph)) : 0;
-      ctx.fillStyle = '#0c0908';
+      c.fillStyle = '#0c0908';
       if (up) { // arms up on the apron edge
-        ctx.strokeStyle = '#0c0908'; ctx.lineWidth = f.r * 0.5; ctx.lineCap = 'round';
-        ctx.beginPath(); ctx.moveTo(f.x - f.r * 0.8, y + f.r); ctx.lineTo(f.x - f.r * 0.9, 800 + slap * 22);
-        ctx.moveTo(f.x + f.r * 0.8, y + f.r); ctx.lineTo(f.x + f.r * 0.9, 800 + (1 - slap) * 22); ctx.stroke();
+        c.strokeStyle = '#0c0908'; c.lineWidth = f.r * 0.5; c.lineCap = 'round';
+        c.beginPath(); c.moveTo(f.x - f.r * 0.8, y + f.r); c.lineTo(f.x - f.r * 0.9, 800 + slap * 22);
+        c.moveTo(f.x + f.r * 0.8, y + f.r); c.lineTo(f.x + f.r * 0.9, 800 + (1 - slap) * 22); c.stroke();
       }
-      ctx.beginPath(); ctx.ellipse(f.x, y + f.r * 1.9, f.r * 1.6, f.r * 1.2, 0, 0, Math.PI * 2); ctx.fill();
-      D.circle(f.x, y - slap * 6, f.r); ctx.fill();
-      ctx.fillStyle = 'rgba(255,236,190,0.12)'; // rim light from the ring
-      ctx.beginPath(); ctx.arc(f.x, y - slap * 6, f.r, Math.PI * 1.15, Math.PI * 1.85); ctx.lineTo(f.x, y - slap * 6); ctx.fill();
+      c.beginPath(); c.ellipse(f.x, y + f.r * 1.9, f.r * 1.6, f.r * 1.2, 0, 0, Math.PI * 2); c.fill();
+      circleOn(c, f.x, y - slap * 6, f.r); c.fill();
+      c.fillStyle = 'rgba(255,236,190,0.12)'; // rim light from the ring
+      c.beginPath(); c.arc(f.x, y - slap * 6, f.r, Math.PI * 1.15, Math.PI * 1.85); c.lineTo(f.x, y - slap * 6); c.fill();
     }
-  };
+  };  // same, into another context (the blur buffer)
+  AR.drawFrontRowTo = (c, t, ex) =>   AR.drawFrontRow(t, ex, c);
+
 
   // Light beams and haze over everything in the world layer.
   AR.drawAtmosphere = t => {
@@ -253,10 +257,15 @@
   BK.ARENAS = [['hall', 'THE HALL'], ['yard', 'TYRE YARD'], ['heap', 'THE HEAP']];
   const venue = () => BK.VENUES[BK.settings.arena] || AR;
   BK.arena = {};
-  for (const k of ['update', 'drawBackdrop', 'drawRing', 'drawBackRopes', 'drawFrontRopes', 'drawFrontRow', 'drawAtmosphere']) {
+  for (const k of ['update', 'drawBackdrop', 'drawRing', 'drawBackRopes', 'drawFrontRopes', 'drawFrontRow', 'drawFrontRowTo', 'drawAtmosphere']) {
     BK.arena[k] = (...a) => venue()[k](...a);
   }
   BK.arena.hasRopes = () => venue().ropes !== false;
   BK.arena.rampTop = () => venue().rampTop || BK.RAMP.top; // where the walkout starts (a venue can move it)
+  // lighting and surface, so shadows, rim light and footsteps match the venue
+  BK.arena.light = () => venue().light || AR.light;
+  BK.arena.floor = () => venue().floor || 'canvas';
+  BK.arena.frontBlur = () => venue().frontBlur !== false;
+  AR.light = { dx: 0.18, dy: 0, rim: 'rgba(255,238,200,0.28)', shadow: 0.42, spread: 1.15 }; // overhead rig, slightly from the left
   BK.arena.daylight = () => !!venue().daylight;             // no walkout spotlight out in the daylight
 })();

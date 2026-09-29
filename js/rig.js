@@ -143,6 +143,7 @@
 
   // ---------------- cel shading ----------------
   const LIGHT = [-0.28, -1];
+  R.setLight = (dx, dy) => { LIGHT[0] = dx; LIGHT[1] = dy; }; // screen-space direction the light comes from
   function lightLocal() {
     const m = ctx.getTransform(), det = m.a * m.d - m.b * m.c || 1;
     let x = (m.d * LIGHT[0] - m.c * LIGHT[1]) / det, y = (-m.b * LIGHT[0] + m.a * LIGHT[1]) / det;
@@ -151,7 +152,13 @@
   const toneCache = {};
   const tones = base => toneCache[base] || (toneCache[base] = { base, shade: BK.shade(base, 0.74), hi: BK.shade(base, 1.2) });
   // path: function that builds the path in the current transform
+  // dark: every part fills flat black (for cast shadows). rimLight: a thin bright edge on the lit side.
+  let dark = false, rimLight = null;
+  R.silhouette = (L, pose) => { dark = true; try { R.draw(L, pose, SIL_ST); } finally { dark = false; } };
+  R.setRim = col => { rimLight = col; };
+  const SIL_ST = { damage: 0, dazed: false, blink: true, sweat: 0, blood: 0, cuts: [], fistBlood: 0 };
   function cel(path, color, opt = {}) {
+    if (dark) { path(); ctx.fillStyle = '#000'; ctx.fill(); if (opt.outline !== 0) { ctx.strokeStyle = '#000'; ctx.lineWidth = opt.outline || 4; ctx.lineJoin = 'round'; ctx.stroke(); } return; }
     const t = tones(color), [lx, ly] = lightLocal();
     const so = opt.shadow ?? 7, ho = opt.rim ?? 2.4;
     ctx.save();
@@ -161,6 +168,11 @@
     ctx.fillStyle = opt.noRim ? t.base : t.hi; ctx.fillRect(-600, -600, 1200, 1200);
     if (!opt.noRim) { ctx.translate(-lx * ho, -ly * ho); path(); ctx.fillStyle = t.base; ctx.fill(); }
     ctx.restore();
+    if (rimLight && !opt.noRim) { // the venue's light catching the edge: the outline, pushed toward the light, clipped to the part
+      ctx.save(); path(); ctx.clip();
+      ctx.translate(lx * 3.5, ly * 3.5); path(); ctx.strokeStyle = rimLight; ctx.lineWidth = 6; ctx.lineJoin = 'round'; ctx.stroke();
+      ctx.restore();
+    }
     if (opt.detail) { ctx.save(); path(); ctx.clip(); opt.detail(); ctx.restore(); }
     if (opt.outline !== 0) { path(); ctx.strokeStyle = INK; ctx.lineWidth = opt.outline || 4; ctx.lineJoin = 'round'; ctx.stroke(); }
   }
@@ -181,7 +193,7 @@
     const len = Math.hypot(bx - ax, by - ay);
     ctx.save(); ctx.translate(ax, ay); ctx.rotate(Math.atan2(by - ay, bx - ax)); fn(len); ctx.restore();
   }
-  const line = (x0, y0, x1, y1, col, w) => { ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
+  const line = (x0, y0, x1, y1, col, w) => { if (dark) return; ctx.strokeStyle = col; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke(); };
   const ellipse = (x, y, rx, ry, r = 0) => () => { ctx.beginPath(); ctx.ellipse(x, y, rx, ry, r, 0, PI * 2); };
   const rrect = (x, y, w, h, r) => () => BK.draw.rr(x, y, w, h, r);
 

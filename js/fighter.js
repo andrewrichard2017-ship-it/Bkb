@@ -60,8 +60,10 @@
     grunt(kind, force) {
       if (!force && this.t - this.voiceT < 0.14) return;
       this.voiceT = this.t;
-      BK.audio.voice(this.look.voice, kind);
+      BK.audio.voice(this.look.voice, kind, this.near());
     }
+    // how near the camera (0..1): further back in the ring is quieter and duller
+    near() { return clamp(0.35 + this.z * 0.75, 0.35, 1); }
 
     get sx() { return BK.toScreenX(this.u, this.z); }
     get sy() { return BK.toScreenY(this.z); }
@@ -162,7 +164,9 @@
       this.u = clamp(this.u + mx * 330 * spd * dt / w, BK.U_MIN, BK.U_MAX);
       this.z = clamp(this.z + my * 0.62 * spd * dt, BK.Z_MIN, BK.Z_MAX);
       this.moving = mag * spd;
+      const wPrev = this.walk;
       this.walk += dt * 11 * this.moving * ((mx * this.dir) >= 0 ? 1 : -1);
+      if (this.moving > 0.25 && Math.floor(wPrev / PI) !== Math.floor(this.walk / PI)) BK.audio.step(BK.arena.floor(), this.near() * Math.min(1, this.moving));
 
       // slip
       const sway = this.look.sway;
@@ -262,7 +266,7 @@
       this.grunt('effortSmall', true);
       if (opp.down || dx <= 0 || dx > 200 * this.fs || Math.abs(opp.z - this.z) > 0.14) return;
       if (opp.slip && opp.slip.t < 0.35) { BK.fx.popup('MISSED', opp.headX, opp.headY - 40, BK.PAL.bone, 30); return; }
-      BK.fx.popup('SPAT ON!', opp.headX, opp.headY - 60, '#9ac54a', 40);
+      BK.fx.popup('SPAT ON!', opp.headX, opp.headY - 60, '#9ac54a', 40); BK.audio.crowdJeer();
       opp.blind = Math.max(opp.blind, 1.2); opp.spitOn = 1;
       BK.audio.roar(0.4); BK.audio.excite(0.3);
     }
@@ -412,9 +416,12 @@
         if (counter) {
           from.stats.counters++;
           BK.fx.popup('COUNTER!', this.headX, this.headY - 50, BK.PAL.brass, 48);
-          BK.audio.punch('counter');
+          BK.audio.punch('counter'); BK.audio.crowdGasp();
         } else BK.audio.punch(p.power ? 'power' : 'jab');
+        if (p.power && (this.damage > 0.4 || counter || this.stagger > 0) && Math.random() < 0.6) BK.audio.crowdOoh();
+        else if (Math.random() < 0.08) BK.audio.crowdShout();
         BK.cam.shake = Math.max(BK.cam.shake, counter ? 14 : p.power ? 9 : 4);
+        BK.cam.jolt(from.dir, 0.3, counter ? 26 : p.power ? 16 : 6); // the camera takes the hit too
         if (p.type === 'duster') { // brass on bone
           BK.fx.impact(hx, hy, from.dir, this.sy, 'blocked', 2);
         }
@@ -432,7 +439,7 @@
         this.scald = Math.max(this.scald, 14); this.scaldW = 1;
         BK.fx.popup('SCALDED!', this.headX, this.headY - 120, '#ff9a3c', 52);
         BK.fx.steam(this.headX, this.headY, from.dir, this.sy);
-        BK.audio.sizzle(); this.grunt('hurtBig', true);
+        BK.audio.sizzle(); this.grunt('hurtBig', true); BK.audio.crowdJeer();
       }
       if (this.hp <= 0 && !p.clinch) BK.game.onZeroHp(this, from, p.type);
       else if (!blocked && !p.clinch && this.hp <= 15) BK.game.rockHit(p, this); // on the brink: every clean one rocks the picture
@@ -654,13 +661,27 @@
 
   // Draw any recorded or live figure: shadow, cutout body, impact ring.
   BK.drawFigure = f => {
-    const s = f.fs, ly = clamp(-f.pose.rot / 86, 0, 1);
+    const s = f.fs, ly = clamp(-f.pose.rot / 86, 0, 1), L = BK.arena.light();
     ctx.save();
     ctx.translate(f.sx, f.sy);
-    ctx.fillStyle = 'rgba(40,25,10,0.3)';
-    ctx.beginPath(); ctx.ellipse(-f.dir * 130 * s * ly, 0, ((f.shadow || 64) + 120 * ly) * s, 14 * s, 0, 0, Math.PI * 2); ctx.fill();
+    // contact shadow: a soft pool under the feet
+    const g = ctx.createRadialGradient(-f.dir * 130 * s * ly, 0, 4, -f.dir * 130 * s * ly, 0, ((f.shadow || 64) + 120 * ly) * s);
+    g.addColorStop(0, `rgba(20,12,6,${0.3 * L.shadow + 0.12})`); g.addColorStop(1, 'rgba(20,12,6,0)');
+    ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(-f.dir * 130 * s * ly, 0, ((f.shadow || 64) + 120 * ly) * s * 1.3, 15 * s, 0, 0, Math.PI * 2); ctx.fill();
+    // cast shadow: the figure again in flat black, flattened along the floor and leaning away from the light
+    if (ly < 0.5 && !f.noCast && L.shadow > 0.05) {
+      ctx.save();
+      ctx.transform(1, 0, L.dx * L.spread, 0.18 * L.spread, 0, 0);
+      ctx.scale(s * f.dir, s);
+      ctx.globalAlpha = L.shadow * (1 - ly * 2);
+      ctx.globalCompositeOperation = 'darken'; // anything drawn light (eyes, marks) can only darken the floor, so the shadow stays solid
+      BK.rig.silhouette(f.look, f.pose);
+      ctx.restore();
+    }
     ctx.scale(s * f.dir, s);
+    BK.rig.setRim(ly < 0.5 ? L.rim : null);
     BK.rig.draw(f.look, f.pose, f.st);
+    BK.rig.setRim(null);
     if (f.extra) f.extra();
     ctx.restore();
     if (f.flash > 0) {

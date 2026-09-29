@@ -150,7 +150,8 @@
     g.kd = { victim, attacker, t: 0, count: 0, next: 1.5, rising: false, resumeAt: 0, tko, getUpAt: 99, standing: !!standing };
     g.slowmo = 1.1;
     BK.cam.shake = superHit ? 30 : 22;
-    BK.audio.thump(); BK.audio.roar(0.9);
+    BK.cam.jolt(attacker.dir, 0.6, superHit ? 60 : 40); // whipped round as he goes
+    BK.audio.thump(); BK.audio.crowdGasp(); setTimeout(() => BK.audio.roar(0.9), 260); // a gasp, then the place erupts
     BK.vibrate([80, 40, 120], victim.side);
     BK.fx.popup(tko ? 'THIRD KNOCKDOWN!' : standing ? 'STANDING COUNT!' : 'DOWN!', victim.sx, victim.sy - 330 * victim.fs, BK.PAL.blood, 64);
     g.ref.victim = victim;
@@ -435,6 +436,7 @@
       c.tx = (p1.sx + p2.sx) / 2; c.ty = (p1.sy + p2.sy) / 2 - 150;
       c.tz = clamp(1.34 - dist / 1100, 1.0, 1.28);
     }
+    c.hand = ['fight', 'knockdown', 'walkout', 'aftermath', 'roundIntro', 'roundEnd', 'fightOver'].includes(s) ? 1 : 0.25; // steadier on menus
     // Rocked: a clean hit on the brink rocks the view for a moment; a standing count holds it until he clears his head.
     g.rockT = Math.max(0, (g.rockT || 0) - dt);
     const standing = s === 'knockdown' && g.kd && g.kd.standing && !g.kd.rising && !g.kd.tko;
@@ -523,6 +525,23 @@
 
   // ---------- render ----------
   const dazeBuf = document.createElement('canvas'), dazeCtx = dazeBuf.getContext('2d');
+  // Depth of field: the front row is nearest the camera, so it's drawn soft. It's rendered into a small buffer
+  // (which is what blurs it) only every few frames, since it barely moves, then stretched over the scene.
+  const rowBuf = document.createElement('canvas'), rowCtx = rowBuf.getContext('2d');
+  let rowFrame = 0;
+  function drawFrontRowSoft(ex) {
+    if (!BK.arena.frontBlur()) { BK.arena.drawFrontRow(g.t, ex); return; }
+    const m = ctx.getTransform(), sc = 0.25, cw = BK.canvas.width, ch = BK.canvas.height;
+    const bw = Math.max(1, Math.round(cw * sc)), bh = Math.max(1, Math.round(ch * sc));
+    if (rowBuf.width !== bw || rowBuf.height !== bh) { rowBuf.width = bw; rowBuf.height = bh; rowFrame = 0; }
+    if (rowFrame++ % 3 === 0) {
+      rowCtx.setTransform(m.a * sc, m.b * sc, m.c * sc, m.d * sc, m.e * sc, m.f * sc); rowCtx.clearRect(-1e5, -1e5, 2e5, 2e5);
+      BK.arena.drawFrontRowTo(rowCtx, g.t, ex);
+    }
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(rowBuf, 0, 0, cw, ch);
+    ctx.restore();
+  }
   function render() {
     const sc = BK.screen, v = BK.view, hud = BK.hud;
     ctx.setTransform(sc.dpr, 0, 0, sc.dpr, 0, 0);
@@ -532,6 +551,7 @@
 
     const ex = BK.audio.excitement;
     const stage = (drawEnts, drawBehind) => {
+      const Lg = BK.arena.light(); BK.rig.setLight(-0.28 - Lg.dx * 0.6, -1);
       BK.arena.drawBackdrop(g.t, ex);
       BK.arena.drawRing();
       BK.fx.drawDecals();
@@ -539,7 +559,7 @@
       BK.arena.drawBackRopes();
       drawEnts();
       BK.arena.drawFrontRopes();
-      BK.arena.drawFrontRow(g.t, ex);
+      drawFrontRowSoft(ex);
       BK.arena.drawAtmosphere(g.t);
     };
     if (BK.replay.active) {
