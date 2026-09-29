@@ -80,19 +80,19 @@
     },
     dessie: {
       name: 'DESSIE', short: 'DESSIE', voice: { pitch: 112, formant: 0.97, breath: 0.5 },
-      skin: '#d6a483', skinShade: '#b3825f', hair: '#2a1d14',
-      top: 'hoodie', topColor: '#6a6560', topShade: '#4e4a45',
-      // years of muck on the hoodie
-      stains: [[-12, -52, 12, 8, 'rgba(40,30,22,0.55)'], [16, -34, 9, 11, 'rgba(60,44,28,0.5)'], [-2, -16, 14, 6, 'rgba(30,24,18,0.5)'],
-               [20, -62, 6, 5, 'rgba(90,60,30,0.5)'], [-20, -28, 7, 9, 'rgba(50,38,26,0.45)']],
-      pants: '#4b4741', pantsShade: '#36332e', pantsStripe: null,
-      boots: '#5c4a3a', bootSole: '#2b2320',
+      skin: '#d6a483', skinShade: '#b3825f', hair: '#1a1210',
+      top: 'tee', topColor: '#ece8df', topShade: '#c9c4b8',
+      // a white t-shirt that hasn't seen a wash in a while: grease, muck, an old brown stain down the front
+      stains: [[-10, -50, 13, 8, 'rgba(70,52,34,0.5)'], [14, -34, 9, 12, 'rgba(90,64,36,0.45)'], [-2, -14, 15, 6, 'rgba(60,46,30,0.5)'],
+               [20, -64, 6, 5, 'rgba(110,70,30,0.5)'], [-20, -28, 7, 9, 'rgba(80,58,36,0.4)'], [6, -74, 5, 4, 'rgba(50,40,30,0.45)']],
+      pants: '#3b5278', pantsShade: '#2b3d5a', pantsStripe: null,
+      boots: '#1c1c1f', bootSole: '#050505',
       wraps: null, wrapShade: null,
-      sleeves: 'long', legs: 'trousers', shoes: 'boots', fist: 'bare', head: 'curls', stubble: true, dirty: true,
+      sleeves: 'short', legs: 'jeans', shoes: 'boots', fist: 'bare', head: 'crop', stubble: 'dark', dirty: true,
       // SWAY is a spit in the eye and a rake across it (blinds him for a moment); super is the scalding kettle,
       // which takes the other man's right hand (cross and uppercut) away for a while. Heavy stumbling gait.
       sway: 'spit', super: 'kettle', superOnce: true, move: 0.9, stumble: true, regen: 1.15,
-      alt: { topColor: '#4a5560', topShade: '#353d46', pants: '#2c2c30', pantsShade: '#1f1f22' },
+      alt: { topColor: '#4a4f5a', topShade: '#35393f', pants: '#2c2c30', pantsShade: '#1f1f22' },
       tape: { AGE: '31', HEIGHT: '5\'10"', WEIGHT: '13st 9lb', REACH: '71"', RECORD: '14-5 (6 KO)', STYLE: 'Dirty fighter' },
       attr: { POWER: 74, SPEED: 70, CHIN: 88, STAMINA: 90 },
     },

@@ -401,6 +401,21 @@
         if (st.sweat > 0.3) { ctx.fillStyle = `rgba(160,150,120,${(st.sweat - 0.3) * 0.5})`; ctx.beginPath(); ctx.ellipse(4, -48, 16, 22, 0, 0, PI * 2); ctx.fill(); }
         spatter(st, 'rgba(150,18,26,0.8)', 'rgba(150,20,28,A)');
       } });
+    } else if (L.top === 'tee') {
+      // plain t-shirt: round neck, short sleeves (drawn on the arms), a bit baggy at the hem
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-31, 12); ctx.lineTo(-33, -50);
+        ctx.quadraticCurveTo(-33, -82, -12, -88); ctx.quadraticCurveTo(0, -74, 12, -86);
+        ctx.quadraticCurveTo(32, -82, 33, -56); ctx.lineTo(35, 12); ctx.closePath();
+      }, L.topColor, { detail: () => {
+        ctx.strokeStyle = 'rgba(0,0,0,0.14)'; ctx.lineWidth = 2; // collar rib and folds
+        ctx.beginPath(); ctx.moveTo(-12, -86); ctx.quadraticCurveTo(0, -70, 12, -84); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-24, -6); ctx.quadraticCurveTo(-6, 0, 8, -12); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(-26, -44); ctx.quadraticCurveTo(-12, -36, 0, -44); ctx.stroke();
+        for (const [x, y, rx, ry, c] of L.stains) { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0.4, 0, PI * 2); ctx.fill(); }
+        if (st.sweat > 0.3) { ctx.fillStyle = `rgba(160,150,120,${(st.sweat - 0.3) * 0.5})`; ctx.beginPath(); ctx.ellipse(4, -48, 16, 22, 0, 0, PI * 2); ctx.fill(); }
+        spatter(st, 'rgba(150,18,26,0.8)', 'rgba(150,20,28,A)');
+      } });
     } else if (L.top === 'hoodie') {
       cel(ellipse(-20, -84, 23, 15, -0.3), L.topShade);
       cel(() => {
@@ -606,6 +621,16 @@
         ctx.strokeStyle = 'rgba(120,115,105,0.35)'; ctx.lineWidth = 2;
         for (let i = 0; i < 5; i++) { ctx.beginPath(); ctx.moveTo(18 - i * 7, -60 + i); ctx.quadraticCurveTo(4 - i * 6, -58, -12 - i * 3, -40 + i * 3); ctx.stroke(); }
       } });
+    } else if (L.head === 'crop') {
+      // hair cropped right down: a dark cap that follows the skull, stubbly texture, sharp hairline
+      cel(() => {
+        ctx.beginPath(); ctx.moveTo(-20, -16); ctx.bezierCurveTo(-31, -34, -25, -61, -2, -63);
+        ctx.quadraticCurveTo(16, -64, 25, -54); ctx.quadraticCurveTo(14, -52, 6, -48);
+        ctx.quadraticCurveTo(-1, -36, 0, -22); ctx.quadraticCurveTo(-8, -15, -20, -16); ctx.closePath();
+      }, L.hair, { outline: 3.5, noRim: true, detail: () => {
+        ctx.fillStyle = 'rgba(255,255,255,0.09)';
+        for (let i = 0; i < 70; i++) ctx.fillRect(-24 + (i * 37) % 46, -62 + (i * 23) % 44, 1.3, 1.3);
+      } });
     } else if (L.head === 'curls') {
       // tight dark curls close to the scalp, a ragged fringe over the brow
       cel(() => {
@@ -627,9 +652,12 @@
       }, '#b9b5ae', { outline: 3 });
       line(22, -15, 30, -16, '#9a958d', 4); // moustache
     }
-    if (L.stubble) { // a few days of stubble over the jaw and lip
-      ctx.fillStyle = 'rgba(40,28,20,0.4)';
-      for (let i = 0; i < 46; i++) ctx.fillRect(4 + (i * 29) % 30, -22 + (i * 17) % 32, 1.4, 1.4);
+    if (L.stubble) { // a few days of stubble over the jaw and lip ('dark': heavier and darker)
+      const dk = L.stubble === 'dark';
+      ctx.fillStyle = dk ? 'rgba(22,16,12,0.5)' : 'rgba(40,28,20,0.4)';
+      ctx.beginPath(); ctx.moveTo(-8, -14); ctx.quadraticCurveTo(10, -20, 32, -14); ctx.lineTo(33, 4); ctx.quadraticCurveTo(14, 10, -8, 4); ctx.closePath();
+      if (dk) { ctx.globalAlpha = 0.22; ctx.fill(); ctx.globalAlpha = 1; }
+      for (let i = 0; i < (dk ? 90 : 46); i++) ctx.fillRect(2 + (i * 29) % 32, -22 + (i * 17) % 32, 1.4, 1.4);
     }
     if (L.dirty) { // muck on the cheek and brow
       ctx.fillStyle = 'rgba(60,44,30,0.28)';
