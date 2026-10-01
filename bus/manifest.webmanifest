@@ -1,0 +1,9 @@
+{
+  "name": "Bus Driver",
+  "short_name": "Bus Driver",
+  "start_url": ".",
+  "display": "fullscreen",
+  "background_color": "#23262f",
+  "theme_color": "#2b2f3a",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}

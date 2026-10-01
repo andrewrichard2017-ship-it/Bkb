@@ -8,3 +8,4 @@ More than one person edits this game, sometimes with other AI tools (e.g. ChatGP
 - **Testing:** don't run the game in a browser to confirm every change. Only do it when the owner asks, when they report a problem, or when a change is complex enough that it's genuinely needed. A quick syntax check is fine: `for f in js/*.js; do node --check "$f"; done` (`node --check js/*.js` only checks the first file).
 - The game is plain HTML/JS with no build step: open `index.html`, scripts are in `js/`, recorded audio in `audio/`.
 - **Cache-busting:** after changing any file in `js/` or `audio/`, bump the `?v=` number on the script tags in `index.html` and on the clip URL in `js/audio.js`, or phones may keep running the old copy.
+- **Bus Driver** (`bus/`) is a separate kids' game with its own `index.html` and `bus/js/`. Same rules apply there: after changing anything in `bus/js/`, bump the `?v=` numbers on its script tags in `bus/index.html`.

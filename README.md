@@ -2,6 +2,8 @@
 
 A bare knuckle boxing game for Android phones and tablets. It's an HTML5 canvas game, so it runs in Chrome with no install and no build step.
 
+> Also in this repo: **[Bus Driver](bus/)**, a separate game for young kids (`bus/index.html`). It shares nothing with the boxing game.
+
 > **Content warning:** this game contains fictional violence: bare knuckle boxing, knockdowns, cuts, cartoon-style animated blood and strong language. All characters and events are fictional.
 
 ## Fighters

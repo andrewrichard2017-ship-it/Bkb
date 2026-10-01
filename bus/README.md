@@ -1,0 +1,16 @@
+# Bus Driver
+
+A game for young kids: drive the school bus, pick the kids up at the bus stops and take them to school. Plain HTML/JS like the boxing game (no build step, no audio files: every sound is made with Web Audio). Open `bus/index.html`; on GitHub Pages it's at `<pages-url>/bus/`.
+
+**Controls** (big buttons on the dashboard; keyboard in brackets)
+
+| Button | What it does |
+|---|---|
+| Engine (E) | Turn the key: starts or stops the engine. The bus won't move with it off. |
+| Go (→) / Back (←) / Stop (↓ or Space) | Drive forward, reverse (with the reversing beeper), brake. |
+| BEEP, in the middle of the steering wheel (hold H) | Horn. Kids waiting nearby jump and wave. |
+| Open (O) / Close (C) | Doors. They only open when the bus has stopped; it won't drive with them open. |
+| Wipers (W) | Wipers on/off. It rains now and then and the windows fill up with drops. |
+| Radio (R), ⏭ (N) | Radio on/off and next song: The Wheels on the Bus, Twinkle Twinkle, Old MacDonald, Row Row Row Your Boat, Mary Had a Little Lamb. The kids bounce along. |
+
+**How it plays.** Each day has 3 or 4 stops, then the school. Pull up so the door lines up with the yellow mark on the kerb (it turns green), stop, open the doors and the kids climb on and wave from the windows. At the school they get off, cross at the zebra crossing and go in; every kid delivered is a star (saved on the device). There's no way to fail. The button you need next pulses, so kids who can't read yet can follow along, and the bus slows down by itself as it gets near a stop.
