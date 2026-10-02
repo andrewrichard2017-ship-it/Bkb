@@ -3,8 +3,8 @@
 
 The game speaks by playing these clips, so it sounds the same on every device and doesn't
 depend on the phone having a speech voice (Android in-app browsers, including the Claude app,
-have none). The words, numbers, things to count and the child's name are read from
-bus/js/school.js, so after changing CHILD_NAME or the word lists, run this again.
+have none). The words, numbers, things to count, animals and the players' names are read from
+bus/js/school.js, so after changing PROFILES or the word lists, run this again.
 
 Setup (once), then run from the repo root:
   python3 -m venv /tmp/tts && /tmp/tts/bin/pip install kokoro-onnx soundfile
@@ -26,7 +26,8 @@ NUMS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 
 
 def read_game():
     src = open(os.path.join(ROOT, 'js', 'school.js'), encoding='utf-8').read()
-    name = re.search(r"const CHILD_NAME = '([^']+)'", src).group(1)
+    block = src[src.index('const PROFILES'):src.index('let CHILD_NAME')]
+    name = re.findall(r"\{ id: '([a-z]+)', name: '([^']+)'", block)  # [(id, name)] for every player
     block = src[src.index('const LETTERS'):src.index('const NUM_WORDS')]
     letters = {}
     for m in re.finditer(r"^\s*([a-z]): \{ name: '([^']+)', words: \[(.*?)\]\](, phrase: '(\w+)')?", block, re.M):
@@ -59,11 +60,12 @@ def clips():
         c['ar_' + a] = "Yes! That's the %s!" % a
         c['aw_' + a] = "That's the %s." % a
     c['p_again'] = 'Have another go!'
-    c['p_star_animals'] = 'Brilliant, %s! You know your animals! You get a gold star!' % name
-    c['p_spells'] = 'That spells %s!' % name
-    c['p_star_name'] = 'Well done, %s! You get a gold star!' % name
-    c['p_star_numbers'] = 'Brilliant counting, %s! You get a gold star!' % name
-    c['p_star_count'] = 'Great counting, %s! You get a gold star!' % name
+    for pid, nm in name:
+        c['p_spells_' + pid] = 'That spells %s!' % nm
+        c['p_star_name_' + pid] = 'Well done, %s! You get a gold star!' % nm
+        c['p_star_numbers_' + pid] = 'Brilliant counting, %s! You get a gold star!' % nm
+        c['p_star_count_' + pid] = 'Great counting, %s! You get a gold star!' % nm
+        c['p_star_animals_' + pid] = 'Brilliant, %s! You know your animals! You get a gold star!' % nm
     return name, c
 
 
@@ -102,8 +104,8 @@ def main():
             subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', wav, '-ac', '1', '-b:a', '48k',
                             os.path.join(args.out, key + '.mp3')], check=True)
             print(key, '-', text)
-    json.dump({'name': name, 'voice': args.voice, 'clips': sorted(c)}, open(os.path.join(args.out, 'clips.json'), 'w'), indent=0)
-    print(len(c), 'clips for', name)
+    json.dump({'players': [n for _, n in name], 'voice': args.voice, 'clips': sorted(c)}, open(os.path.join(args.out, 'clips.json'), 'w'), indent=0)
+    print(len(c), 'clips for', ', '.join(n for _, n in name))
 
 
 if __name__ == '__main__':

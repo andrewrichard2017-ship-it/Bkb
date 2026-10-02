@@ -14,14 +14,25 @@
   const approach = (v, to, step) => v < to ? Math.min(to, v + step) : Math.max(to, v - step);
 
   // ---------- saved progress ----------
+  // Each player (PROFILES, in school.js) keeps their own stars, bus colour and school progress.
   const SAVE_KEY = 'busDriver.v1';
-  const save = { stars: 0, color: 'yellow', muted: false };
-  try { Object.assign(save, JSON.parse(localStorage.getItem(SAVE_KEY)) || {}); } catch (e) { /* private mode */ }
+  const save = { muted: false, player: PROFILES[0].id, players: {} };
+  try {
+    const old = JSON.parse(localStorage.getItem(SAVE_KEY)) || {};
+    if (old.players) Object.assign(save, old);
+    else { // saved before there were players: that progress was Kellan's
+      const { muted, ...progress } = old;
+      save.muted = !!muted; save.players[PROFILES[0].id] = progress;
+    }
+  } catch (e) { /* private mode */ }
+  for (const p of PROFILES) save.players[p.id] = Object.assign({ stars: 0, color: 'yellow' }, save.players[p.id]);
   const persist = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } };
+  let profile = PROFILES.find(p => p.id === save.player) || PROFILES[0];
+  let me = save.players[profile.id]; // the current player's progress
 
   // ---------- state ----------
   const S = {
-    mode: 'title', t: 0, day: 1, color: save.color,
+    mode: 'title', t: 0, day: 1, color: me.color,
     bus: { x: 0, v: 0, mode: 'stop', engine: false, starting: 0, doorsOpen: false, door: 0, wipers: false, wiperPh: 0,
       wiperA: BUS.wiperRest, wheelA: 0, dist: 0, bounce: 0, drops: [], wasMoving: false, revBeep: 0 },
     stops: [], route: null, onBus: [], walkers: [], unloading: null, delivered: 0, pendingDay: false,
@@ -189,29 +200,51 @@
       else if (document.fullscreenElement || document.webkitFullscreenElement) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
     } catch (e) { /* not allowed here */ }
   }
+  let homeT = 0;
+  $('bHome').addEventListener('click', () => {
+    if (S.mode !== 'play') return;
+    if (performance.now() - homeT < 2500) { persist(); location.reload(); return; }
+    homeT = performance.now(); toast('Tap 🏠 again to change player', 2.5);
+  });
   if (canFs) $('bFull').addEventListener('click', () => fullscreen(!(document.fullscreenElement || document.webkitFullscreenElement)));
   else $('bFull').hidden = true;
 
-  // ---------- title screen ----------
-  const sw = $('swatches');
+  // ---------- title screen: who's playing, then pick a bus ----------
+  const sw = $('swatches'), who = $('players');
+  PROFILES.forEach((p, i) => {
+    const b = document.createElement('button');
+    b.className = 'player'; b.style.setProperty('--pc', p.color);
+    b.innerHTML = '<span class="num">' + (i + 1) + '</span><span class="nm">' + p.name + '</span><span class="st">⭐ ' + save.players[p.id].stars + '</span>';
+    b.addEventListener('click', () => choose(p));
+    who.appendChild(b);
+  });
+  function choose(p) {
+    profile = p; me = save.players[p.id]; save.player = p.id; persist();
+    School.player = p;
+    S.color = me.color;
+    for (const el of sw.children) el.classList.toggle('sel', el.dataset.c === S.color);
+    $('hello').textContent = 'Hi ' + p.name + '! Pick your bus';
+    $('hello').style.color = p.color;
+    $('starLine').textContent = me.stars > 0 ? '⭐ ' + me.stars + (me.stars === 1 ? ' kid' : ' kids') + ' taken to school so far!' : '';
+    $('pickPlayer').hidden = true; $('pickBus').hidden = false;
+  }
+  $('changePlayer').addEventListener('click', () => { $('pickBus').hidden = true; $('pickPlayer').hidden = false; });
   for (const [name, col] of Object.entries(BUS_COLORS)) {
     const b = document.createElement('button');
-    b.className = 'sw'; b.setAttribute('aria-label', name + ' bus');
+    b.className = 'sw'; b.dataset.c = name; b.setAttribute('aria-label', name + ' bus');
     b.innerHTML = `<svg viewBox="0 0 44 26"><rect x="1" y="2" width="42" height="18" rx="5" fill="${col}" stroke="#1f2937" stroke-width="1.5"/>`
       + `<rect x="5" y="5" width="7" height="7" rx="1.5" fill="#bfe3f5"/><rect x="14" y="5" width="7" height="7" rx="1.5" fill="#bfe3f5"/>`
       + `<rect x="23" y="5" width="7" height="7" rx="1.5" fill="#bfe3f5"/><rect x="33" y="5" width="8" height="9" rx="2" fill="#bfe3f5"/>`
       + `<circle cx="11" cy="21" r="4" fill="#1f2937"/><circle cx="33" cy="21" r="4" fill="#1f2937"/></svg>`;
     b.classList.toggle('sel', name === S.color);
     b.addEventListener('click', () => {
-      S.color = save.color = name; persist();
+      S.color = me.color = name; persist();
       for (const el of sw.children) el.classList.toggle('sel', el === b);
     });
     sw.appendChild(b);
   }
-  const starLine = $('starLine');
-  if (save.stars > 0) starLine.textContent = '⭐ ' + save.stars + (save.stars === 1 ? ' kid' : ' kids') + ' taken to school so far!';
   function start() {
-    if (S.mode === 'play') return;
+    if (S.mode === 'play' || $('pickBus').hidden) return;
     Sound.unlock(); Sound.setMuted(save.muted);
     School.preload(); // the school voice clips load while you drive
     $('title').hidden = true;
@@ -306,7 +339,7 @@
   function finishSchool() {
     const n = S.delivered;
     S.unloading.done = true; S.unloading = null; S.delivered = 0;
-    save.stars += n; persist();
+    me.stars += n; persist();
     Sound.fanfare(); buzz([40, 60, 40]);
     toast('Hooray! ' + n + (n === 1 ? ' kid is' : ' kids are') + ' at school! ⭐ +' + n, 3.6);
     for (let i = 0; i < 140; i++) {
@@ -330,7 +363,7 @@
     School.open(S.classKids, () => {
       S.mode = 'play';
       toast(S.bus.doorsOpen ? 'Home time! Close the doors and start the engine.' : 'Home time! Start the engine.', 3.2);
-    }, { save, persist, sound: Sound, color: () => S.color });
+    }, { save: me, persist, muted: () => save.muted, name: profile.name, id: profile.id, sound: Sound, color: () => S.color });
   });
 
   function updateKids(dt, doorX) {
@@ -537,10 +570,10 @@
     hud(V);
   }
 
-  function pill(x, y, text, u) {
+  function pill(x, y, text, u, bg) {
     cx.font = '700 ' + Math.round(19 * u) + 'px Fredoka, sans-serif';
     const w = cx.measureText(text).width + 22 * u, h = 34 * u;
-    cx.fillStyle = 'rgba(17,24,39,.55)'; Scene.rr(cx, x, y, w, h, h / 2); cx.fill();
+    cx.fillStyle = bg || 'rgba(17,24,39,.55)'; Scene.rr(cx, x, y, w, h, h / 2); cx.fill();
     cx.fillStyle = '#fff'; cx.textAlign = 'left'; cx.textBaseline = 'middle';
     cx.fillText(text, x + 11 * u, y + h / 2 + 1);
     return w;
@@ -551,7 +584,8 @@
     // counters
     const x0 = 10 * u, y0 = 10 * u;
     const w1 = pill(x0, y0, '🧒 ' + S.onBus.length, u);
-    pill(x0 + w1 + 8 * u, y0, '⭐ ' + save.stars, u);
+    const w2 = pill(x0 + w1 + 8 * u, y0, '⭐ ' + me.stars, u);
+    pill(x0 + w1 + w2 + 16 * u, y0, profile.name, u, profile.color);
     // route progress: stops, the school, and where the bus is
     const r = S.route;
     if (r && S.mode === 'play') {

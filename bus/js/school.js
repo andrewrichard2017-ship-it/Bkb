@@ -1,14 +1,21 @@
 'use strict';
 // Stage two: inside the school. The class sits at their tables and the player's desk has a paper
-// menu of today's work. "My name" is colouring in the letters of CHILD_NAME one at a time: each
-// letter says "K is for kite", then the name is spelt out and said, and a gold star goes in the
-// star book. Change CHILD_NAME to use another name (then remake the voice: tools/make_voice.py).
-const CHILD_NAME = 'Kellan';
+// menu of today's work. "My name" is colouring in the letters of the player's name one at a time:
+// each letter says "K is for kite", then the name is spelt out and said, and a gold star goes in
+// the star book.
+
+// The players, in the order they're shown on the title screen. Each has their own stars and
+// progress. After adding or renaming one, remake the voice (tools/make_voice.py).
+const PROFILES = [
+  { id: 'kellan', name: 'Kellan', color: '#2563eb' },
+  { id: 'alaina', name: 'Alaina', color: '#ec4899' },
+];
+let CHILD_NAME = PROFILES[0].name, PLAYER = PROFILES[0].id; // whoever is playing; set by School.open
 
 // Each letter with its name (spelt out so the voice says it right) and picture words: "K is for kite".
 // A repeated letter (the two Ls in Kellan) gets the next word in its list.
 const LETTERS = {
-  a: { name: 'eigh', words: [['apple', '🍎'], ['ant', '🐜']] },
+  a: { name: 'eigh', words: [['apple', '🍎'], ['ant', '🐜'], ['aeroplane', '✈️']] },
   b: { name: 'bee', words: [['ball', '⚽'], ['bee', '🐝']] },
   c: { name: 'see', words: [['cat', '🐱'], ['cake', '🎂']] },
   d: { name: 'dee', words: [['dog', '🐶'], ['duck', '🦆']] },
@@ -78,15 +85,14 @@ const School = (() => {
   // The voice is recorded clips in audio/voice/ (made by tools/make_voice.py), played through Web
   // Audio so it works on every device. say() takes the clips to play in a row, plus the words to
   // fall back on with the device's own speech voice if a clip is missing (or the name changed).
-  const VOICE_VERSION = 5, VOICE_DIR = 'audio/voice/';
+  const VOICE_VERSION = 6, VOICE_DIR = 'audio/voice/';
   const clips = {};
   let voiceLoad = null, sayId = 0, playing = null, last = null, primed = false;
   function loadVoice() {
     if (voiceLoad) return voiceLoad;
     voiceLoad = fetch(VOICE_DIR + 'clips.json?v=' + VOICE_VERSION).then(r => r.json()).then(m => {
-      const named = k => k === 'p_spells' || k.startsWith('p_star_');
       const ours = k => [...CHILD_NAME.toLowerCase()].some(ch => k === 'l_' + ch || k.startsWith('f_' + ch + '_'));
-      const keys = m.clips.filter(k => m.name === CHILD_NAME || !named(k)).sort((a, b) => ours(b) - ours(a));
+      const keys = m.clips.slice().sort((a, b) => ours(b) - ours(a));
       let i = 0;
       const worker = async () => {
         while (i < keys.length) {
@@ -132,7 +138,7 @@ const School = (() => {
   }
   function tts(text, rate) {
     return new Promise(res => {
-      if (!syn || cfg.save.muted) return setTimeout(res, 500);
+      if (!syn || cfg.muted()) return setTimeout(res, 500);
       let done = false;
       const fin = () => { if (!done) { done = true; res(); } };
       try {
@@ -167,6 +173,7 @@ const School = (() => {
   }
   function open(classKids, exit, opts) {
     cfg = opts; onExit = exit; kids = classKids.slice(0, 12);
+    CHILD_NAME = opts.name; PLAYER = opts.id;
     loadVoice();
     root.hidden = false;
     $('menuHello').textContent = 'Today’s work for ' + CHILD_NAME;
@@ -327,6 +334,8 @@ const School = (() => {
     const base = h * 0.5 + F * (capH - Math.max(desc / 100, 0.22)) / 2;
     L = { w, h, dpr, F, base, top: base - capH * F, mid: base - xh * F, low: base + 0.22 * F, fat: F * (T.mode === 'numbers' ? 0.05 : 0.09) };
   }
+  // how much to fatten a letter so it's easy to colour in; i and j less, or the dot joins on
+  const fatFor = ch => L.fat * ('ij'.includes(ch) ? 0.35 : 1);
   function shapeCanvas(ch, fat, color) {
     const cv = document.createElement('canvas'); cv.width = tc.width; cv.height = tc.height;
     const c = cv.getContext('2d'); c.setTransform(L.dpr, 0, 0, L.dpr, 0, 0);
@@ -337,11 +346,11 @@ const School = (() => {
   }
   function letter() {
     const ch = T.text[T.i];
-    T.mask = shapeCanvas(ch, L.fat, '#000');
+    T.mask = shapeCanvas(ch, fatFor(ch), '#000');
     // the outline the child colours inside
-    const o = shapeCanvas(ch, L.fat + 6, '#334155'), oc = o.getContext('2d');
+    const o = shapeCanvas(ch, fatFor(ch) + 6, '#334155'), oc = o.getContext('2d');
     oc.setTransform(1, 0, 0, 1, 0, 0);
-    oc.drawImage(shapeCanvas(ch, L.fat, '#ffffff'), 0, 0);
+    oc.drawImage(shapeCanvas(ch, fatFor(ch), '#ffffff'), 0, 0);
     T.outline = o;
     T.paint = document.createElement('canvas'); T.paint.width = tc.width; T.paint.height = tc.height;
     T.colored = document.createElement('canvas'); T.colored.width = tc.width; T.colored.height = tc.height;
@@ -396,7 +405,7 @@ const School = (() => {
     T.done = true; T.drawing = false;
     const run = T.run, i = T.i, p = wordFor(i);
     T.colors[i] = T.color;
-    T.tint = shapeCanvas(T.text[i], L.fat, T.color);
+    T.tint = shapeCanvas(T.text[i], fatFor(T.text[i]), T.color);
     cfg.sound.board(i); buzz(25);
     strip();
     if (p) {
@@ -460,7 +469,7 @@ const School = (() => {
     }
     if (run !== T.run) return;
     T.bounce = -1; T.all = true; T.bounceAt = performance.now();
-    await say(['p_spells'], 'That spells ' + CHILD_NAME + '!', 0.9);
+    await say(['p_spells_' + PLAYER], 'That spells ' + CHILD_NAME + '!', 0.9);
     if (run !== T.run) return;
     await goldStar(run, 'name', 'Well done, ' + CHILD_NAME + '! You get a gold star!');
   }
@@ -469,7 +478,7 @@ const School = (() => {
   async function goldStar(run, kind, words) {
     cfg.sound.fanfare(); buzz([40, 60, 40]);
     T.phase = 'star'; T.starAt = performance.now();
-    await say(['p_star_' + kind], words, 0.9);
+    await say(['p_star_' + kind + '_' + PLAYER], words, 0.9);
     await sleep(600);
     if (run !== T.run) return;
     addStar(kind);
@@ -527,11 +536,11 @@ const School = (() => {
       if (fit < 1) { F *= fit; c.font = '700 ' + F + 'px ' + LETTER_FONT; }
       const total = c.measureText(whole).width + gap * fit * (T.text.length - 1);
       let x = (w - total) / 2;
-      c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round'; c.lineWidth = L.fat * F / L.F;
+      c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round';
       const t = (now - (T.bounceAt || now)) / 1000;
       T.text.forEach((ch, i) => {
         const up = (T.all || T.bounce === i) ? Math.max(0, Math.sin(Math.min(1, t * 2.2) * Math.PI)) * F * 0.18 : 0;
-        c.fillStyle = c.strokeStyle = T.colors[i] || '#334155';
+        c.fillStyle = c.strokeStyle = T.colors[i] || '#334155'; c.lineWidth = fatFor(ch) * F / L.F;
         c.fillText(ch, x, L.base - up); c.strokeText(ch, x, L.base - up);
         x += c.measureText(ch).width + gap * Math.min(1, fit);
       });
@@ -623,7 +632,7 @@ const School = (() => {
     if (++C.round < C.rounds.length) return round(run);
     cfg.sound.fanfare();
     $('roundDots').innerHTML = C.rounds.map(() => '<i class="done"></i>').join('');
-    await say(['p_star_count'], 'Great counting, ' + CHILD_NAME + '! You get a gold star!', 0.9);
+    await say(['p_star_count_' + PLAYER], 'Great counting, ' + CHILD_NAME + '! You get a gold star!', 0.9);
     if (run === C.run) addStar('count');
   }
 
@@ -667,7 +676,7 @@ const School = (() => {
     cfg.save.animalNext = ((cfg.save.animalNext || 0) + ANIMALS_PER_GO) % ANIMALS.length; cfg.persist();
     $('animalDots').innerHTML = A.list.map(() => '<i class="done"></i>').join('');
     cfg.sound.fanfare();
-    await say(['p_star_animals'], 'Brilliant, ' + CHILD_NAME + '! You know your animals! You get a gold star!', 0.9);
+    await say(['p_star_animals_' + PLAYER], 'Brilliant, ' + CHILD_NAME + '! You know your animals! You get a gold star!', 0.9);
     if (run === A.run) addStar('animals');
   }
 
@@ -716,5 +725,5 @@ const School = (() => {
     else if (screen === 'traceScreen' && T.phase !== 'trace') layout();
   }).observe(root);
 
-  return { open, preload: loadVoice };
+  return { open, preload: loadVoice, set player(p) { CHILD_NAME = p.name; PLAYER = p.id; } };
 })();
