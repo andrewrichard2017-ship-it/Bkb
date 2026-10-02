@@ -9,3 +9,4 @@ More than one person edits this game, sometimes with other AI tools (e.g. ChatGP
 - The game is plain HTML/JS with no build step: open `index.html`, scripts are in `js/`, recorded audio in `audio/`.
 - **Cache-busting:** after changing any file in `js/` or `audio/`, bump the `?v=` number on the script tags in `index.html` and on the clip URL in `js/audio.js`, or phones may keep running the old copy.
 - **Bus Driver** (`bus/`) is a separate kids' game with its own `index.html` and `bus/js/`. Same rules apply there: after changing anything in `bus/js/`, bump the `?v=` numbers on its script tags in `bus/index.html`.
+- Bus Driver's school voice is generated clips in `bus/audio/voice/`. After changing `CHILD_NAME` or the word lists in `bus/js/school.js`, rerun `bus/tools/make_voice.py` and bump `VOICE_VERSION` in `school.js`.

@@ -52,6 +52,47 @@ const School = (() => {
   const buzz = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } };
 
   // ---------- speech ----------
+  // The voice is recorded clips in audio/voice/ (made by tools/make_voice.py), played through Web
+  // Audio so it works on every device. say() takes the clips to play in a row, plus the words to
+  // fall back on with the device's own speech voice if a clip is missing (or the name changed).
+  const VOICE_VERSION = 1, VOICE_DIR = 'audio/voice/';
+  const clips = {};
+  let voiceLoad = null, sayId = 0, playing = null, last = null, primed = false;
+  function loadVoice() {
+    if (voiceLoad) return voiceLoad;
+    voiceLoad = fetch(VOICE_DIR + 'clips.json?v=' + VOICE_VERSION).then(r => r.json()).then(m => {
+      const named = k => k === 'name' || k === 'name_slow' || k.startsWith('p_star_');
+      const ours = new Set([...CHILD_NAME.toLowerCase()].map(ch => 's_' + ch));
+      const keys = m.clips.filter(k => m.name === CHILD_NAME || !named(k)).sort((a, b) => ours.has(b) - ours.has(a));
+      let i = 0;
+      const worker = async () => {
+        while (i < keys.length) {
+          const k = keys[i++];
+          try {
+            const r = await fetch(VOICE_DIR + encodeURIComponent(k) + '.mp3?v=' + VOICE_VERSION);
+            clips[k] = await Sound.decode(await r.arrayBuffer());
+          } catch (e) { /* that one falls back to the device voice */ }
+        }
+      };
+      return Promise.all([worker(), worker(), worker(), worker()]);
+    }).catch(() => {});
+    return voiceLoad;
+  }
+  function say(keys, text, rate) {
+    last = [keys, text, rate];
+    const id = ++sayId;
+    if (keys.length && keys.every(k => clips[k])) {
+      return (async () => {
+        for (const k of keys) {
+          if (id !== sayId) return;
+          playing = Sound.voice(clips[k]);
+          await sleep(clips[k].duration * 1000 + 70);
+        }
+      })();
+    }
+    return tts(text, rate);
+  }
+  const sayAgain = () => { if (last) { hush(); say(...last); } };
   const syn = window.speechSynthesis;
   let voice = null;
   function pickVoice() {
@@ -60,7 +101,13 @@ const School = (() => {
     voice = vs.find(v => /en[-_]GB/i.test(v.lang)) || vs.find(v => /en[-_]IE/i.test(v.lang)) || vs.find(v => /^en/i.test(v.lang)) || null;
   }
   if (syn) { pickVoice(); syn.onvoiceschanged = pickVoice; }
-  function say(text, rate) {
+  // iPhones only let a page speak if the first speech starts inside a tap
+  function primeTts() {
+    if (primed || !syn) return;
+    primed = true;
+    try { syn.speak(new SpeechSynthesisUtterance(' ')); } catch (e) { /* ignore */ }
+  }
+  function tts(text, rate) {
     return new Promise(res => {
       if (!syn || cfg.save.muted) return setTimeout(res, 500);
       let done = false;
@@ -75,7 +122,11 @@ const School = (() => {
       setTimeout(fin, 1000 + text.length * 130);
     });
   }
-  const hush = () => { if (syn) syn.cancel(); };
+  function hush() {
+    sayId++;
+    if (playing) { try { playing.stop(); } catch (e) { /* already ended */ } playing = null; }
+    if (syn) syn.cancel();
+  }
 
   // ---------- screens ----------
   function show(id) {
@@ -92,6 +143,7 @@ const School = (() => {
   }
   function open(classKids, exit, opts) {
     cfg = opts; onExit = exit; kids = classKids.slice(0, 12);
+    loadVoice();
     root.hidden = false;
     $('menuHello').textContent = 'Today’s work for ' + CHILD_NAME;
     $('tNameSub').textContent = CHILD_NAME;
@@ -212,7 +264,7 @@ const School = (() => {
     let seen = 0;
     for (let k = 0; k < i; k++) if (CHILD_NAME[k].toLowerCase() === ch) seen++;
     const [word, pic] = p.words[seen % p.words.length];
-    return { say: p.say, word, pic, ch: CHILD_NAME[i] };
+    return { say: p.say, word, pic, ch: CHILD_NAME[i], key: 's_' + ch, wkey: 'w_' + word };
   }
 
   function startTrace() {
@@ -281,8 +333,8 @@ const School = (() => {
     T.color = CRAYONS[T.i % CRAYONS.length]; markCrayon();
     strip();
     const p = wordFor(T.i);
-    if (p) say(p.say);
-    else if (T.mode === 'numbers') say(NUM_WORDS[+ch]);
+    if (p) say([p.key], p.say);
+    else if (T.mode === 'numbers') say(['n_' + ch], NUM_WORDS[+ch]);
   }
   function pos(e) { const r = tc.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   function strokeTo(p) {
@@ -329,7 +381,7 @@ const School = (() => {
       card.querySelector('.wd').textContent = p.word;
       card.hidden = false; card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop');
       await sleep(350);
-      await say(p.say); await sleep(150); await say(p.say + ', ' + p.word + '!');
+      await say([p.key], p.say); await sleep(150); await say([p.key, p.wkey], p.say + ', ' + p.word + '!');
       await sleep(500);
       card.hidden = true;
     } else if (T.mode === 'numbers') await countUp(+T.text[i], run);
@@ -351,18 +403,18 @@ const School = (() => {
       it.className = 'thing'; it.innerHTML = '<span class="pic">' + pic + '</span><b>' + k + '</b>';
       row.appendChild(it);
       cfg.sound.board(k - 1);
-      await say(NUM_WORDS[k], 1);
+      await say(['n_' + k], NUM_WORDS[k], 1);
     }
     if (run !== T.run) return;
     await sleep(200);
-    await say(NUM_WORDS[n] + ' ' + (n === 1 ? one : many) + '!', 0.9);
+    await say(['n_' + n, 't_' + (n === 1 ? one : many)], NUM_WORDS[n] + ' ' + (n === 1 ? one : many) + '!', 0.9);
     await sleep(700);
     row.hidden = true;
   }
   async function numbersDone(run) {
     T.phase = 'blend'; T.all = true; T.bounce = -1; T.bounceAt = performance.now();
     $('crayons').hidden = true; strip();
-    await say(T.text.map(d => NUM_WORDS[+d]).join(', ') + '!', 0.85);
+    await say(T.text.map(d => 'n_' + d), T.text.map(d => NUM_WORDS[+d]).join(', ') + '!', 0.85);
     if (run !== T.run) return;
     cfg.save.numNext = (+T.text[T.text.length - 1]) % 10 + 1; cfg.persist();
     await goldStar(run, 'numbers', 'Brilliant counting, ' + CHILD_NAME + '! You get a gold star!');
@@ -377,14 +429,14 @@ const School = (() => {
       if (run !== T.run) return;
       T.bounce = i; T.bounceAt = performance.now();
       const p = wordFor(i);
-      await say(p ? p.say : CHILD_NAME[i], 0.8);
+      await say(p ? [p.key] : [], p ? p.say : CHILD_NAME[i], 0.8);
       await sleep(120);
     }
     if (run !== T.run) return;
     T.bounce = -1; T.all = true; T.bounceAt = performance.now();
-    await say(CHILD_NAME, 0.65); await sleep(250);
+    await say(['name_slow'], CHILD_NAME, 0.65); await sleep(250);
     T.bounceAt = performance.now();
-    await say(CHILD_NAME + '!', 0.9);
+    await say(['name'], CHILD_NAME + '!', 0.9);
     if (run !== T.run) return;
     await goldStar(run, 'name', 'Well done, ' + CHILD_NAME + '! You get a gold star!');
   }
@@ -393,7 +445,7 @@ const School = (() => {
   async function goldStar(run, kind, words) {
     cfg.sound.fanfare(); buzz([40, 60, 40]);
     T.phase = 'star'; T.starAt = performance.now();
-    await say(words, 0.9);
+    await say(['p_star_' + kind], words, 0.9);
     await sleep(600);
     if (run !== T.run) return;
     addStar(kind);
@@ -504,9 +556,8 @@ const School = (() => {
       b.addEventListener('pointerdown', e => { e.preventDefault(); countOne(b, run); });
       area.appendChild(b);
     }
-    C.prompt = r.kids ? 'How many kids came to school on the bus? Tap each one to count!'
-      : 'How many ' + C.what[1] + '? Tap each one to count!';
-    say(C.prompt);
+    say([r.kids ? 'p_how_kids' : 'p_how_' + C.what[1]], r.kids ? 'How many kids came to school on the bus? Tap each one to count!'
+      : 'How many ' + C.what[1] + '? Tap each one to count!');
   }
   function countOne(b, run) {
     if (run !== C.run || b.classList.contains('done')) return;
@@ -515,7 +566,7 @@ const School = (() => {
     const badge = document.createElement('b'); badge.textContent = k; b.appendChild(badge);
     if (b.look) drawKid(b.querySelector('canvas'), b.look, true);
     cfg.sound.board(k - 1); buzz(12);
-    hush(); say(NUM_WORDS[k], 1.05);
+    hush(); say(['n_' + k], NUM_WORDS[k], 1.05);
     if (k === C.n) setTimeout(() => ask(run), 900);
   }
   function ask(run) {
@@ -531,24 +582,24 @@ const School = (() => {
     }
     ch.hidden = false;
     $('countPrompt').textContent = 'How many ' + C.what[1] + '?';
-    C.prompt = 'So how many ' + C.what[1] + ' are there?';
-    say(C.prompt);
+    say(['p_so_' + C.what[1]], 'So how many ' + C.what[1] + ' are there?');
   }
   async function pick(b, v, run) {
     if (C.busy || b.disabled || run !== C.run) return;
     if (v !== C.n) {
       b.disabled = true; cfg.sound.nope(); buzz(30);
-      hush(); say('Not that one. Have another go!');
+      hush(); say(['p_nope'], 'Not that one. Have another go!');
       return;
     }
     C.busy = true; b.classList.add('right'); cfg.sound.sparkle(); buzz(30);
-    hush(); await say('Yes! ' + NUM_WORDS[v] + ' ' + (v === 1 ? C.what[0] : C.what[1]) + '!', 0.9);
+    const thing = v === 1 ? C.what[0] : C.what[1];
+    hush(); await say(['p_yes', 'n_' + v, 't_' + thing], 'Yes! ' + NUM_WORDS[v] + ' ' + thing + '!', 0.9);
     await sleep(500);
     if (run !== C.run) return;
     if (++C.round < C.rounds.length) return round(run);
     cfg.sound.fanfare();
     $('roundDots').innerHTML = C.rounds.map(() => '<i class="done"></i>').join('');
-    await say('Great counting, ' + CHILD_NAME + '! You get a gold star!', 0.9);
+    await say(['p_star_count'], 'Great counting, ' + CHILD_NAME + '! You get a gold star!', 0.9);
     if (run === C.run) addStar('count');
   }
 
@@ -577,26 +628,22 @@ const School = (() => {
   }
 
   // ---------- buttons ----------
-  const tap = (id, fn) => $(id).addEventListener('click', () => { cfg.sound.click(); fn(); });
+  const tap = (id, fn) => $(id).addEventListener('click', () => { primeTts(); cfg.sound.click(); fn(); });
   tap('tName', () => { T.mode = 'name'; show('traceScreen'); });
   tap('tTrace', () => { T.mode = 'numbers'; show('traceScreen'); });
   tap('tCount', () => show('countScreen'));
   tap('tBook', () => show('bookScreen'));
   tap('tBus', close);
   tap('trBack', () => { hush(); T.run++; show('classScreen'); });
-  tap('trSay', () => {
-    if (T.mode === 'numbers') return say(T.phase === 'trace' ? NUM_WORDS[+T.text[T.i]] : T.text.map(d => NUM_WORDS[+d]).join(', '));
-    const p = T.phase === 'trace' && wordFor(T.i);
-    if (p) say(p.say); else say(CHILD_NAME, 0.8);
-  });
+  tap('trSay', sayAgain);
   tap('bookBack', () => show('classScreen'));
   tap('cBack', () => { hush(); C.run++; show('classScreen'); });
-  tap('cSay', () => say(C.prompt || ''));
+  tap('cSay', sayAgain);
   new ResizeObserver(() => {
     if (screen === 'classScreen') drawClass();
     if (screen === 'traceScreen' && T.phase === 'trace' && T.grid && T.grid.count === 0 && !T.done) { layout(); letter(); }
     else if (screen === 'traceScreen' && T.phase !== 'trace') layout();
   }).observe(root);
 
-  return { open };
+  return { open, preload: loadVoice };
 })();

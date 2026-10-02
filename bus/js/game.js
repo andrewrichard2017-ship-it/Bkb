@@ -213,6 +213,7 @@
   function start() {
     if (S.mode === 'play') return;
     Sound.unlock(); Sound.setMuted(save.muted);
+    School.preload(); // the school voice clips load while you drive
     $('title').hidden = true;
     S.mode = 'play';
     if (canFs && matchMedia('(pointer: coarse)').matches) fullscreen(true);

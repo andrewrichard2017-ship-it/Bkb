@@ -227,6 +227,18 @@ const Sound = (() => {
     }
   }
 
-  return { unlock, setMuted, engineStart, engineStop, engineSet, hornOn, hornOff, door, airBrake, swish, gear, click,
+  // recorded voice clips
+  function decode(ab) {
+    init();
+    return new Promise((res, rej) => ctx.decodeAudioData(ab, res, rej));
+  }
+  function voice(buf) {
+    const s = ctx.createBufferSource(), g = ctx.createGain();
+    s.buffer = buf; g.gain.value = 1.4;
+    s.connect(g); g.connect(out); s.start();
+    return s;
+  }
+
+  return { unlock, setMuted, decode, voice, engineStart, engineStop, engineSet, hornOn, hornOff, door, airBrake, swish, gear, click,
     nope, reverseBeep, board, bye, fanfare, scribble, sparkle, rainLevel, radioOn, radioOff, radioTick };
 })();
