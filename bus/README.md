@@ -18,4 +18,6 @@ A game for young kids: drive the school bus, pick the kids up at the bus stops a
 **Inside the school.** After the kids go in, a *Go into school!* button takes you into the classroom: the kids you dropped off sit at their tables, the teacher's whiteboard says good morning, and a paper menu of today's work is on your desk.
 
 - **My name:** colour in each letter of the name, one at a time, on handwriting lines. Each letter says its sound and shows a picture (k for kite, e for egg, l for lion...). Then the whole name is sounded out and said, and a gold star goes into the **star book**. The name is `CHILD_NAME` at the top of `bus/js/school.js`; every letter a-z has a sound, so any name works. The voice is the device's built-in speech voice (a British or Irish one if the device has it).
-- **Numbers:** coming soon.
+- **Count the kids:** three rounds. First the kids you brought on the bus, then two sets of other things (apples, ducks...). Tap each one and the voice counts along; then pick how many from three numbers. A wrong pick just greys out.
+- **Colour numbers:** colour in three numbers in a row, the same way as the name. After each one, that many things pop up and get counted ("one, two, three: three apples!"). Next time it carries on from the next number, round and round 1 to 10 (`NUMBERS_PER_GO` in `bus/js/school.js`).
+- Every finished activity puts a gold star in the star book, marked with what it was for.

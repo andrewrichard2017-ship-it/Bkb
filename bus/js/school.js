@@ -35,6 +35,12 @@ const PHONICS = {
   y: { say: 'yuh', words: [['yo-yo', '🪀'], ['yak', '🐃']] },
   z: { say: 'zuh', words: [['zebra', '🦓'], ['zip', '🤐']] },
 };
+// Numbers: what gets counted after colouring in each number, as [picture, one, many].
+const NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
+const COUNT_THINGS = [['🍎', 'apple', 'apples'], ['🦆', 'duck', 'ducks'], ['🚌', 'bus', 'buses'], ['⭐', 'star', 'stars'],
+  ['🐟', 'fish', 'fish'], ['🎈', 'balloon', 'balloons'], ['🚗', 'car', 'cars'], ['🧁', 'cupcake', 'cupcakes'],
+  ['🍌', 'banana', 'bananas'], ['🐸', 'frog', 'frogs']];
+const NUMBERS_PER_GO = 3; // how many numbers to colour in one go; the next go carries on from there
 const CRAYONS = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
 
 const School = (() => {
@@ -77,6 +83,11 @@ const School = (() => {
     for (const el of root.querySelectorAll('.screen')) el.hidden = el.id !== id;
     if (id === 'classScreen') drawClass();
     if (id === 'traceScreen') startTrace();
+    if (id === 'countScreen') startCount();
+    if (id === 'classScreen') {
+      const first = cfg.save.numNext || 1;
+      $('tTraceSub').textContent = [0, 1, 2].slice(0, NUMBERS_PER_GO).map(k => (first - 1 + k) % 10 + 1).join(', ');
+    }
     if (id === 'bookScreen') renderBook(false);
   }
   function open(classKids, exit, opts) {
@@ -167,9 +178,9 @@ const School = (() => {
     c.fillStyle = '#2563eb'; rr(c, px - 20 * s, py - 6 * s, 40 * s, 44 * s, 6 * s); c.fill();
   }
 
-  // ---------- name tracing ----------
+  // ---------- colouring in: the name, or numbers ----------
   const tc = $('traceCanvas'), tctx = tc.getContext('2d'), wrap = $('traceWrap');
-  const T = { run: 0, i: 0, colors: [], color: CRAYONS[0], drawing: false, last: null, done: false, phase: 'trace',
+  const T = { mode: 'name', text: [], run: 0, i: 0, colors: [], color: CRAYONS[0], drawing: false, last: null, done: false, phase: 'trace',
     fillT: 0, scribbleT: 0, idleT: 0 };
   let L = null; // layout + per-letter canvases
 
@@ -185,7 +196,8 @@ const School = (() => {
   function markCrayon() { for (const b of $('crayons').children) b.classList.toggle('sel', b.style.getPropertyValue('--c') === T.color); }
   function strip() {
     const el = $('nameStrip'); el.innerHTML = '';
-    [...CHILD_NAME].forEach((ch, i) => {
+    el.classList.toggle('nums', T.mode === 'numbers');
+    T.text.forEach((ch, i) => {
       const s = document.createElement('span');
       s.textContent = ch;
       if (i < T.i || T.phase !== 'trace') s.style.color = T.colors[i];
@@ -194,6 +206,7 @@ const School = (() => {
     });
   }
   function wordFor(i) {
+    if (T.mode !== 'name') return null;
     const ch = CHILD_NAME[i].toLowerCase(), p = PHONICS[ch];
     if (!p) return null;
     let seen = 0;
@@ -204,7 +217,14 @@ const School = (() => {
 
   function startTrace() {
     const run = ++T.run;
+    if (T.mode === 'name') T.text = [...CHILD_NAME];
+    else {
+      const first = cfg.save.numNext || 1;
+      T.text = [];
+      for (let k = 0; k < NUMBERS_PER_GO; k++) T.text.push(String((first - 1 + k) % 10 + 1));
+    }
     T.i = 0; T.colors = []; T.phase = 'trace'; T.done = false;
+    $('countRow').hidden = true;
     T.color = CRAYONS[0];
     crayonRow(); markCrayon(); $('crayons').hidden = false; $('soundCard').hidden = true;
     const go = () => { if (run === T.run) { layout(); letter(); } };
@@ -219,15 +239,15 @@ const School = (() => {
     tc.width = Math.round(w * dpr); tc.height = Math.round(h * dpr);
     tctx.font = '700 100px ' + LETTER_FONT;
     let widest = 0, asc = 0, desc = 0;
-    for (const ch of CHILD_NAME) {
+    for (const ch of T.text) {
       const m = tctx.measureText(ch);
       widest = Math.max(widest, m.width); asc = Math.max(asc, m.actualBoundingBoxAscent || 72); desc = Math.max(desc, m.actualBoundingBoxDescent || 0);
     }
     const xm = tctx.measureText('x'), xh = (xm.actualBoundingBoxAscent || 50) / 100;
     const capH = asc / 100;
-    let F = Math.min(h * 0.82 / (capH + Math.max(desc / 100, 0.22) + 0.25), w * 0.8 / (widest / 100 + 0.25));
+    let F = Math.min(h * 0.82 / (capH + Math.max(desc / 100, 0.22) + 0.25), w * 0.8 / (widest / 100 + 0.25), h * 0.42 / capH);
     const base = h * 0.5 + F * (capH - Math.max(desc / 100, 0.22)) / 2;
-    L = { w, h, dpr, F, base, top: base - capH * F, mid: base - xh * F, low: base + 0.22 * F, fat: F * 0.09 };
+    L = { w, h, dpr, F, base, top: base - capH * F, mid: base - xh * F, low: base + 0.22 * F, fat: F * (T.mode === 'numbers' ? 0.05 : 0.09) };
   }
   function shapeCanvas(ch, fat, color) {
     const cv = document.createElement('canvas'); cv.width = tc.width; cv.height = tc.height;
@@ -238,7 +258,7 @@ const School = (() => {
     return cv;
   }
   function letter() {
-    const ch = CHILD_NAME[T.i];
+    const ch = T.text[T.i];
     T.mask = shapeCanvas(ch, L.fat, '#000');
     // the outline the child colours inside
     const o = shapeCanvas(ch, L.fat + 6, '#334155'), oc = o.getContext('2d');
@@ -262,6 +282,7 @@ const School = (() => {
     strip();
     const p = wordFor(T.i);
     if (p) say(p.say);
+    else if (T.mode === 'numbers') say(NUM_WORDS[+ch]);
   }
   function pos(e) { const r = tc.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
   function strokeTo(p) {
@@ -297,7 +318,7 @@ const School = (() => {
     T.done = true; T.drawing = false;
     const run = T.run, i = T.i, p = wordFor(i);
     T.colors[i] = T.color;
-    T.tint = shapeCanvas(CHILD_NAME[i], L.fat, T.color);
+    T.tint = shapeCanvas(T.text[i], L.fat, T.color);
     cfg.sound.board(i); buzz(25);
     strip();
     if (p) {
@@ -311,10 +332,40 @@ const School = (() => {
       await say(p.say); await sleep(150); await say(p.say + ', ' + p.word + '!');
       await sleep(500);
       card.hidden = true;
-    } else await sleep(900);
+    } else if (T.mode === 'numbers') await countUp(+T.text[i], run);
+    else await sleep(900);
     if (run !== T.run) return;
-    if (++T.i < CHILD_NAME.length) letter();
-    else blend(run);
+    if (++T.i < T.text.length) letter();
+    else if (T.mode === 'name') blend(run);
+    else numbersDone(run);
+  }
+
+  // after colouring a number, that many things pop up and get counted
+  async function countUp(n, run) {
+    const [pic, one, many] = COUNT_THINGS[(n - 1) % COUNT_THINGS.length], row = $('countRow');
+    row.innerHTML = ''; row.hidden = false;
+    await sleep(300);
+    for (let k = 1; k <= n; k++) {
+      if (run !== T.run) return;
+      const it = document.createElement('div');
+      it.className = 'thing'; it.innerHTML = '<span class="pic">' + pic + '</span><b>' + k + '</b>';
+      row.appendChild(it);
+      cfg.sound.board(k - 1);
+      await say(NUM_WORDS[k], 1);
+    }
+    if (run !== T.run) return;
+    await sleep(200);
+    await say(NUM_WORDS[n] + ' ' + (n === 1 ? one : many) + '!', 0.9);
+    await sleep(700);
+    row.hidden = true;
+  }
+  async function numbersDone(run) {
+    T.phase = 'blend'; T.all = true; T.bounce = -1; T.bounceAt = performance.now();
+    $('crayons').hidden = true; strip();
+    await say(T.text.map(d => NUM_WORDS[+d]).join(', ') + '!', 0.85);
+    if (run !== T.run) return;
+    cfg.save.numNext = (+T.text[T.text.length - 1]) % 10 + 1; cfg.persist();
+    await goldStar(run, 'numbers', 'Brilliant counting, ' + CHILD_NAME + '! You get a gold star!');
   }
 
   // all the letters together: sound them out, then say the name
@@ -335,12 +386,20 @@ const School = (() => {
     T.bounceAt = performance.now();
     await say(CHILD_NAME + '!', 0.9);
     if (run !== T.run) return;
+    await goldStar(run, 'name', 'Well done, ' + CHILD_NAME + '! You get a gold star!');
+  }
+
+  // the star appears over the work, then goes into the star book
+  async function goldStar(run, kind, words) {
     cfg.sound.fanfare(); buzz([40, 60, 40]);
     T.phase = 'star'; T.starAt = performance.now();
-    await say('Well done, ' + CHILD_NAME + '! You get a gold star!', 0.9);
+    await say(words, 0.9);
     await sleep(600);
     if (run !== T.run) return;
-    cfg.save.nameStars = (cfg.save.nameStars || 0) + 1; cfg.persist();
+    addStar(kind);
+  }
+  function addStar(kind) {
+    bookLog().push(kind); cfg.persist();
     show('bookScreen'); renderBook(true);
   }
 
@@ -387,17 +446,18 @@ const School = (() => {
       c.setTransform(dpr, 0, 0, dpr, 0, 0);
       let F = L.F;
       c.font = '700 ' + F + 'px ' + LETTER_FONT;
-      const fit = w * 0.9 / c.measureText(CHILD_NAME).width;
+      const gap = T.mode === 'numbers' ? F * 0.35 : 0, whole = T.text.join('');
+      const fit = w * 0.9 / (c.measureText(whole).width + gap * (T.text.length - 1));
       if (fit < 1) { F *= fit; c.font = '700 ' + F + 'px ' + LETTER_FONT; }
-      const total = c.measureText(CHILD_NAME).width;
+      const total = c.measureText(whole).width + gap * fit * (T.text.length - 1);
       let x = (w - total) / 2;
       c.textAlign = 'left'; c.textBaseline = 'alphabetic'; c.lineJoin = 'round'; c.lineWidth = L.fat * F / L.F;
       const t = (now - (T.bounceAt || now)) / 1000;
-      [...CHILD_NAME].forEach((ch, i) => {
+      T.text.forEach((ch, i) => {
         const up = (T.all || T.bounce === i) ? Math.max(0, Math.sin(Math.min(1, t * 2.2) * Math.PI)) * F * 0.18 : 0;
         c.fillStyle = c.strokeStyle = T.colors[i] || '#334155';
         c.fillText(ch, x, L.base - up); c.strokeText(ch, x, L.base - up);
-        x += c.measureText(ch).width;
+        x += c.measureText(ch).width + gap * Math.min(1, fit);
       });
       if (T.phase === 'star') {
         const k = Math.min(1, (now - T.starAt) / 600), r = Math.min(w, h) * 0.18 * (0.3 + 0.7 * k);
@@ -408,17 +468,109 @@ const School = (() => {
     }
   }
 
+  // ---------- count the kids ----------
+  // Round one is the kids who came on the bus; then two rounds of other things. Tap each one to
+  // count it (the voice counts along), then pick how many from three numbers.
+  const C = { run: 0, round: 0, n: 0, counted: 0, rounds: [], what: [], busy: false };
+  function startCount() {
+    const run = ++C.run;
+    C.round = 0; C.rounds = [];
+    if (kids.length) C.rounds.push({ kids: kids.slice(0, 10), n: Math.min(10, kids.length) });
+    while (C.rounds.length < 3) {
+      const thing = COUNT_THINGS[Math.floor(Math.random() * COUNT_THINGS.length)], n = 2 + Math.floor(Math.random() * 9);
+      if (C.rounds.some(r => r.n === n || r.thing === thing)) continue;
+      C.rounds.push({ thing, n });
+    }
+    round(run);
+  }
+  function drawKid(cv, look, wave) {
+    const dpr = Math.min(2, devicePixelRatio || 1), w = 64, h = 92;
+    cv.width = w * dpr; cv.height = h * dpr;
+    const c = cv.getContext('2d'); c.setTransform(dpr, 0, 0, dpr, 0, 0); c.clearRect(0, 0, w, h);
+    Scene.kid(c, { look, face: 1, wave, phase: 1, alpha: 1 }, w / 2, h - 6, 1.15, 0.1);
+  }
+  function round(run) {
+    const r = C.rounds[C.round], area = $('countArea'), ch = $('choices');
+    area.innerHTML = ''; ch.innerHTML = ''; ch.hidden = true;
+    C.counted = 0; C.n = r.n; C.busy = false;
+    C.what = r.kids ? ['kid', 'kids'] : [r.thing[1], r.thing[2]];
+    $('countPrompt').textContent = 'Tap each one to count!';
+    $('roundDots').innerHTML = C.rounds.map((_, k) => '<i class="' + (k < C.round ? 'done' : k === C.round ? 'now' : '') + '"></i>').join('');
+    for (let k = 0; k < r.n; k++) {
+      const b = document.createElement('button');
+      b.className = 'thing'; b.setAttribute('aria-label', 'Count this one');
+      if (r.kids) { const cv = document.createElement('canvas'); drawKid(cv, r.kids[k], false); b.appendChild(cv); b.look = r.kids[k]; }
+      else b.innerHTML = '<span class="pic">' + r.thing[0] + '</span>';
+      b.addEventListener('pointerdown', e => { e.preventDefault(); countOne(b, run); });
+      area.appendChild(b);
+    }
+    C.prompt = r.kids ? 'How many kids came to school on the bus? Tap each one to count!'
+      : 'How many ' + C.what[1] + '? Tap each one to count!';
+    say(C.prompt);
+  }
+  function countOne(b, run) {
+    if (run !== C.run || b.classList.contains('done')) return;
+    const k = ++C.counted;
+    b.classList.add('done');
+    const badge = document.createElement('b'); badge.textContent = k; b.appendChild(badge);
+    if (b.look) drawKid(b.querySelector('canvas'), b.look, true);
+    cfg.sound.board(k - 1); buzz(12);
+    hush(); say(NUM_WORDS[k], 1.05);
+    if (k === C.n) setTimeout(() => ask(run), 900);
+  }
+  function ask(run) {
+    if (run !== C.run) return;
+    const n = C.n, opts = new Set([n]);
+    while (opts.size < 3) { const d = n + [-2, -1, 1, 2][Math.floor(Math.random() * 4)]; if (d >= 1 && d <= 10) opts.add(d); }
+    const ch = $('choices');
+    for (const v of [...opts].sort(() => Math.random() - 0.5)) {
+      const b = document.createElement('button');
+      b.className = 'choice'; b.textContent = v;
+      b.addEventListener('click', () => pick(b, v, run));
+      ch.appendChild(b);
+    }
+    ch.hidden = false;
+    $('countPrompt').textContent = 'How many ' + C.what[1] + '?';
+    C.prompt = 'So how many ' + C.what[1] + ' are there?';
+    say(C.prompt);
+  }
+  async function pick(b, v, run) {
+    if (C.busy || b.disabled || run !== C.run) return;
+    if (v !== C.n) {
+      b.disabled = true; cfg.sound.nope(); buzz(30);
+      hush(); say('Not that one. Have another go!');
+      return;
+    }
+    C.busy = true; b.classList.add('right'); cfg.sound.sparkle(); buzz(30);
+    hush(); await say('Yes! ' + NUM_WORDS[v] + ' ' + (v === 1 ? C.what[0] : C.what[1]) + '!', 0.9);
+    await sleep(500);
+    if (run !== C.run) return;
+    if (++C.round < C.rounds.length) return round(run);
+    cfg.sound.fanfare();
+    $('roundDots').innerHTML = C.rounds.map(() => '<i class="done"></i>').join('');
+    await say('Great counting, ' + CHILD_NAME + '! You get a gold star!', 0.9);
+    if (run === C.run) addStar('count');
+  }
+
   // ---------- star book ----------
+  // every star in the book, oldest first: 'name', 'numbers' or 'count'
+  function bookLog() {
+    const sv = cfg.save;
+    if (!Array.isArray(sv.bookLog)) sv.bookLog = Array(sv.nameStars || 0).fill('name');
+    return sv.bookLog;
+  }
+  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒' };
   function renderBook(fresh) {
-    const n = cfg.save.nameStars || 0, per = 12, page = Math.max(0, Math.ceil(n / per) - 1);
+    const log = bookLog(), n = log.length, per = 12, page = Math.max(0, Math.ceil(n / per) - 1);
     $('bookTitle').textContent = CHILD_NAME + '’s Star Book';
-    $('bookCount').textContent = n === 0 ? 'Colour in your name to get your first gold star!'
-      : n + (n === 1 ? ' gold star' : ' gold stars') + ' for writing my name';
+    $('bookCount').textContent = n === 0 ? 'Do some school work to get your first gold star!'
+      : n + (n === 1 ? ' gold star' : ' gold stars') + ' for my school work';
     const grid = $('bookStars'); grid.innerHTML = '';
     for (let k = 0; k < per; k++) {
       const idx = page * per + k, slot = document.createElement('div');
       slot.className = 'slot' + (idx < n ? ' got' : '') + (fresh && idx === n - 1 ? ' new' : '');
-      slot.innerHTML = '<svg viewBox="0 0 40 40"><path d="M20 2l5.3 11.6 12.7 1.3-9.5 8.5 2.7 12.5L20 29.6 8.8 35.9l2.7-12.5L2 14.9l12.7-1.3z"/></svg>';
+      slot.innerHTML = '<svg viewBox="0 0 40 40"><path d="M20 2l5.3 11.6 12.7 1.3-9.5 8.5 2.7 12.5L20 29.6 8.8 35.9l2.7-12.5L2 14.9l12.7-1.3z"/></svg>'
+        + (idx < n ? '<i>' + (STAR_FOR[log[idx]] || '') + '</i>' : '');
       grid.appendChild(slot);
     }
     if (fresh) setTimeout(() => cfg.sound.sparkle(), 450);
@@ -426,13 +578,20 @@ const School = (() => {
 
   // ---------- buttons ----------
   const tap = (id, fn) => $(id).addEventListener('click', () => { cfg.sound.click(); fn(); });
-  tap('tName', () => show('traceScreen'));
+  tap('tName', () => { T.mode = 'name'; show('traceScreen'); });
+  tap('tTrace', () => { T.mode = 'numbers'; show('traceScreen'); });
+  tap('tCount', () => show('countScreen'));
   tap('tBook', () => show('bookScreen'));
   tap('tBus', close);
   tap('trBack', () => { hush(); T.run++; show('classScreen'); });
-  tap('trSay', () => { const p = T.phase === 'trace' && wordFor(T.i); if (p) say(p.say); else say(CHILD_NAME, 0.8); });
+  tap('trSay', () => {
+    if (T.mode === 'numbers') return say(T.phase === 'trace' ? NUM_WORDS[+T.text[T.i]] : T.text.map(d => NUM_WORDS[+d]).join(', '));
+    const p = T.phase === 'trace' && wordFor(T.i);
+    if (p) say(p.say); else say(CHILD_NAME, 0.8);
+  });
   tap('bookBack', () => show('classScreen'));
-  $('tNum').addEventListener('click', () => { cfg.sound.nope(); const s = $('tNumSub'); s.textContent = 'Coming soon!'; s.classList.add('wiggle'); setTimeout(() => s.classList.remove('wiggle'), 500); });
+  tap('cBack', () => { hush(); C.run++; show('classScreen'); });
+  tap('cSay', () => say(C.prompt || ''));
   new ResizeObserver(() => {
     if (screen === 'classScreen') drawClass();
     if (screen === 'traceScreen' && T.phase === 'trace' && T.grid && T.grid.count === 0 && !T.done) { layout(); letter(); }

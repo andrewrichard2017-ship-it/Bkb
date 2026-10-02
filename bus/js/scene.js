@@ -486,5 +486,5 @@ const Scene = (() => {
     rainFx(c, S, V);
   }
 
-  return { draw, rr, mix, head };
+  return { draw, rr, mix, head, kid };
 })();

@@ -111,7 +111,8 @@
   .task .ico { font-size: 1.5em; line-height: 1; }
   .task small { display: block; font: 600 .7em/1.2 Fredoka, sans-serif; color: #64748b; }
   .task.main { border: 3px solid #f59e0b; background: #fff7d6; }
-  .task.locked { opacity: .6; }
+  .task.wide { grid-column: 1 / -1; min-height: 46px; justify-content: center; }
+  @media (orientation: landscape) and (max-height: 500px) { .task { min-height: 48px; padding: 4px 12px; } .paper { max-height: 80%; padding-top: 8px; } }
   .wiggle { animation: wiggle .4s; color: #dc2626 !important; }
   @keyframes wiggle { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
   @media (orientation: portrait) { .tasks { grid-template-columns: 1fr; } .paper { max-height: 52%; } }
@@ -123,6 +124,7 @@
   .topbar { flex: 0 0 auto; display: flex; align-items: center; gap: 10px; padding: 8px 10px; }
   .round { flex: 0 0 auto; width: 46px; height: 46px; border-radius: 50%; border: 0; background: #e2e8f0; color: var(--pencil); font-size: 22px; font-weight: 700; }
   #nameStrip { flex: 1; text-align: center; font: 700 clamp(26px, 6vh, 44px)/1 var(--hand); color: #cbd5e1; letter-spacing: .06em; }
+  #nameStrip.nums span + span { margin-left: .6em; }
   #nameStrip .now { color: var(--pencil); text-decoration: underline 4px #f59e0b; text-underline-offset: 6px; }
   #traceWrap { position: relative; flex: 1 1 auto; min-height: 0; }
   #traceCanvas { position: absolute; inset: 0; width: 100%; height: 100%; touch-action: none; display: block; }
@@ -142,6 +144,33 @@
   .crayon::after { content: ""; display: block; height: 22%; background: var(--c); clip-path: polygon(50% 0, 82% 100%, 18% 100%); }
   .crayon.sel { transform: translateY(0); }
 
+  /* counting */
+  #countRow { position: absolute; left: 0; right: 0; bottom: 4%; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 10px; padding: 0 12px; pointer-events: none; }
+  #countRow[hidden] { display: none; }
+  .thing { position: relative; display: grid; justify-items: center; animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
+  .thing .pic { font-size: clamp(34px, 9vh, 64px); line-height: 1.1; }
+  .thing b { font: 700 clamp(16px, 3.6vh, 24px)/1 var(--hand); color: var(--pencil); }
+  #countScreen { display: flex; flex-direction: column; background: #e0f2fe;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #countScreen[hidden] { display: none; }
+  #countHead { flex: 1; text-align: center; display: grid; gap: 6px; justify-items: center; }
+  #countPrompt { font: 700 clamp(20px, 4.6vh, 32px)/1.1 var(--hand); color: #1d4ed8; }
+  #roundDots { display: flex; gap: 8px; }
+  #roundDots i { width: 14px; height: 14px; border-radius: 50%; background: #bfdbfe; }
+  #roundDots i.now { background: #f59e0b; } #roundDots i.done { background: #22c55e; }
+  #countArea { flex: 1 1 auto; min-height: 0; display: flex; flex-wrap: wrap; align-content: center; justify-content: center; gap: clamp(6px, 2vh, 16px); padding: 8px 16px; overflow: auto; }
+  #countArea .thing { border: 0; background: #fff; border-radius: 20px; padding: 6px 8px; min-width: 70px; box-shadow: 0 4px 0 #93c5fd; animation: none; }
+  #countArea .thing canvas { width: 64px; height: 92px; display: block; }
+  #countArea .thing b { position: absolute; top: -10px; right: -8px; width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center;
+    background: #f59e0b; color: #fff; font-size: 20px; animation: pop .3s cubic-bezier(.3, 1.6, .5, 1); }
+  #countArea .thing.done { background: #fef3c7; box-shadow: 0 4px 0 #f59e0b; }
+  #choices { flex: 0 0 auto; display: flex; justify-content: center; gap: clamp(12px, 4vw, 36px); padding: 4px 16px 18px; }
+  #choices[hidden] { display: none; }
+  .choice { width: clamp(70px, 20vw, 110px); height: clamp(70px, 17vh, 110px); border: 0; border-radius: 24px; background: #fff; color: var(--pencil);
+    font: 700 clamp(40px, 10vh, 66px)/1 var(--hand); box-shadow: 0 6px 0 #60a5fa; animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
+  .choice:disabled { opacity: .3; transform: scale(.9); }
+  .choice.right { background: #22c55e; color: #fff; box-shadow: 0 6px 0 #15803d; }
+
   /* star book */
   #bookScreen { display: grid; place-items: center; align-content: center; gap: 14px; background: #7c3aed; padding: 16px; }
   #bookScreen[hidden] { display: none; }
@@ -154,6 +183,8 @@
   #bookStars { border-radius: 0 6px 6px 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; align-content: center;
     box-shadow: inset 12px 0 16px -12px rgba(0,0,0,.35); }
   .slot svg { width: 100%; max-height: 13vh; display: block; fill: none; stroke: #e2e8f0; stroke-width: 2.5; stroke-dasharray: 4 3; }
+  .slot { position: relative; }
+  .slot i { position: absolute; left: 50%; top: 56%; transform: translate(-50%, -50%); font-style: normal; font-size: clamp(12px, 3vh, 20px); }
   .slot.got svg { fill: #fbbf24; stroke: #b45309; stroke-dasharray: none; }
   .slot.new svg { animation: stamp .7s cubic-bezier(.3, 1.5, .5, 1) .3s both; filter: drop-shadow(0 0 8px #fde68a); }
   @keyframes stamp { from { transform: scale(3) rotate(-90deg); opacity: 0; } }
@@ -237,9 +268,10 @@
       <h2 id="menuHello">Today’s work</h2>
       <div class="tasks">
         <button class="task main" id="tName"><span class="ico">✏️</span><span>My name<small id="tNameSub">Kellan</small></span></button>
-        <button class="task locked" id="tNum"><span class="ico">🔢</span><span>Numbers<small id="tNumSub">Coming soon</small></span></button>
+        <button class="task main" id="tCount"><span class="ico">🧒</span><span>Count the kids<small>1, 2, 3…</small></span></button>
+        <button class="task main" id="tTrace"><span class="ico">🔢</span><span>Colour numbers<small id="tTraceSub">1, 2, 3</small></span></button>
         <button class="task" id="tBook"><span class="ico">⭐</span><span>My star book</span></button>
-        <button class="task" id="tBus"><span class="ico">🚌</span><span>Home time<small>Back to the bus</small></span></button>
+        <button class="task wide" id="tBus"><span class="ico">🚌</span><span>Home time<small>Back to the bus</small></span></button>
       </div>
     </div>
   </div>
@@ -251,9 +283,19 @@
     </div>
     <div id="traceWrap">
       <canvas id="traceCanvas" aria-label="Colour in the letter"></canvas>
+      <div id="countRow" hidden></div>
       <div id="soundCard" hidden><div class="pic"></div><div class="lt"></div><div class="wd"></div></div>
     </div>
     <div id="crayons"></div>
+  </div>
+  <div id="countScreen" class="screen" hidden>
+    <div class="topbar">
+      <button class="round" id="cBack" aria-label="Back to my desk">✕</button>
+      <div id="countHead"><div id="countPrompt">Tap each one to count!</div><div id="roundDots"></div></div>
+      <button class="round" id="cSay" aria-label="Hear it again">🔊</button>
+    </div>
+    <div id="countArea"></div>
+    <div id="choices" hidden></div>
   </div>
   <div id="bookScreen" class="screen" hidden>
     <div class="book">
@@ -264,10 +306,10 @@
   </div>
 </div>
 
-<script src="js/songs.js?v=2"></script>
-<script src="js/sound.js?v=2"></script>
-<script src="js/scene.js?v=2"></script>
-<script src="js/school.js?v=2"></script>
-<script src="js/game.js?v=2"></script>
+<script src="js/songs.js?v=3"></script>
+<script src="js/sound.js?v=3"></script>
+<script src="js/scene.js?v=3"></script>
+<script src="js/school.js?v=3"></script>
+<script src="js/game.js?v=3"></script>
 </body>
 </html>
