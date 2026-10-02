@@ -33,7 +33,8 @@ def read_game():
     name = re.search(r"const CHILD_NAME = '([^']+)'", src).group(1)
     phon = src[src.index('const PHONICS'):src.index('const CRAYONS')]
     words = re.findall(r"\['([a-z\- ]+)', '[^']+'\]", phon)
-    things = re.findall(r"\['[^']+', '([a-z ]+)', '([a-z ]+)'\]", src[src.index('const COUNT_THINGS'):])
+    block = src[src.index('const COUNT_THINGS'):src.index('const NUMBERS_PER_GO')]
+    things = re.findall(r"\['[^']+', '([a-z ]+)', '([a-z ]+)'\]", block)
     return name, words, things
 
 
