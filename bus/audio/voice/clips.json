@@ -1,6 +1,6 @@
 {
 "name": "Kellan",
-"voice": "bf_emma",
+"voice": "bf_emma:0.5,af_heart:0.5",
 "clips": [
 "c_1",
 "c_10",
