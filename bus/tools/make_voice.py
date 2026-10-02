@@ -19,7 +19,7 @@ from kokoro_onnx import Kokoro
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'audio', 'voice')
-VOICE, LANG = 'bf_emma:0.5,af_heart:0.5', 'en-gb'  # half British (Emma), half American (Heart); --voice picks another
+VOICE, LANG = 'bf_isabella', 'en-gb'  # a soft British English voice; --voice picks another (or a mix, "bf_emma:0.5,af_heart:0.5")
 SPEED = 1.0  # natural talking speed: slower than this sounds robotic
 NUMS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
 
