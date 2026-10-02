@@ -41,6 +41,29 @@ const COUNT_THINGS = [['🍎', 'apple', 'apples'], ['🦆', 'duck', 'ducks'], ['
   ['🐟', 'fish', 'fish'], ['🎈', 'balloon', 'balloons'], ['🚗', 'car', 'cars'], ['🧁', 'cupcake', 'cupcakes'],
   ['🍌', 'banana', 'bananas'], ['🐸', 'frog', 'frogs']];
 const NUMBERS_PER_GO = 3; // how many numbers to colour in one go; the next go carries on from there
+
+// The animal game: the voice says each animal's name and its noise (or a clue when it hasn't got
+// one), then the child taps it out of three pictures. tools/make_voice.py reads `say` from here.
+const ANIMALS = [
+  { name: 'chicken', pic: '🐔', say: "Chicken! The chicken says cluck, cluck, cluck! Can you find the chicken?" },
+  { name: 'shark', pic: '🦈', say: "Shark! The shark has a big fin and lots of sharp teeth. Can you find the shark?" },
+  { name: 'snake', pic: '🐍', say: "Snake! The snake goes hiss! Can you find the snake?" },
+  { name: 'cow', pic: '🐮', say: "Cow! The cow says moo! Can you find the cow?" },
+  { name: 'horse', pic: '🐴', say: "Horse! The horse says neigh! Can you find the horse?" },
+  { name: 'cat', pic: '🐱', say: "Cat! The cat says meow! Can you find the cat?" },
+  { name: 'dog', pic: '🐶', say: "Dog! The dog says woof, woof! Can you find the dog?" },
+  { name: 'rabbit', pic: '🐰', say: "Rabbit! The rabbit has long floppy ears, and goes hop, hop, hop! Can you find the rabbit?" },
+  { name: 'fish', pic: '🐟', say: "Fish! The fish swims in the water and blows bubbles. Can you find the fish?" },
+  { name: 'tiger', pic: '🐯', say: "Tiger! The tiger goes roar! It has orange fur with black stripes. Can you find the tiger?" },
+  { name: 'lion', pic: '🦁', say: "Lion! The lion goes roar! It has a big fluffy mane. Can you find the lion?" },
+  { name: 'crocodile', pic: '🐊', say: "Crocodile! The crocodile has a long green tail, and goes snap, snap! Can you find the crocodile?" },
+  { name: 'dolphin', pic: '🐬', say: "Dolphin! The dolphin jumps out of the sea and goes click, click! Can you find the dolphin?" },
+  { name: 'mouse', pic: '🐭', say: "Mouse! The mouse says squeak, squeak! Can you find the mouse?" },
+  { name: 'bird', pic: '🐦', say: "Bird! The bird sings tweet, tweet! Can you find the bird?" },
+  { name: 'frog', pic: '🐸', say: "Frog! The frog says ribbit! Can you find the frog?" },
+  { name: 'zebra', pic: '🦓', say: "Zebra! The zebra has black and white stripes. Can you find the zebra?" },
+];
+const ANIMALS_PER_GO = 6; // animals in one go; the next go carries on through the list
 const CRAYONS = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
 
 const School = (() => {
@@ -55,7 +78,7 @@ const School = (() => {
   // The voice is recorded clips in audio/voice/ (made by tools/make_voice.py), played through Web
   // Audio so it works on every device. say() takes the clips to play in a row, plus the words to
   // fall back on with the device's own speech voice if a clip is missing (or the name changed).
-  const VOICE_VERSION = 4, VOICE_DIR = 'audio/voice/';
+  const VOICE_VERSION = 5, VOICE_DIR = 'audio/voice/';
   const clips = {};
   let voiceLoad = null, sayId = 0, playing = null, last = null, primed = false;
   function loadVoice() {
@@ -135,6 +158,7 @@ const School = (() => {
     if (id === 'classScreen') drawClass();
     if (id === 'traceScreen') startTrace();
     if (id === 'countScreen') startCount();
+    if (id === 'animalScreen') startAnimals();
     if (id === 'classScreen') {
       const first = cfg.save.numNext || 1;
       $('tTraceSub').textContent = [0, 1, 2].slice(0, NUMBERS_PER_GO).map(k => (first - 1 + k) % 10 + 1).join(', ');
@@ -603,14 +627,58 @@ const School = (() => {
     if (run === C.run) addStar('count');
   }
 
+  // ---------- animals: hear it, read the word, tap the picture ----------
+  const A = { run: 0, list: [], round: 0, busy: false };
+  function startAnimals() {
+    const run = ++A.run, first = (cfg.save.animalNext || 0) % ANIMALS.length;
+    A.list = [];
+    for (let k = 0; k < ANIMALS_PER_GO; k++) A.list.push(ANIMALS[(first + k) % ANIMALS.length]);
+    A.round = 0;
+    animalRound(run);
+  }
+  function animalRound(run) {
+    const a = A.list[A.round], cards = $('animalCards');
+    A.busy = false;
+    const others = ANIMALS.filter(x => x !== a).sort(() => Math.random() - 0.5).slice(0, 2);
+    $('animalWord').textContent = a.name;
+    $('animalDots').innerHTML = A.list.map((_, k) => '<i class="' + (k < A.round ? 'done' : k === A.round ? 'now' : '') + '"></i>').join('');
+    cards.innerHTML = '';
+    for (const x of [a, ...others].sort(() => Math.random() - 0.5)) {
+      const b = document.createElement('button');
+      b.className = 'animal'; b.setAttribute('aria-label', x.name);
+      b.innerHTML = '<span class="pic">' + x.pic + '</span><b>' + x.name + '</b>';
+      b.addEventListener('click', () => pickAnimal(b, x, a, run));
+      cards.appendChild(b);
+    }
+    say(['an_' + a.name], a.say);
+  }
+  async function pickAnimal(b, x, a, run) {
+    if (A.busy || b.disabled || run !== A.run) return;
+    if (x !== a) {
+      b.disabled = true; cfg.sound.nope(); buzz(30);
+      hush(); say(['aw_' + x.name, 'p_again'], "That's the " + x.name + '. Have another go!');
+      return;
+    }
+    A.busy = true; b.classList.add('right'); cfg.sound.sparkle(); buzz(30);
+    hush(); await say(['ar_' + a.name], "Yes! That's the " + a.name + '!');
+    await sleep(600);
+    if (run !== A.run) return;
+    if (++A.round < A.list.length) return animalRound(run);
+    cfg.save.animalNext = ((cfg.save.animalNext || 0) + ANIMALS_PER_GO) % ANIMALS.length; cfg.persist();
+    $('animalDots').innerHTML = A.list.map(() => '<i class="done"></i>').join('');
+    cfg.sound.fanfare();
+    await say(['p_star_animals'], 'Brilliant, ' + CHILD_NAME + '! You know your animals! You get a gold star!', 0.9);
+    if (run === A.run) addStar('animals');
+  }
+
   // ---------- star book ----------
-  // every star in the book, oldest first: 'name', 'numbers' or 'count'
+  // every star in the book, oldest first: 'name', 'numbers', 'count' or 'animals'
   function bookLog() {
     const sv = cfg.save;
     if (!Array.isArray(sv.bookLog)) sv.bookLog = Array(sv.nameStars || 0).fill('name');
     return sv.bookLog;
   }
-  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒' };
+  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾' };
   function renderBook(fresh) {
     const log = bookLog(), n = log.length, per = 12, page = Math.max(0, Math.ceil(n / per) - 1);
     $('bookTitle').textContent = CHILD_NAME + '’s Star Book';
@@ -632,6 +700,9 @@ const School = (() => {
   tap('tName', () => { T.mode = 'name'; show('traceScreen'); });
   tap('tTrace', () => { T.mode = 'numbers'; show('traceScreen'); });
   tap('tCount', () => show('countScreen'));
+  tap('tAnimals', () => show('animalScreen'));
+  tap('aBack', () => { hush(); A.run++; show('classScreen'); });
+  tap('aSay', sayAgain);
   tap('tBook', () => show('bookScreen'));
   tap('tBus', close);
   tap('trBack', () => { hush(); T.run++; show('classScreen'); });

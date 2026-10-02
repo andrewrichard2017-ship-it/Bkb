@@ -115,7 +115,7 @@
   @media (orientation: landscape) and (max-height: 500px) { .task { min-height: 48px; padding: 4px 12px; } .paper { max-height: 80%; padding-top: 8px; } }
   .wiggle { animation: wiggle .4s; color: #dc2626 !important; }
   @keyframes wiggle { 25% { transform: translateX(-4px); } 75% { transform: translateX(4px); } }
-  @media (orientation: portrait) { .tasks { grid-template-columns: 1fr; } .paper { max-height: 52%; } }
+  @media (orientation: portrait) { .tasks { grid-template-columns: 1fr; gap: 8px; } .paper { max-height: 66%; } .task { min-height: 50px; padding: 5px 12px; } }
 
   /* name sheet */
   #traceScreen { display: flex; flex-direction: column; background: var(--paper);
@@ -170,6 +170,26 @@
     font: 700 clamp(40px, 10vh, 66px)/1 var(--hand); box-shadow: 0 6px 0 #60a5fa; animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
   .choice:disabled { opacity: .3; transform: scale(.9); }
   .choice.right { background: #22c55e; color: #fff; box-shadow: 0 6px 0 #15803d; }
+
+  /* animals */
+  #animalScreen { display: flex; flex-direction: column; background: #dcfce7;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #animalScreen[hidden] { display: none; }
+  #animalHead { flex: 1; display: grid; gap: 6px; justify-items: center; }
+  #animalWord { max-width: 100%; font: 700 clamp(34px, min(11vh, 13vw), 84px)/1 var(--hand); color: var(--pencil); background: #fff; padding: .08em .5em .14em; border-radius: 18px;
+    box-shadow: 0 4px 0 #86efac; }
+  .dots { display: flex; gap: 8px; }
+  .dots i { width: 14px; height: 14px; border-radius: 50%; background: #bbf7d0; }
+  .dots i.now { background: #f59e0b; } .dots i.done { background: #16a34a; }
+  #animalCards { flex: 1 1 auto; min-height: 0; display: flex; flex-wrap: wrap; align-items: center; align-content: center; justify-content: center;
+    gap: clamp(12px, 4vw, 36px); padding: 12px 16px 20px; }
+  .animal { display: grid; justify-items: center; gap: 4px; width: clamp(96px, 26vw, 200px); padding: clamp(8px, 2vh, 16px) 8px; border: 0; border-radius: 26px;
+    background: #fff; box-shadow: 0 6px 0 #86efac; animation: pop .35s cubic-bezier(.3, 1.6, .5, 1); }
+  .animal .pic { font-size: clamp(56px, min(18vh, 18vw), 120px); line-height: 1.05; }
+  .animal b { font: 700 clamp(15px, min(4vh, 5vw), 28px)/1 var(--hand); color: var(--pencil); visibility: hidden; }
+  .animal.right { background: #22c55e; box-shadow: 0 6px 0 #15803d; }
+  .animal.right b { visibility: visible; color: #fff; }
+  .animal:disabled { opacity: .3; transform: scale(.9); }
 
   /* star book */
   #bookScreen { display: grid; place-items: center; align-content: center; gap: 14px; background: #7c3aed; padding: 16px; }
@@ -270,8 +290,9 @@
         <button class="task main" id="tName"><span class="ico">✏️</span><span>My name<small id="tNameSub">Kellan</small></span></button>
         <button class="task main" id="tCount"><span class="ico">🧒</span><span>Count the kids<small>1, 2, 3…</small></span></button>
         <button class="task main" id="tTrace"><span class="ico">🔢</span><span>Colour numbers<small id="tTraceSub">1, 2, 3</small></span></button>
+        <button class="task main" id="tAnimals"><span class="ico">🐮</span><span>Animals<small>Find the animal</small></span></button>
         <button class="task" id="tBook"><span class="ico">⭐</span><span>My star book</span></button>
-        <button class="task wide" id="tBus"><span class="ico">🚌</span><span>Home time<small>Back to the bus</small></span></button>
+        <button class="task" id="tBus"><span class="ico">🚌</span><span>Home time<small>Back to the bus</small></span></button>
       </div>
     </div>
   </div>
@@ -297,6 +318,14 @@
     <div id="countArea"></div>
     <div id="choices" hidden></div>
   </div>
+  <div id="animalScreen" class="screen" hidden>
+    <div class="topbar">
+      <button class="round" id="aBack" aria-label="Back to my desk">✕</button>
+      <div id="animalHead"><div id="animalWord">cow</div><div id="animalDots" class="dots"></div></div>
+      <button class="round" id="aSay" aria-label="Hear it again">🔊</button>
+    </div>
+    <div id="animalCards"></div>
+  </div>
   <div id="bookScreen" class="screen" hidden>
     <div class="book">
       <div class="page left"><h2 id="bookTitle">Star Book</h2><p id="bookCount"></p></div>
@@ -306,10 +335,10 @@
   </div>
 </div>
 
-<script src="js/songs.js?v=7"></script>
-<script src="js/sound.js?v=7"></script>
-<script src="js/scene.js?v=7"></script>
-<script src="js/school.js?v=7"></script>
-<script src="js/game.js?v=7"></script>
+<script src="js/songs.js?v=8"></script>
+<script src="js/sound.js?v=8"></script>
+<script src="js/scene.js?v=8"></script>
+<script src="js/school.js?v=8"></script>
+<script src="js/game.js?v=8"></script>
 </body>
 </html>

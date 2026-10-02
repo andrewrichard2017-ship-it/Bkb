@@ -33,11 +33,13 @@ def read_game():
         letters[m.group(1)] = (m.group(2), re.findall(r"\['([a-z\- ]+)', '[^']+'", m.group(3) + ']'), m.group(5) or 'for')
     block = src[src.index('const COUNT_THINGS'):src.index('const NUMBERS_PER_GO')]
     things = re.findall(r"\['[^']+', '([a-z ]+)', '([a-z ]+)'\]", block)
-    return name, letters, things
+    block = src[src.index('const ANIMALS ='):src.index('const ANIMALS_PER_GO')]
+    animals = re.findall(r"\{ name: '([a-z]+)', pic: '[^']+', say: \"([^\"]+)\" \}", block)
+    return name, letters, things, animals
 
 
 def clips():
-    name, letters, things = read_game()
+    name, letters, things, animals = read_game()
     c = {}
     for l, (spoken, words, phrase) in letters.items():
         c['l_' + l] = spoken.capitalize() + '!'
@@ -52,6 +54,12 @@ def clips():
         c['p_so_' + many] = 'So, how many %s are there?' % many
     c['p_how_kids'] = 'How many kids came to school on the bus? Tap each one to count!'
     c['p_nope'] = 'Not that one. Have another go!'
+    for a, line in animals:
+        c['an_' + a] = line
+        c['ar_' + a] = "Yes! That's the %s!" % a
+        c['aw_' + a] = "That's the %s." % a
+    c['p_again'] = 'Have another go!'
+    c['p_star_animals'] = 'Brilliant, %s! You know your animals! You get a gold star!' % name
     c['p_spells'] = 'That spells %s!' % name
     c['p_star_name'] = 'Well done, %s! You get a gold star!' % name
     c['p_star_numbers'] = 'Brilliant counting, %s! You get a gold star!' % name
