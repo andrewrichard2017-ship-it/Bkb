@@ -14,3 +14,8 @@ A game for young kids: drive the school bus, pick the kids up at the bus stops a
 | Radio (R), ⏭ (N) | Radio on/off and next song: The Wheels on the Bus, Twinkle Twinkle, Old MacDonald, Row Row Row Your Boat, Mary Had a Little Lamb. The kids bounce along. |
 
 **How it plays.** Each day has 3 or 4 stops, then the school. Pull up so the door lines up with the yellow mark on the kerb (it turns green), stop, open the doors and the kids climb on and wave from the windows. At the school they get off, cross at the zebra crossing and go in; every kid delivered is a star (saved on the device). There's no way to fail. The button you need next pulses, so kids who can't read yet can follow along, and the bus slows down by itself as it gets near a stop.
+
+**Inside the school.** After the kids go in, a *Go into school!* button takes you into the classroom: the kids you dropped off sit at their tables, the teacher's whiteboard says good morning, and a paper menu of today's work is on your desk.
+
+- **My name:** colour in each letter of the name, one at a time, on handwriting lines. Each letter says its sound and shows a picture (k for kite, e for egg, l for lion...). Then the whole name is sounded out and said, and a gold star goes into the **star book**. The name is `CHILD_NAME` at the top of `bus/js/school.js`; every letter a-z has a sound, so any name works. The voice is the device's built-in speech voice (a British or Irish one if the device has it).
+- **Numbers:** coming soon.

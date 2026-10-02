@@ -28,6 +28,7 @@
     raining: false, rain: 0, weatherT: 45, dropT: 0,
     radio: false, song: 0,
     puffs: [], notes: [], rainP: [], confetti: [], puffT: 0, noteT: 0,
+    classKids: [], classReady: false,
     toast: null, flash: null, boardT: 0, exitT: 0, beepT: 0, horn: false,
   };
 
@@ -267,7 +268,7 @@
       }
     }
     if (here && parked && here.school && !here.done) {
-      if (S.onBus.length || S.walkers.length) S.unloading = here;
+      if ((S.onBus.length || S.walkers.length) && !S.unloading) { S.unloading = here; S.classKids = []; }
       if (S.onBus.length && (S.exitT -= dt) <= 0) {
         S.onBus.sort((a, c) => a.seat - c.seat);
         const k = S.onBus.shift();
@@ -290,6 +291,7 @@
     // forget stops far behind
     if (S.stops.length > 12) S.stops = S.stops.filter(s => s.x > b.x - 4000 || S.route.stops.includes(s));
 
+    if (S.classReady && b.v !== 0) hideClassBtn();
     updateKids(dt, doorX);
     updateWeather(dt);
     updateParticles(dt);
@@ -310,8 +312,25 @@
       S.confetti.push({ x: Math.random() * W, y: -Math.random() * H * 0.6, vx: (Math.random() - 0.5) * 120, vy: 60 + Math.random() * 120,
         r: Math.random() * TAU, vr: (Math.random() - 0.5) * 10, col: pick(NOTE_COLS), life: 3 + Math.random() });
     }
+    if (n > 0) { S.classReady = true; setTimeout(() => { if (S.classReady) classBtn.hidden = false; }, 1600); }
     if (S.bus.doorsOpen) S.pendingDay = true; else startDay();
   }
+
+  // ---------- stage two: inside the school ----------
+  const classBtn = $('goClass');
+  function hideClassBtn() { S.classReady = false; classBtn.hidden = true; }
+  classBtn.addEventListener('click', () => {
+    if (S.mode !== 'play') return;
+    hideClassBtn(); hornUp();
+    const b = S.bus;
+    if (b.engine) { b.engine = false; b.mode = 'stop'; Sound.engineStop(); }
+    if (S.radio) { S.radio = false; Sound.radioOff(); }
+    S.mode = 'class'; S.toast = null;
+    School.open(S.classKids, () => {
+      S.mode = 'play';
+      toast(S.bus.doorsOpen ? 'Home time! Close the doors and start the engine.' : 'Home time! Start the engine.', 3.2);
+    }, { save, persist, sound: Sound, color: () => S.color });
+  });
 
   function updateKids(dt, doorX) {
     const b = S.bus;
@@ -366,7 +385,7 @@
         if (k.ry === GROUND.farPave + 4) { k.state = 'enter'; k.ct = 0; k.walking = false; }
       } else if (k.state === 'enter') {
         k.ct += dt; k.alpha = Math.max(0, 1 - k.ct / 0.4);
-        if (k.ct >= 0.4) { k.state = 'gone'; S.delivered++; }
+        if (k.ct >= 0.4) { k.state = 'gone'; S.delivered++; S.classKids.push(k.look); }
       }
     }
     S.walkers = S.walkers.filter(k => k.state !== 'gone');
@@ -446,7 +465,7 @@
     const b = S.bus;
     if (S.mode !== 'play') return '';
     if (S.flash) return S.flash.btn;
-    if (boarding() || S.walkers.length) return '';
+    if (boarding() || S.walkers.length || S.classReady) return '';
     const doorX = b.x + BUS.door, here = S.stops.find(s => s.aligned);
     if (b.doorsOpen) {
       if (b.door < 1) return '';
@@ -593,6 +612,7 @@
   function frame(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     S.t += dt;
+    if (S.mode === 'class') { Sound.rainLevel(0); requestAnimationFrame(frame); return; } // the school screen covers the road
     if (S.mode === 'play') update(dt);
     else { for (const s of S.stops) s.pending = isPending(s); updateKids(dt, S.bus.x + BUS.door); }
     syncButtons();

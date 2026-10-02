@@ -151,6 +151,8 @@ const Sound = (() => {
       tone('triangle', f, t + d, l + 0.1, 0.2); tone('square', f, t + d, l, 0.04);
     });
   });
+  const scribble = fx(t => hiss(t, 0.08, 0.05, 'bandpass', 2600 + Math.random() * 1600, 2.5));
+  const sparkle = fx(t => [1319, 1568, 1976, 2637, 3136].forEach((f, i) => tone('sine', f, t + i * 0.07, 0.35, 0.09)));
   const tuneIn = fx(t => hiss(t, 0.3, 0.08, 'bandpass', 2000, 0.5, 4000, music));
 
   // ---- rain on the roof ----
@@ -226,5 +228,5 @@ const Sound = (() => {
   }
 
   return { unlock, setMuted, engineStart, engineStop, engineSet, hornOn, hornOff, door, airBrake, swish, gear, click,
-    nope, reverseBeep, board, bye, fanfare, rainLevel, radioOn, radioOff, radioTick };
+    nope, reverseBeep, board, bye, fanfare, scribble, sparkle, rainLevel, radioOn, radioOff, radioTick };
 })();
