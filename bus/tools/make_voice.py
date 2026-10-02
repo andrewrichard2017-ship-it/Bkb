@@ -19,44 +19,53 @@ from kokoro_onnx import Kokoro
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'audio', 'voice')
-VOICE, LANG = 'bf_emma', 'en-gb'  # a British English voice
-
-# Pure letter sounds (no "uh" after them), as phonetic symbols: stretched for sounds you can hold.
-SOUNDS = {'a': 'a', 'b': 'b', 'c': 'k', 'd': 'd', 'e': 'ɛ', 'f': 'fː', 'g': 'ɡ', 'h': 'h', 'i': 'ɪ', 'j': 'ʤ', 'k': 'k',
-          'l': 'lː', 'm': 'mː', 'n': 'nː', 'o': 'ɒ', 'p': 'p', 'q': 'kw', 'r': 'ɹː', 's': 'sː', 't': 't', 'u': 'ʌ',
-          'v': 'vː', 'w': 'w', 'x': 'ks', 'y': 'j', 'z': 'zː'}
+VOICE, LANG = 'bf_emma', 'en-gb'  # a British English voice; --voice picks another (or a mix, "bf_emma:0.6,af_heart:0.4")
+SPEED = 1.0  # natural talking speed: slower than this sounds robotic
 NUMS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
 
 
 def read_game():
     src = open(os.path.join(ROOT, 'js', 'school.js'), encoding='utf-8').read()
     name = re.search(r"const CHILD_NAME = '([^']+)'", src).group(1)
-    phon = src[src.index('const PHONICS'):src.index('const CRAYONS')]
-    words = re.findall(r"\['([a-z\- ]+)', '[^']+'\]", phon)
+    block = src[src.index('const LETTERS'):src.index('const NUM_WORDS')]
+    letters = {}
+    for m in re.finditer(r"^\s*([a-z]): \{ name: '([^']+)', words: \[(.*?)\]\](, phrase: '(\w+)')?", block, re.M):
+        letters[m.group(1)] = (m.group(2), re.findall(r"\['([a-z\- ]+)', '[^']+'", m.group(3) + ']'), m.group(5) or 'for')
     block = src[src.index('const COUNT_THINGS'):src.index('const NUMBERS_PER_GO')]
     things = re.findall(r"\['[^']+', '([a-z ]+)', '([a-z ]+)'\]", block)
-    return name, words, things
+    return name, letters, things
 
 
 def clips():
-    name, words, things = read_game()
+    name, letters, things = read_game()
     c = {}
-    for l, ph in SOUNDS.items(): c['s_' + l] = ('ph', ph)
-    for w in words: c['w_' + w] = ('tx', w + '!')
-    for n in range(1, 11): c['n_%d' % n] = ('tx', NUMS[n] + '.')
+    for l, (spoken, words, phrase) in letters.items():
+        c['l_' + l] = spoken.capitalize() + '!'
+        for w in words: c['f_%s_%s' % (l, w)] = '%s is %s %s!' % (spoken.capitalize(), phrase, w)
+    for n in range(1, 11):
+        c['n_%d' % n] = NUMS[n].capitalize() + '!'
+        c['p_yes_%d' % n] = 'Yes! %s!' % NUMS[n].capitalize()
+        one, many = things[(n - 1) % len(things)]
+        c['c_%d' % n] = '%s %s!' % (NUMS[n].capitalize(), one if n == 1 else many)
     for one, many in things + [('kid', 'kids')]:
-        c['t_' + one] = ('tx', one + '!'); c['t_' + many] = ('tx', many + '!')
-        c['p_how_' + many] = ('tx', 'How many %s? Tap each one to count!' % many)
-        c['p_so_' + many] = ('tx', 'So how many %s are there?' % many)
-    c['p_how_kids'] = ('tx', 'How many kids came to school on the bus? Tap each one to count!')
-    c['p_yes'] = ('tx', 'Yes!')
-    c['p_nope'] = ('tx', 'Not that one. Have another go!')
-    c['name'] = ('tx', name + '!')
-    c['name_slow'] = ('slow', name)
-    c['p_star_name'] = ('tx', 'Well done, %s! You get a gold star!' % name)
-    c['p_star_numbers'] = ('tx', 'Brilliant counting, %s! You get a gold star!' % name)
-    c['p_star_count'] = ('tx', 'Great counting, %s! You get a gold star!' % name)
+        c['p_how_' + many] = 'How many %s? Tap each one to count!' % many
+        c['p_so_' + many] = 'So, how many %s are there?' % many
+    c['p_how_kids'] = 'How many kids came to school on the bus? Tap each one to count!'
+    c['p_nope'] = 'Not that one. Have another go!'
+    c['p_spells'] = 'That spells %s!' % name
+    c['p_star_name'] = 'Well done, %s! You get a gold star!' % name
+    c['p_star_numbers'] = 'Brilliant counting, %s! You get a gold star!' % name
+    c['p_star_count'] = 'Great counting, %s! You get a gold star!' % name
     return name, c
+
+
+def voice_style(k, spec):
+    if ':' not in spec: return spec
+    mix = 0
+    for part in spec.split(','):
+        v, w = part.split(':')
+        mix = mix + k.get_voice_style(v) * float(w)
+    return mix
 
 
 def trim(a, sr):
@@ -69,21 +78,23 @@ def trim(a, sr):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--model', required=True); ap.add_argument('--voices', required=True)
+    ap.add_argument('--voice', default=VOICE); ap.add_argument('--out', default=OUT)
     args = ap.parse_args()
     k = Kokoro(args.model, args.voices)
+    style = voice_style(k, args.voice)
+    lang = 'en-gb' if args.voice.startswith('b') else 'en-us'
     name, c = clips()
-    os.makedirs(OUT, exist_ok=True)
-    for f in os.listdir(OUT):
-        if f.endswith('.mp3'): os.remove(os.path.join(OUT, f))
+    os.makedirs(args.out, exist_ok=True)
+    for f in os.listdir(args.out):
+        if f.endswith('.mp3'): os.remove(os.path.join(args.out, f))
     with tempfile.TemporaryDirectory() as tmp:
-        for key, (kind, text) in c.items():
-            if kind == 'ph': a, sr = k.create(text, voice=VOICE, speed=0.8, is_phonemes=True)
-            else: a, sr = k.create(text, voice=VOICE, speed=0.55 if kind == 'slow' else 0.9, lang=LANG)
+        for key, text in c.items():
+            a, sr = k.create(text, voice=style, speed=SPEED, lang=lang)
             wav = os.path.join(tmp, 'c.wav'); sf.write(wav, trim(a, sr), sr)
             subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', wav, '-ac', '1', '-b:a', '48k',
-                            os.path.join(OUT, key + '.mp3')], check=True)
+                            os.path.join(args.out, key + '.mp3')], check=True)
             print(key, '-', text)
-    json.dump({'name': name, 'voice': VOICE, 'clips': sorted(c)}, open(os.path.join(OUT, 'clips.json'), 'w'), indent=0)
+    json.dump({'name': name, 'voice': args.voice, 'clips': sorted(c)}, open(os.path.join(args.out, 'clips.json'), 'w'), indent=0)
     print(len(c), 'clips for', name)
 
 

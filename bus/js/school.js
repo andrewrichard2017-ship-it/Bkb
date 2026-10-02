@@ -1,39 +1,39 @@
 'use strict';
 // Stage two: inside the school. The class sits at their tables and the player's desk has a paper
 // menu of today's work. "My name" is colouring in the letters of CHILD_NAME one at a time: each
-// letter says its sound, then the whole name is sounded out and said, and a gold star goes in
-// the star book. Change CHILD_NAME to use another name; every letter a-z has a sound below.
+// letter says "K is for kite", then the name is spelt out and said, and a gold star goes in the
+// star book. Change CHILD_NAME to use another name (then remake the voice: tools/make_voice.py).
 const CHILD_NAME = 'Kellan';
 
-// Letter sounds for the speech voice, each with picture words. A repeated letter (the two Ls in
-// Kellan) gets the next word in its list.
-const PHONICS = {
-  a: { say: 'ah', words: [['apple', '🍎'], ['ant', '🐜']] },
-  b: { say: 'buh', words: [['ball', '⚽'], ['bee', '🐝']] },
-  c: { say: 'kuh', words: [['cat', '🐱'], ['cake', '🎂']] },
-  d: { say: 'duh', words: [['dog', '🐶'], ['duck', '🦆']] },
-  e: { say: 'eh', words: [['egg', '🥚'], ['elephant', '🐘']] },
-  f: { say: 'fuh', words: [['fish', '🐟'], ['frog', '🐸']] },
-  g: { say: 'guh', words: [['goat', '🐐'], ['grapes', '🍇']] },
-  h: { say: 'huh', words: [['hat', '🎩'], ['horse', '🐴']] },
-  i: { say: 'ih', words: [['insect', '🐛'], ['iguana', '🦎']] },
-  j: { say: 'juh', words: [['juice', '🧃'], ['jeans', '👖']] },
-  k: { say: 'kuh', words: [['kite', '🪁'], ['key', '🔑']] },
-  l: { say: 'luh', words: [['lion', '🦁'], ['leaf', '🍃']] },
-  m: { say: 'muh', words: [['moon', '🌙'], ['monkey', '🐒']] },
-  n: { say: 'nuh', words: [['nose', '👃'], ['nut', '🥜']] },
-  o: { say: 'o', words: [['octopus', '🐙'], ['orange', '🍊']] },
-  p: { say: 'puh', words: [['pig', '🐷'], ['penguin', '🐧']] },
-  q: { say: 'kwuh', words: [['queen', '👑']] },
-  r: { say: 'ruh', words: [['rabbit', '🐰'], ['rainbow', '🌈']] },
-  s: { say: 'suh', words: [['sun', '☀️'], ['snake', '🐍']] },
-  t: { say: 'tuh', words: [['tiger', '🐯'], ['tree', '🌳']] },
-  u: { say: 'uh', words: [['umbrella', '☂️'], ['up', '⬆️']] },
-  v: { say: 'vuh', words: [['van', '🚐'], ['volcano', '🌋']] },
-  w: { say: 'wuh', words: [['whale', '🐳'], ['web', '🕸️']] },
-  x: { say: 'ks', words: [['fox', '🦊'], ['box', '📦']] },
-  y: { say: 'yuh', words: [['yo-yo', '🪀'], ['yak', '🐃']] },
-  z: { say: 'zuh', words: [['zebra', '🦓'], ['zip', '🤐']] },
+// Each letter with its name (spelt out so the voice says it right) and picture words: "K is for kite".
+// A repeated letter (the two Ls in Kellan) gets the next word in its list.
+const LETTERS = {
+  a: { name: 'eigh', words: [['apple', '🍎'], ['ant', '🐜']] },
+  b: { name: 'bee', words: [['ball', '⚽'], ['bee', '🐝']] },
+  c: { name: 'see', words: [['cat', '🐱'], ['cake', '🎂']] },
+  d: { name: 'dee', words: [['dog', '🐶'], ['duck', '🦆']] },
+  e: { name: 'ee', words: [['elephant', '🐘'], ['egg', '🥚']] },
+  f: { name: 'ef', words: [['fish', '🐟'], ['frog', '🐸']] },
+  g: { name: 'gee', words: [['goat', '🐐'], ['grapes', '🍇']] },
+  h: { name: 'aitch', words: [['hat', '🎩'], ['horse', '🐴']] },
+  i: { name: 'eye', words: [['insect', '🐛'], ['iguana', '🦎']] },
+  j: { name: 'jay', words: [['juice', '🧃'], ['jeans', '👖']] },
+  k: { name: 'kay', words: [['kite', '🪁'], ['key', '🔑']] },
+  l: { name: 'ell', words: [['lion', '🦁'], ['leaf', '🍃']] },
+  m: { name: 'em', words: [['moon', '🌙'], ['monkey', '🐒']] },
+  n: { name: 'en', words: [['nose', '👃'], ['nut', '🥜']] },
+  o: { name: 'oh', words: [['octopus', '🐙'], ['orange', '🍊']] },
+  p: { name: 'pee', words: [['pig', '🐷'], ['penguin', '🐧']] },
+  q: { name: 'queue', words: [['queen', '👑']] },
+  r: { name: 'ar', words: [['rabbit', '🐰'], ['rainbow', '🌈']] },
+  s: { name: 'ess', words: [['sun', '☀️'], ['snake', '🐍']] },
+  t: { name: 'tee', words: [['tiger', '🐯'], ['tree', '🌳']] },
+  u: { name: 'you', words: [['umbrella', '☂️'], ['up', '⬆️']] },
+  v: { name: 'vee', words: [['van', '🚐'], ['volcano', '🌋']] },
+  w: { name: 'double you', words: [['whale', '🐳'], ['web', '🕸️']] },
+  x: { name: 'ex', words: [['fox', '🦊'], ['box', '📦']], phrase: 'in' }, // "X is in fox"
+  y: { name: 'why', words: [['yo-yo', '🪀'], ['yak', '🐃']] },
+  z: { name: 'zed', words: [['zebra', '🦓'], ['zip', '🤐']] },
 };
 // Numbers: what gets counted after colouring in each number, as [picture, one, many].
 const NUM_WORDS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
@@ -55,15 +55,15 @@ const School = (() => {
   // The voice is recorded clips in audio/voice/ (made by tools/make_voice.py), played through Web
   // Audio so it works on every device. say() takes the clips to play in a row, plus the words to
   // fall back on with the device's own speech voice if a clip is missing (or the name changed).
-  const VOICE_VERSION = 1, VOICE_DIR = 'audio/voice/';
+  const VOICE_VERSION = 2, VOICE_DIR = 'audio/voice/';
   const clips = {};
   let voiceLoad = null, sayId = 0, playing = null, last = null, primed = false;
   function loadVoice() {
     if (voiceLoad) return voiceLoad;
     voiceLoad = fetch(VOICE_DIR + 'clips.json?v=' + VOICE_VERSION).then(r => r.json()).then(m => {
-      const named = k => k === 'name' || k === 'name_slow' || k.startsWith('p_star_');
-      const ours = new Set([...CHILD_NAME.toLowerCase()].map(ch => 's_' + ch));
-      const keys = m.clips.filter(k => m.name === CHILD_NAME || !named(k)).sort((a, b) => ours.has(b) - ours.has(a));
+      const named = k => k === 'p_spells' || k.startsWith('p_star_');
+      const ours = k => [...CHILD_NAME.toLowerCase()].some(ch => k === 'l_' + ch || k.startsWith('f_' + ch + '_'));
+      const keys = m.clips.filter(k => m.name === CHILD_NAME || !named(k)).sort((a, b) => ours(b) - ours(a));
       let i = 0;
       const worker = async () => {
         while (i < keys.length) {
@@ -259,12 +259,14 @@ const School = (() => {
   }
   function wordFor(i) {
     if (T.mode !== 'name') return null;
-    const ch = CHILD_NAME[i].toLowerCase(), p = PHONICS[ch];
+    const ch = CHILD_NAME[i].toLowerCase(), p = LETTERS[ch];
     if (!p) return null;
     let seen = 0;
     for (let k = 0; k < i; k++) if (CHILD_NAME[k].toLowerCase() === ch) seen++;
     const [word, pic] = p.words[seen % p.words.length];
-    return { say: p.say, word, pic, ch: CHILD_NAME[i], key: 's_' + ch, wkey: 'w_' + word };
+    const up = ch.toUpperCase();
+    return { word, pic, ch: CHILD_NAME[i], lkey: 'l_' + ch, key: 'f_' + ch + '_' + word,
+      line: up + (p.phrase === 'in' ? ' is in ' : ' is for ') + word + '!' };
   }
 
   function startTrace() {
@@ -333,7 +335,7 @@ const School = (() => {
     T.color = CRAYONS[T.i % CRAYONS.length]; markCrayon();
     strip();
     const p = wordFor(T.i);
-    if (p) say([p.key], p.say);
+    if (p) say([p.lkey], p.ch.toUpperCase());
     else if (T.mode === 'numbers') say(['n_' + ch], NUM_WORDS[+ch]);
   }
   function pos(e) { const r = tc.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
@@ -381,7 +383,7 @@ const School = (() => {
       card.querySelector('.wd').textContent = p.word;
       card.hidden = false; card.classList.remove('pop'); void card.offsetWidth; card.classList.add('pop');
       await sleep(350);
-      await say([p.key], p.say); await sleep(150); await say([p.key, p.wkey], p.say + ', ' + p.word + '!');
+      await say([p.key], p.line);
       await sleep(500);
       card.hidden = true;
     } else if (T.mode === 'numbers') await countUp(+T.text[i], run);
@@ -407,7 +409,7 @@ const School = (() => {
     }
     if (run !== T.run) return;
     await sleep(200);
-    await say(['n_' + n, 't_' + (n === 1 ? one : many)], NUM_WORDS[n] + ' ' + (n === 1 ? one : many) + '!', 0.9);
+    await say(['c_' + n], NUM_WORDS[n] + ' ' + (n === 1 ? one : many) + '!', 0.9);
     await sleep(700);
     row.hidden = true;
   }
@@ -429,14 +431,12 @@ const School = (() => {
       if (run !== T.run) return;
       T.bounce = i; T.bounceAt = performance.now();
       const p = wordFor(i);
-      await say(p ? [p.key] : [], p ? p.say : CHILD_NAME[i], 0.8);
+      await say(p ? [p.lkey] : [], CHILD_NAME[i].toUpperCase(), 0.9);
       await sleep(120);
     }
     if (run !== T.run) return;
     T.bounce = -1; T.all = true; T.bounceAt = performance.now();
-    await say(['name_slow'], CHILD_NAME, 0.65); await sleep(250);
-    T.bounceAt = performance.now();
-    await say(['name'], CHILD_NAME + '!', 0.9);
+    await say(['p_spells'], 'That spells ' + CHILD_NAME + '!', 0.9);
     if (run !== T.run) return;
     await goldStar(run, 'name', 'Well done, ' + CHILD_NAME + '! You get a gold star!');
   }
@@ -593,7 +593,7 @@ const School = (() => {
     }
     C.busy = true; b.classList.add('right'); cfg.sound.sparkle(); buzz(30);
     const thing = v === 1 ? C.what[0] : C.what[1];
-    hush(); await say(['p_yes', 'n_' + v, 't_' + thing], 'Yes! ' + NUM_WORDS[v] + ' ' + thing + '!', 0.9);
+    hush(); await say(['p_yes_' + v], 'Yes! ' + NUM_WORDS[v] + ' ' + thing + '!', 0.9);
     await sleep(500);
     if (run !== C.run) return;
     if (++C.round < C.rounds.length) return round(run);
