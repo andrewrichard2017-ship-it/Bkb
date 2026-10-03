@@ -53,7 +53,7 @@
   // dazed on his feet (standing count): hands hanging, head rolling, knees going, swaying side to side
   def('oofA', { lean: -12, head: -24, px: -12, py: 18, fX: 36, fY: -30, fB: 1, rX: 14, rY: -26, rB: 1, ffX: 26, rfX: -40 });
   def('oofB', { lean: 14, head: 20, px: 8, py: 22, fX: 42, fY: -36, fB: 1, rX: 22, rY: -30, rB: 1, ffX: 40, rfX: -26 });
-  // Dessie's spit and eye rake
+  // Gerry's spit and eye rake
   def('spitA', { lean: 16, head: 18, px: 8, py: 6, fX: 40, fY: -104, rX: 24, rY: -100 });
   def('rakeX', { fX: 112, fY: -122, fB: -0.5, fZ: 1.15, lean: 20, px: 14, head: 10, rX: 20, rY: -98 });
   // body shot reaction and the clinch
@@ -69,27 +69,27 @@
   def('cmSlapThru', { fX: 118, fY: -62, fB: 0.1, rX: 20, rY: -40, rB: 1, lean: 14, py: 4, ffX: 30, rfX: -24 });
   // Super punches, one per fighter. A = load, M = mid-swing (the fist arcs through it), X = contact.
   // X is only a starting point: the fighter re-aims it at the other man's head, so it lands on him, not through him.
-  // Haymaker (Michael): dropped to the back hip, swung out wide and up into the jaw.
+  // Haymaker (Paddy): dropped to the back hip, swung out wide and up into the jaw.
   def('koA', { rX: -34, rY: -10, rB: 0.4, rZ: 0.9, rsh: -14, lean: -12, px: -14, py: 16, head: -2, fX: 46, fY: -112, fB: 0.7, ffX: 34, rfX: -44 });
   def('koM', { rTop: 1, rX: 22, rY: -44, rB: -0.9, rZ: 1.35, rsh: 10, lean: 6, px: 2, py: 10, head: 2, fX: 40, fY: -108, ffX: 40, rfX: -42 });
   def('koX', { rTop: 1, rX: 96, rY: -112, rB: -0.45, rZ: 1.3, rsh: 26, lean: 22, px: 20, py: 6, head: 8, fX: 26, fY: -100, fB: 1, ffX: 50, rfX: -40, rfY: -6 });
-  // Sledgehammer (John Joe): cocked up behind the ear and brought down over the top.
+  // Sledgehammer (Tommy Brennan): cocked up behind the ear and brought down over the top.
   def('overhandA', { rX: -30, rY: -150, rB: 0.9, rZ: 1, rsh: -12, lean: -18, px: -12, py: 8, head: -8, fX: 46, fY: -112, ffX: 32, rfX: -42 });
   def('overhandM', { rTop: 1, rX: 24, rY: -178, rB: 0.5, rZ: 1.2, rsh: 8, lean: -2, px: 0, py: 4, head: -2, fX: 40, fY: -108, ffX: 38, rfX: -42 });
   def('overhandX', { rTop: 1, rX: 100, rY: -118, rB: 0.2, rZ: 1.3, rsh: 24, lean: 30, px: 22, py: 18, head: 14, fX: 28, fY: -92, fB: 1, ffX: 52, rfX: -46, rfY: -6 });
-  // Wrecking ball (Big Joe): arm flung out wide behind him and swung round in a huge loop.
+  // Wrecking ball (Big Mossie): arm flung out wide behind him and swung round in a huge loop.
   def('wreckerA', { rX: -52, rY: -96, rB: -1, rZ: 1.15, rsh: -18, lean: -10, px: -16, py: 12, head: -2, fX: 50, fY: -108, ffX: 34, rfX: -44 });
   def('wreckerM', { rTop: 1, rX: 8, rY: -108, rB: -1, rZ: 1.75, rsh: 6, lean: 8, px: 0, py: 10, head: 4, fX: 44, fY: -104, ffX: 40, rfX: -42 });
   def('wreckerX', { rTop: 1, rX: 80, rY: -112, rB: -0.95, rZ: 1.4, rsh: 22, lean: 20, px: 18, py: 10, head: 8, fX: 30, fY: -96, fB: 1, ffX: 46, rfX: -38 });
-  // Superman punch (Arthur): knee up, spring off the back foot and fly in behind the cross.
+  // Superman punch (Leo): knee up, spring off the back foot and fly in behind the cross.
   def('supermanA', { rX: 22, rY: -98, rB: 0.8, rsh: -8, lean: -4, px: -6, py: 30, head: 0, fX: 48, fY: -110, ffX: 30, rfX: -12, rfY: -34 });
   def('supermanM', { rX: 30, rY: -118, rB: 0.6, rsh: 4, lean: 10, px: 10, py: -34, head: 2, fX: 40, fY: -104, ffX: 44, ffY: -26, rfX: -72, rfY: -44 });
   def('supermanX', { rX: 110, rY: -116, rB: 0.05, rZ: 1.25, rsh: 24, lean: 20, px: 30, py: -8, head: 6, fX: 18, fY: -96, fB: 1, ffX: 58, ffY: -6, rfX: -80, rfY: -30 });
-  // Scalding kettle (Dessie): the kettle comes up from the hip, swings over and tips out in his face.
+  // Scalding kettle (Gerry): the kettle comes up from the hip, swings over and tips out in his face.
   def('kettleA', { rX: -24, rY: -40, rB: 0.9, rZ: 1, rsh: -14, lean: -10, px: -12, py: 14, head: -4, fX: 44, fY: -110, ffX: 30, rfX: -46 });
   def('kettleM', { rX: 10, rY: -150, rB: 0.6, rZ: 1.1, rsh: 6, lean: 2, px: 0, py: 6, head: 0, fX: 40, fY: -106, ffX: 36, rfX: -42, rTop: 1 });
   def('kettleX', { rX: 104, rY: -126, rB: 0.1, rZ: 1.15, rsh: 26, lean: 22, px: 22, py: 8, head: 8, fX: 26, fY: -100, fB: 1, ffX: 52, rfX: -40, rfY: -6, rTop: 1 });
-  // Duster cross (Digger): brass knuckles loaded right back by the cheek, then everything behind a straight right.
+  // Duster cross (Spade): brass knuckles loaded right back by the cheek, then everything behind a straight right.
   def('dusterA', { rX: -30, rY: -104, rB: 0.9, rZ: 1, rsh: -18, lean: -16, px: -18, py: 14, head: -4, fX: 50, fY: -112, ffX: 30, rfX: -48 });
   def('dusterX', { rX: 118, rY: -112, rB: 0.04, rZ: 1.35, rsh: 30, lean: 26, px: 26, py: 10, head: 8, fX: 26, fY: -110, fB: 0.9, ffX: 60, rfX: -40, rfY: -8 });
   // after the knockout (aftermath.js): putting the boot in on a man who's down
@@ -738,7 +738,7 @@
     ctx.fillStyle = `rgba(140,14,22,${Math.min(0.75, b)})`;
     for (const [x, y, r] of [[18, -6, 5], [20, 4, 4], [10, -10, 3.5], [14, 9, 3]].slice(0, 1 + Math.floor(b * 4))) { ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.8, 0.3, 0, PI * 2); ctx.fill(); }
   }
-  // A battered tin kettle held by the handle, spout forward, for Dessie's super. Drawn in fist space.
+  // A battered tin kettle held by the handle, spout forward, for Gerry's super. Drawn in fist space.
   function drawKettle(st) {
     ctx.save(); ctx.translate(6, 8); ctx.rotate(-0.35 - (st.kettleTip || 0) * 1.1);
     cel(() => { ctx.beginPath(); ctx.moveTo(-20, 0); ctx.quadraticCurveTo(-24, -26, -4, -30); ctx.lineTo(16, -30); ctx.quadraticCurveTo(30, -26, 26, 0); ctx.quadraticCurveTo(4, 6, -20, 0); ctx.closePath(); }, '#8b9096', { outline: 3.5, detail: () => {

@@ -25,7 +25,7 @@
         life: 2, max: 2, r: BK.rnd(2.5, 5), floorY: floorY + BK.rnd(-18, 18) });
     }
   };
-  // Dessie: a gob of spit that flies at the other man's face
+  // Gerry: a gob of spit that flies at the other man's face
   FX.spit = (x, y, dir, opp, floorY) => {
     const tx = opp.headX, ty = opp.headY, d = Math.max(60, Math.abs(tx - x)), v = d * 3.2;
     FX.parts.push({ kind: 'spit', x, y, vx: dir * v, vy: (ty - y) * 3.2 - 40, life: 0.32, max: 0.32, r: 4, floorY });

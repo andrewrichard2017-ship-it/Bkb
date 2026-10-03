@@ -23,7 +23,7 @@
     const sc = BK.screen, U = Math.min(sc.w, sc.h);
     const r = clamp(U * 0.08, 27, 50), gap = r * 2.25;
     const right = sc.w - sc.safe.r - 18 - r, bottom = sc.h - sc.safe.b - 16 - r;
-    // buttons depend on the fighter: DUCK / SWAY / COMBO, no sway for Digger
+    // buttons depend on the fighter: DUCK / SWAY / COMBO, no sway for Spade
     const me = BK.game.p1, L = me ? me.look : {};
     const swayLabel = L.sway === 'duck' ? 'DUCK' : L.sway === 'combo' ? 'COMBO' : L.sway === 'spit' ? 'SPIT' : 'SWAY';
     const buttons = BTNS

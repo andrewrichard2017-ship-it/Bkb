@@ -7,7 +7,7 @@
   // alt: colours used when both corners pick the same fighter.
   BK.FIGHTERS = {
     michael: {
-      name: 'MICHAEL McD', short: 'McD', voice: { pitch: 125, formant: 1.0, breath: 0.25 },
+      name: 'PADDY QUINN', short: 'QUINN', voice: { pitch: 125, formant: 1.0, breath: 0.25 },
       skin: '#e3b08a', skinShade: '#c48b66', hair: '#3a2718',
       top: 'tank', topColor: '#f1ede2', topShade: '#cfc8b6',
       // vest stains, in torso space (waist at y=0, shoulders near y=-80)
@@ -23,7 +23,7 @@
       attr: { POWER: 78, SPEED: 88, CHIN: 80, STAMINA: 86 },
     },
     johnjoe: {
-      name: 'JOHN JOE', short: 'JOHN JOE', voice: { pitch: 104, formant: 0.95, breath: 0.3 },
+      name: 'TOMMY BRENNAN', short: 'TOMMY', voice: { pitch: 104, formant: 0.95, breath: 0.3 },
       skin: '#d9a07c', skinShade: '#b47f5d', hair: null,
       top: 'hoodie', topColor: '#6e4a2c', topShade: '#523620',
       stains: [],
@@ -36,7 +36,7 @@
       attr: { POWER: 90, SPEED: 72, CHIN: 86, STAMINA: 76 },
     },
     bigjoe: {
-      name: 'BIG JOE', short: 'BIG JOE', voice: { pitch: 84, formant: 0.86, breath: 0.45 },
+      name: 'BIG MOSSIE', short: 'MOSSIE', voice: { pitch: 84, formant: 0.86, breath: 0.45 },
       skin: '#e2a48a', skinShade: '#bf8068', hair: '#efece6',
       top: 'tank', build: 'belly', topColor: '#f4f2ec', topShade: '#d3cfc6',
       stains: [[6, -40, 7, 5, 'rgba(142,104,48,0.35)'], [30, -18, 5, 4, 'rgba(120,90,50,0.3)']],
@@ -49,7 +49,7 @@
       attr: { POWER: 95, SPEED: 64, CHIN: 92, STAMINA: 68 },
     },
     skinny: {
-      name: 'SKINNY ARTHUR', short: 'ARTHUR', voice: { pitch: 138, formant: 1.06, breath: 0.35 },
+      name: 'LANKY LEO', short: 'LEO', voice: { pitch: 138, formant: 1.06, breath: 0.35 },
       skin: '#e8b99a', skinShade: '#c99878', hair: '#6b5a4a',
       top: 'none', build: 'skinny', limbW: 0.74, torsoW: 0.8, topColor: '#e8b99a', topShade: '#c99878',
       stains: [],
@@ -64,7 +64,7 @@
       attr: { POWER: 58, SPEED: 97, CHIN: 70, STAMINA: 92 },
     },
     digger: {
-      name: 'DIGGER', short: 'DIGGER', voice: { pitch: 92, formant: 0.9, breath: 0.4 },
+      name: 'SPADE', short: 'SPADE', voice: { pitch: 92, formant: 0.9, breath: 0.4 },
       skin: '#d9a585', skinShade: '#b8835f', hair: '#141214',
       top: 'tank', build: 'muscle', limbW: 1.2, torsoW: 1.12, topColor: '#6f7176', topShade: '#55575b',
       stains: [[8, -34, 6, 4, 'rgba(40,30,20,0.3)']],
@@ -79,7 +79,7 @@
       attr: { POWER: 99, SPEED: 60, CHIN: 84, STAMINA: 58 },
     },
     dessie: {
-      name: 'DESSIE', short: 'DESSIE', voice: { pitch: 112, formant: 0.97, breath: 0.5 },
+      name: 'GERRY KEANE', short: 'GERRY', voice: { pitch: 112, formant: 0.97, breath: 0.5 },
       skin: '#d6a483', skinShade: '#b3825f', hair: '#1a1210',
       top: 'tee', topColor: '#ece8df', topShade: '#c9c4b8',
       // a white t-shirt that hasn't seen a wash in a while: grease, muck, an old brown stain down the front
@@ -98,7 +98,7 @@
     },
   };
   BK.FIGHTER_ORDER = ['michael', 'johnjoe', 'bigjoe', 'skinny', 'digger', 'dessie'];
-  // Tournament running order (your own fighter is skipped); Digger is the final boss.
+  // Tournament running order (your own fighter is skipped); Spade is the final boss.
   BK.TOUR_ORDER = ['skinny', 'johnjoe', 'dessie', 'michael', 'bigjoe', 'digger'];
   BK.CORNERS = [
     { corner: 'RED CORNER', color: '#b3202a' },
@@ -136,9 +136,9 @@
     overhand: { label: 'SLEDGEHAMMER',   hand: 'rear', dur: 1.0,  hitAt: 0.58, dmg: 40, reach: 190, cost: 16, stun: 0.6,  snap: 0.95, through: 1.0, power: true, super: true, aim: 0.9,  aimY: -6 },
     wrecker:  { label: 'WRECKING BALL',  hand: 'rear', dur: 1.05, hitAt: 0.6,  dmg: 42, reach: 170, cost: 16, stun: 0.65, snap: 1.0,  through: 1.0, power: true, super: true, aim: 0.74, aimY: 0 },
     superman: { label: 'SUPERMAN PUNCH', hand: 'rear', dur: 0.9,  hitAt: 0.5,  dmg: 38, reach: 230, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0, power: true, super: true, aim: 0.93, aimY: 0 },
-    // Dessie's: a kettle of scalding water, once a round. Lands like a big power shot and burns the right hand off him.
+    // Gerry's: a kettle of scalding water, once a round. Lands like a big power shot and burns the right hand off him.
     kettle:   { label: 'SCALDING KETTLE', hand: 'rear', dur: 1.1,  hitAt: 0.6,  dmg: 34, reach: 210, cost: 16, stun: 0.9,  snap: 0.8,  through: 1.0, power: true, super: true, aim: 0.8,  aimY: -4, scald: true },
-    // Digger's: a big knuckle-duster cross, once a round
+    // Spade's: a big knuckle-duster cross, once a round
     duster:   { label: 'DUSTER CROSS',   hand: 'rear', dur: 1.05, hitAt: 0.62, dmg: 45, reach: 200, cost: 16, stun: 0.7,  snap: 1.1,  through: 1.0, power: true, super: true, aim: 0.95, aimY: 2 },
   };
   BK.superName = look => (BK.PUNCHES[look.super || 'ko'].label || 'SUPER PUNCH');

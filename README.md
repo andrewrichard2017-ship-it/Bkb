@@ -8,16 +8,16 @@ A bare knuckle boxing game for Android phones and tablets. It's an HTML5 canvas 
 
 ## Fighters
 
-Pick any fighter for yourself and for the CPU on the main menu (tap the name to cycle). **Quick fight** is a single bout; **Tournament** runs you through everyone else in turn (Digger is the final boss). Your health carries over between tournament fights and you get +10% back after each win; lose (or draw) and you're out. If both corners pick the same man, the CPU gets alternate colours.
+Pick any fighter for yourself and for the CPU on the main menu (tap the name to cycle). **Quick fight** is a single bout; **Tournament** runs you through everyone else in turn (Spade is the final boss). Your health carries over between tournament fights and you get +10% back after each win; lose (or draw) and you're out. If both corners pick the same man, the CPU gets alternate colours.
 
 | | Kit | Style | Sway / special | Super punch |
 |---|---|---|---|---|
-| **Michael McD** | Stained white tank top, tracksuit bottoms, beige desert boots, red hand wraps | Pressure fighter: fast, good stamina | Leans back | **Haymaker**: swung up from the hip into the jaw |
-| **John Joe** | Brown hoodie, jeans, black shoes | Counter puncher: heavy hands, good chin | Leans back | **Sledgehammer**: overhand right, over the top |
-| **Big Joe** | White tank over a big belly, black trousers and boots, gold chain, white hair and handlebar moustache | Brawler: huge power, best chin, slow | Ducks and rolls | **Wrecking ball**: a huge looping swing |
-| **Skinny Arthur** | Shirtless, shorts, white shoes, skinhead | Speed merchant: fast hands and feet, light punches, best stamina recovery | **COMBO**: automatic jab-cross-left hook for 40% of his stamina (needs at least 40%) | **Superman punch**: leaps in behind a flying cross |
-| **Digger** | Grey tank, black jeans, desert boots, slicked-back hair, long beard, knuckle dusters | Knockout artist: the most power, low stamina, slow feet | **No sway** | **Duster cross**: a big knuckle-duster cross, once per round |
-| **Dessie** | Stained white t-shirt, jeans, black boots, hair cropped right down, dark stubble, muck on his face | Dirty fighter: great stamina and chin, decent power, a heavy stumbling walk | **SPIT**: a gob in the eye and a rake across it, blinding him for a couple of seconds (he blocks worse and swings wild) | **Scalding kettle** (once a round): a kettle of boiling water in the face. Puts him down, and burns his right hand out of the fight for 14 seconds (no cross or uppercut) |
+| **Paddy Quinn** | Stained white tank top, tracksuit bottoms, beige desert boots, red hand wraps | Pressure fighter: fast, good stamina | Leans back | **Haymaker**: swung up from the hip into the jaw |
+| **Tommy Brennan** | Brown hoodie, jeans, black shoes | Counter puncher: heavy hands, good chin | Leans back | **Sledgehammer**: overhand right, over the top |
+| **Big Mossie** | White tank over a big belly, black trousers and boots, gold chain, white hair and handlebar moustache | Brawler: huge power, best chin, slow | Ducks and rolls | **Wrecking ball**: a huge looping swing |
+| **Lanky Leo** | Shirtless, shorts, white shoes, skinhead | Speed merchant: fast hands and feet, light punches, best stamina recovery | **COMBO**: automatic jab-cross-left hook for 40% of his stamina (needs at least 40%) | **Superman punch**: leaps in behind a flying cross |
+| **Spade** | Grey tank, black jeans, desert boots, slicked-back hair, long beard, knuckle dusters | Knockout artist: the most power, low stamina, slow feet | **No sway** | **Duster cross**: a big knuckle-duster cross, once per round |
+| **Gerry Keane** | Stained white t-shirt, jeans, black boots, hair cropped right down, dark stubble, muck on his face | Dirty fighter: great stamina and chin, decent power, a heavy stumbling walk | **SPIT**: a gob in the eye and a rake across it, blinding him for a couple of seconds (he blocks worse and swings wild) | **Scalding kettle** (once a round): a kettle of boiling water in the face. Puts him down, and burns his right hand out of the fight for 14 seconds (no cross or uppercut) |
 
 ## Controls
 

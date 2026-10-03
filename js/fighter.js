@@ -48,7 +48,7 @@
       this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false; this.clinchSaved = false;
       this.buffer = []; this.chainHits = 0;
       this.dazedStand = false; this.dazeW = 0; // taking a standing count; dazeW eases the wobble in and out
-      this.scald = 0; this.blind = 0; this.lurchT = 0; this.lurch = 0; // scalded (no right hand), eye raked (blind), Dessie's stumble
+      this.scald = 0; this.blind = 0; this.lurchT = 0; this.lurch = 0; // scalded (no right hand), eye raked (blind), Gerry's stumble
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1; this.cutPose = null; this.cutW = 0;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make(); this.tmp2 = BK.rig.make();
@@ -142,7 +142,7 @@
       const staggered = this.stagger > 0;
       if (staggered) this.stagger -= dt;
       this.scald = Math.max(0, this.scald - dt); this.blind = Math.max(0, this.blind - dt);
-      if (this.look.stumble) { // Dessie: a heavy, uneven gait, every few steps a lurch to one side
+      if (this.look.stumble) { // Gerry: a heavy, uneven gait, every few steps a lurch to one side
         this.lurchT -= dt;
         if (this.lurchT <= 0 && this.moving > 0.3) { this.lurch = BK.pick([-1, 1]); this.lurchT = BK.rnd(0.9, 1.8); }
         this.lurch *= Math.pow(0.05, dt);
@@ -171,14 +171,14 @@
       // slip
       const sway = this.look.sway;
       if (input.slip && sway === 'combo' && !this.punch && !this.combo.length && !staggered && this.stamina >= 40) {
-        // Skinny Arthur: automatic jab, cross, left hook for 40% of the bar
+        // Lanky Leo: automatic jab, cross, left hook for 40% of the bar
         this.stamina -= 40;
         this.combo = ['jab', 'cross', 'hook'];
         BK.fx.popup('COMBO!', this.headX, this.headY - 60, BK.PAL.brass, 40);
       }
       if (this.combo.length && !staggered && this.canThrow(this.combo[0])) this.throwPunch(this.combo.shift(), { auto: true, fast: true });
       if (input.slip && sway === 'spit' && !this.punch && !this.slip && !this.grab && !staggered && this.stamina >= 12) {
-        // Dessie: a gob in the eye and a rake across it. Blinds him for a couple of seconds if it lands.
+        // Gerry: a gob in the eye and a rake across it. Blinds him for a couple of seconds if it lands.
         this.stamina -= 12;
         this.slip = { t: 0, dur: 0.55, kind: 'spit' };
       }
@@ -216,7 +216,7 @@
       this.tickPunch(dt, opp);
     }
 
-    // Super punch is on offer when the opponent is under 8% health (Digger's only once a round).
+    // Super punch is on offer when the opponent is under 8% health (Spade's only once a round).
     superAvailable(opp) { return opp.hp < 8 && !opp.down && !(this.look.superOnce && this.superUsed); }
 
     // Free, or far enough through the current punch to chain the next one.
@@ -259,7 +259,7 @@
       this.tickPunch(dt, opp);
     }
 
-    // Dessie's sway: the spit flies, then the rake. Either lands only if he's in range and facing the right way.
+    // Gerry's sway: the spit flies, then the rake. Either lands only if he's in range and facing the right way.
     spit(opp) {
       const dx = (opp.sx - this.sx) * this.dir;
       BK.fx.spit(this.headX + this.dir * 14 * this.fs, this.headY - 6 * this.fs, this.dir, opp, this.sy);
