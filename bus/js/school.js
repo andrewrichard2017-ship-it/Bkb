@@ -179,7 +179,7 @@ const School = (() => {
     if (id === 'countScreen') startCount();
     if (id === 'animalScreen') startAnimals();
     if (id === 'lunchScreen') startLunch();
-    if (id === 'drawScreen') Colouring.start({ say, hush, sound: cfg.sound, id: PLAYER, name: CHILD_NAME, finished: () => addStar('draw') });
+    if (id === 'drawScreen') Colouring.start({ say, hush, sound: cfg.sound, id: PLAYER, name: CHILD_NAME, finished: () => addStar('draw'), saveArt });
     else Colouring.stop();
     if (id === 'classScreen') {
       const first = cfg.save.numNext || 1;
@@ -271,7 +271,9 @@ const School = (() => {
     c.fillStyle = '#1f2937'; for (const f of [0.28, 0.66]) { c.beginPath(); c.arc(wx + ww * f, wy + wh * 0.77, ww * 0.05, 0, 7); c.fill(); }
     c.fillStyle = '#fff'; c.fillRect(wx + ww / 2 - 2 * s, wy, 4 * s, wh); c.fillRect(wx, wy + wh / 2 - 2 * s, ww, 4 * s);
     // whiteboard
-    const bx = W * 0.3, by = R * 0.15, bw = W * 0.4, bh = R * 0.36;
+    // on a tall screen with pictures to show, the whiteboard moves over to make room for them
+    const tall = H > W && (cfg.save.art || []).length > 0;
+    const bx = tall ? W * 0.27 : W * 0.3, by = R * 0.15, bw = tall ? W * 0.34 : W * 0.4, bh = R * 0.36;
     c.fillStyle = '#9ca3af'; rr(c, bx - 6 * s, by - 6 * s, bw + 12 * s, bh + 12 * s, 6 * s); c.fill();
     c.fillStyle = '#fbfdff'; c.fillRect(bx, by, bw, bh);
     const day = new Date().toLocaleDateString('en-GB', { weekday: 'long' });
@@ -280,6 +282,7 @@ const School = (() => {
     c.font = '600 ' + Math.min(bh * 0.15, bw / 14) + 'px ' + LETTER_FONT;
     c.fillStyle = '#dc2626'; c.fillText('Today is ' + day, bx + bw / 2, by + bh * 0.68);
     c.fillStyle = '#6b7280'; c.fillRect(bx + bw * 0.1, by + bh, bw * 0.8, 5 * s);
+    if (tall) artWall(c, W, R, s, { x: bx + bw + 6 * s, y: R * 0.12, w: W - bx - bw - 10 * s, h: R * 0.45 });
     // teacher beside the board
     const tx = Math.min(W * 0.82, bx + bw + 50 * s), tb = R * 0.92;
     c.fillStyle = '#334155'; c.fillRect(tx - 9 * s, tb - 50 * s, 7 * s, 50 * s); c.fillRect(tx + 2 * s, tb - 50 * s, 7 * s, 50 * s);
@@ -288,6 +291,7 @@ const School = (() => {
     c.beginPath(); c.moveTo(tx - 12 * s, tb - 100 * s); c.lineTo(tx - 32 * s, tb - 128 * s); c.stroke();
     c.save(); c.translate(tx, tb - 128 * s); c.scale(1.3 * s, 1.3 * s); c.scale(-1, 1);
     Scene.head(c, { skin: '#f1c27d', hair: '#7c2d12', style: 5, bag: '#0d9488' }); c.restore();
+    if (!tall) artWall(c, W, R, s, { x: tx + 40 * s, y: R * 0.12, w: W - tx - 50 * s, h: R * 0.46 });
     // the class at their tables
     const per = 4, tables = Math.max(1, Math.ceil(kids.length / per)), ty = R * 0.86;
     const span = W * 0.9, tw = Math.min(span / tables - 16 * s, 230 * s);
@@ -313,6 +317,44 @@ const School = (() => {
       c.beginPath(); c.moveTo(-3 * s, -46 * s); c.lineTo(0, -54 * s); c.lineTo(3 * s, -46 * s); c.fill(); c.restore();
     });
     c.fillStyle = '#2563eb'; rr(c, px - 20 * s, py - 6 * s, 40 * s, 44 * s, 6 * s); c.fill();
+  }
+
+  // Finished colouring pictures, pinned to a corkboard on the classroom wall (newest first).
+  const ART_KEEP = 6, artImgs = {};
+  function saveArt(url) {
+    const a = Array.isArray(cfg.save.art) ? cfg.save.art : (cfg.save.art = []);
+    a.push(url); while (a.length > ART_KEEP) a.shift();
+    cfg.persist();
+  }
+  function artWall(c, W, R, s, box) {
+    const art = (cfg.save.art || []).slice().reverse();
+    if (!art.length || box.w < 50 * s || box.h < 40 * s) return;
+    // the biggest pictures that fit, in however many columns suits the space
+    let best = null;
+    for (let cols = 1; cols <= art.length; cols++) {
+      const rows = Math.ceil(art.length / cols), pw = Math.min((box.w - 10 * s) / cols - 10 * s, ((box.h - 26 * s) / rows - 10 * s) * 4 / 3);
+      if (!best || pw > best.pw) best = { cols, rows, pw };
+    }
+    let { cols, rows, pw } = best;
+    if (pw < 34) { cols = Math.max(1, Math.floor((box.w - 10 * s) / (34 + 10 * s))); rows = Math.max(1, Math.floor((box.h - 26 * s) / (25.5 + 10 * s))); pw = 34; }
+    const ph = pw * 0.75, n = Math.min(art.length, cols * rows), gw = cols * (pw + 10 * s) + 10 * s, gh = Math.ceil(n / cols) * (ph + 10 * s) + 26 * s;
+    const x0 = box.x + (box.w - gw) / 2, y0 = box.y + (box.h - gh) / 2;
+    c.fillStyle = '#92400e'; Scene.rr(c, x0 - 5 * s, y0 - 5 * s, gw + 10 * s, gh + 10 * s, 6 * s); c.fill();
+    c.fillStyle = '#d6a76c'; Scene.rr(c, x0, y0, gw, gh, 4 * s); c.fill();
+    c.fillStyle = '#7c2d12'; c.font = '700 ' + Math.round(Math.min(15 * s, gw / 7)) + 'px ' + LETTER_FONT; c.textAlign = 'center'; c.textBaseline = 'middle';
+    c.fillText('Our art', x0 + gw / 2, y0 + 13 * s);
+    for (let k = 0; k < n; k++) {
+      const url = art[k];
+      let img = artImgs[url];
+      if (!img) { img = artImgs[url] = new Image(); img.onload = () => { if (screen === 'classScreen') drawClass(); }; img.src = url; }
+      const x = x0 + 10 * s + (k % cols) * (pw + 10 * s), y = y0 + 26 * s + Math.floor(k / cols) * (ph + 10 * s);
+      c.save(); c.translate(x + pw / 2, y + ph / 2); c.rotate(((k * 7) % 5 - 2) * 0.03);
+      c.fillStyle = 'rgba(0,0,0,.25)'; c.fillRect(-pw / 2 + 2, -ph / 2 + 3, pw, ph);
+      c.fillStyle = '#fff'; c.fillRect(-pw / 2 - 2, -ph / 2 - 2, pw + 4, ph + 4);
+      if (img.complete && img.naturalWidth) c.drawImage(img, -pw / 2, -ph / 2, pw, ph);
+      c.fillStyle = CRAYONS[k % CRAYONS.length]; c.beginPath(); c.arc(0, -ph / 2, Math.max(3, 4 * s), 0, 7); c.fill();
+      c.restore();
+    }
   }
 
   // ---------- colouring in: the name, or numbers ----------

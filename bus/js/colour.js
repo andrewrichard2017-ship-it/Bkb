@@ -186,6 +186,13 @@ const Colouring = (() => {
     }
     done = true; $('colDone').disabled = true;
     const r = run;
+    // a small copy goes up on the classroom wall
+    try {
+      const t = document.createElement('canvas'); t.width = 240; t.height = 180;
+      const tc = t.getContext('2d');
+      tc.drawImage(paint, 0, 0, 240, 180); tc.globalCompositeOperation = 'multiply'; tc.drawImage(line, 0, 0, 240, 180);
+      cfg.saveArt(t.toDataURL('image/jpeg', 0.75));
+    } catch (e) { /* no room to save it */ }
     cfg.sound.fanfare(); buzz([40, 60, 40]); starAt = performance.now(); dirty = true;
     cfg.hush(); await cfg.say(['p_star_draw_' + cfg.id], 'What a beautiful picture, ' + cfg.name + '! You get a gold star!');
     await sleep(700);
