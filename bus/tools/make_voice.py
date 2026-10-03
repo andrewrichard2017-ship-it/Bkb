@@ -20,7 +20,8 @@ from kokoro_onnx import Kokoro
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'audio', 'voice')
-VOICE, LANG = 'bf_isabella', 'en-gb'  # a soft British English voice; --voice picks another (or a mix, "bf_emma:0.5,af_heart:0.5")
+VOICE, LANG = 'bf_isabella', 'en-gb'
+MAMMY = 'bf_emma'  # Mammy's lines (keys starting m_) at home get a voice of their own  # a soft British English voice; --voice picks another (or a mix, "bf_emma:0.5,af_heart:0.5")
 SPEED = 1.0  # natural talking speed: slower than this sounds robotic
 NUMS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
 
@@ -40,6 +41,62 @@ def read_game():
     block = src[src.index('const LUNCH'):src.index('const GAMES')]
     lunch = re.findall(r"\{ id: '([a-z]+)', name: '([^']+)', say: \"([^\"]+)\" \}", block)
     return name, letters, things, animals, lunch
+
+
+def read_home():
+    src = open(os.path.join(ROOT, 'js', 'home.js'), encoding='utf-8').read()
+    block = src[src.index('const DRESS'):src.index('const TOYS')]
+    dress = []
+    for m in re.finditer(r"\{ cat: '(\w+)', ask: '([^']+)', icon: '[^']+', items: \[(.*?)\] \}", block):
+        dress.append((m.group(1), m.group(2), re.findall(r"\['(\w+)', '([^']+)'\]", m.group(3))))
+    block = src[src.index('const TOYS ='):src.index('const TOYS_PER_GO')]
+    toys = re.findall(r"\{ id: '(\w+)', name: '([^']+)', pic: '[^']+', say: \"([^\"]+)\" \}", block)
+    block = src[src.index('const FOODS'):src.index('const DISHES')]
+    foods = re.findall(r"(\w+): \{ pic: '[^']+', name: '([^']+)', is: \"([^\"]+)\" \}", block)
+    block = src[src.index('const DISHES'):src.index('const Home')]
+    dishes = [(m.group(1), m.group(2).split("', '"), m.group(3).split("', '"), (m.group(4) or '').split("', '") if m.group(4) else [], m.group(5))
+              for m in re.finditer(r"(\w+): \{ name: '[^']+', pic: '[^']+', sub: '[^']+', need: \['([^\]]+)'\], steps: \['([^\]]+)'\],(?: chop: \['([^\]]+)'\],)?\s*intro: \"([^\"]+)\" \}", block)]
+    return dress, toys, foods, dishes
+
+
+def home_clips(c, name):
+    dress, toys, foods, dishes = read_home()
+    for cat, ask, items in dress:
+        c['d_cat_' + cat] = ask
+        for iid, nm in items: c['d_%s_%s' % (cat, iid)] = nm + '!'
+    for tid, nm, line in toys:
+        c['to_find_' + tid] = 'Can you find the %s? %s Put it in the toy box!' % (nm, line)
+        c['to_is_' + tid] = "That's the %s." % nm
+        c['to_yes_' + tid] = 'Yes! The %s goes in the toy box!' % nm
+    c['to_intro'] = "Uh oh! There are toys all over the floor. Let's tidy up!"
+    names = {f: n for f, n, _ in foods}
+    the = lambda f: 'the ' + re.sub(r'^an? ', '', names[f])
+    for f, nm, line in foods: c['fw_' + f] = line
+    for d, need, steps, chop, intro in dishes:
+        c['m_dish_' + d] = intro
+        for f in need: c['m_need_' + f] = 'We need %s! Can you find %s?' % (names[f], the(f))
+        for f in chop: c['m_chop_' + f] = "Let's chop %s! Tap, tap, tap!" % the(f)
+    c.update({
+        'm_pick': 'What will we make for dinner? You pick!',
+        'm_yes': 'Yes, that\u2019s it! Thank you!',
+        'm_stir': 'Stir the pot! Round and round and round!',
+        'm_stirred': 'That smells delicious! Well done!',
+        'm_sauce': 'Now spread the tomato sauce all over the pizza. Rub it round and round!',
+        'm_cheese': 'Now tap the pizza to put on the cheese!',
+        'm_corn': 'Now the sweetcorn! Tap, tap, tap!',
+        'm_bake': 'Into the oven it goes! Tap the oven door.',
+        'm_wait': 'Now we wait for it to cook. Tick, tock!',
+        'm_ding': "Ding! The pizza's ready!",
+        'm_serve': 'Dinner is ready! Put some on each plate.',
+        'm_yum': 'Mmm, this is delicious! Well done!',
+        'e_allgone': 'All gone! What a yummy dinner!',
+    })
+    for pid, nm in name:
+        c['h_hello_' + pid] = "Welcome home, %s! Let's get changed out of your school clothes. Pick your socks!" % nm
+        c['d_star_' + pid] = 'You look brilliant, %s! You get a gold star!' % nm
+        c['to_star_' + pid] = 'What a tidy bedroom! Well done, %s! You get a gold star!' % nm
+        c['k_star_' + pid] = "Dinner's ready! You're a great cook, %s! You get a gold star!" % nm
+        c['g_night_' + pid] = 'Goodnight, %s! See you tomorrow!' % nm
 
 
 def clips():
@@ -84,6 +141,7 @@ def clips():
         c['p_star_lunch_' + pid] = 'Yummy! Well done, %s! You packed your lunch box! You get a gold star!' % nm
         c['h_home_' + pid] = "Ding, ding! It's home time, %s! All your work is done. Let's drive the train home!" % nm
         c['p_star_train_' + pid] = 'You drove the train all the way home, %s! You get a gold star!' % nm
+    home_clips(c, name)
     return name, c
 
 
@@ -110,6 +168,7 @@ def main():
     args = ap.parse_args()
     k = Kokoro(args.model, args.voices)
     style = voice_style(k, args.voice)
+    mammy = voice_style(k, MAMMY)
     lang = 'en-gb' if args.voice.startswith('b') else 'en-us'
     name, c = clips()
     os.makedirs(args.out, exist_ok=True)
@@ -117,7 +176,7 @@ def main():
         if f.endswith('.mp3'): os.remove(os.path.join(args.out, f))
     with tempfile.TemporaryDirectory() as tmp:
         for key, text in c.items():
-            a, sr = k.create(text, voice=style, speed=SPEED, lang=lang)
+            a, sr = k.create(text, voice=mammy if key.startswith('m_') else style, speed=SPEED, lang=lang)
             wav = os.path.join(tmp, 'c.wav'); sf.write(wav, trim(a, sr), sr)
             subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', wav, '-ac', '1', '-b:a', '48k',
                             os.path.join(args.out, key + '.mp3')], check=True)

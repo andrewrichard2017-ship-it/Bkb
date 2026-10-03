@@ -98,7 +98,7 @@ const School = (() => {
   // The voice is recorded clips in audio/voice/ (made by tools/make_voice.py), played through Web
   // Audio so it works on every device. say() takes the clips to play in a row, plus the words to
   // fall back on with the device's own speech voice if a clip is missing (or the name changed).
-  const VOICE_VERSION = 7, VOICE_DIR = 'audio/voice/';
+  const VOICE_VERSION = 8, VOICE_DIR = 'audio/voice/';
   const clips = {};
   let voiceLoad = null, sayId = 0, playing = null, last = null, primed = false;
   function loadVoice() {
@@ -222,8 +222,15 @@ const School = (() => {
   function trainHome() {
     hush(); root.hidden = true; screen = 'train';
     Train.open({ kids, name: CHILD_NAME, id: PLAYER, color: cfg.color(), sound: cfg.sound, say, hush,
-      color2: (PROFILES.find(p => p.id === PLAYER) || PROFILES[0]).color }, next => {
+      color2: (PROFILES.find(p => p.id === PLAYER) || PROFILES[0]).color }, () => {
       bookLog().push('train'); cfg.persist();
+      atHome();
+    });
+  }
+  // home after the train: get changed, tidy up, cook dinner with Mammy, eat, goodnight
+  function atHome() {
+    Home.open({ name: CHILD_NAME, id: PLAYER, sound: cfg.sound, say, hush, save: cfg.save, persist: cfg.persist,
+      star: kind => { bookLog().push(kind); cfg.persist(); } }, next => {
       if (next !== 'school') return close();
       // straight back to school for a new day: every game can be played again
       doneToday.clear(); homeSaid = false; root.hidden = false;
@@ -958,13 +965,13 @@ const School = (() => {
   }
 
   // ---------- star book ----------
-  // every star in the book, oldest first: 'name', 'numbers', 'count', 'animals', 'lunch' or 'train'
+  // every star in the book, oldest first: a school game, 'train', or a home one ('dress', 'toys', 'dinner')
   function bookLog() {
     const sv = cfg.save;
     if (!Array.isArray(sv.bookLog)) sv.bookLog = Array(sv.nameStars || 0).fill('name');
     return sv.bookLog;
   }
-  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾', lunch: '🍎', train: '🚂' };
+  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾', lunch: '🍎', train: '🚂', dress: '👕', toys: '🧸', dinner: '🍽️' };
   function renderBook(fresh) {
     const log = bookLog(), n = log.length, per = 12, page = Math.max(0, Math.ceil(n / per) - 1);
     $('bookTitle').textContent = CHILD_NAME + '’s Star Book';

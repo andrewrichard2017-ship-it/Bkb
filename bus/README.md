@@ -41,4 +41,11 @@ A game for young kids: drive the school bus, pick the kids up at the bus stops a
 | Rainbow (R) | Rainbow smoke. |
 | Doors (O) | Only at the home platform: the kids get off and run to the grown-ups. |
 
-Along the way: a field of cows, a level crossing whose barriers come down with flashing lights, a tunnel, a river bridge with a sailing boat, then the town and the home station. The train slows near the station and the buffers stop it gently, so it can't overshoot. Getting home is a gold star (🚂 in the star book), then *Next morning* goes back to the bus for a new day.
+Along the way: a field of cows, a level crossing whose barriers come down with flashing lights, a tunnel, a river bridge with a sailing boat, then the town and the home station. The train slows near the station and the buffers stop it gently, so it can't overshoot. Getting home is a gold star (🚂 in the star book), then the kids go inside.
+
+**At home** (`bus/js/home.js`), one thing after another, with Mammy (her lines have a voice of their own):
+
+- **Get changed:** the player starts in a vest and pants and picks socks, trousers, a top, shoes and a hat (four of each: tabs along the top, pictures underneath). The voice names each one. Once everything's on, *I'm dressed!* gets a gold star 👕, and the outfit is kept for the dinner scene.
+- **Tidy up:** six toys are on the bedroom floor. The voice names one and says what it is ("Can you find the teddy bear? It's soft and cuddly…") and the child drags it into the toy box. Tapping a toy says its name; the wrong toy in the box just comes back out. All away is a gold star 🧸. Each go carries on through the twelve toys (`TOYS`).
+- **Dinner with Mammy:** pick pizza, spaghetti or stew. Every dinner starts with finding Mammy's ingredients in the cupboard and ends with dragging it onto the two plates; in between, **pizza** is rub on the sauce, tap on cheese and sweetcorn, then tap the oven and wait for the ding; **spaghetti** and **stew** are tap to chop the vegetables (Mammy holds the knife) and stir the pot round and round. Serving up is a gold star 🍽️.
+- **Eating it:** the child, in the outfit they picked, and Mammy at the table, taking turns at bites until it's all gone. Then *Goodnight*: **Next morning ☀️** goes back to the bus, **Back to school 🏫** straight into a new school day.

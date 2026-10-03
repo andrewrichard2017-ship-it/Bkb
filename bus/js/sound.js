@@ -201,6 +201,8 @@ const Sound = (() => {
   const shovel = fx(t => { hiss(t, 0.12, 0.14, 'highpass', 2600, 0.8); hiss(t + 0.15, 0.5, 0.2, 'lowpass', 500, 0.8, 200); });
   const crossDing = fx(t => tone('triangle', 988, t, 0.22, 0.07));
   const pop = fx(t => tone('sine', 520, t, 0.08, 0.14, { slide: 900 }));
+  const chop = fx(t => { tone('sine', 150, t, 0.08, 0.25, { slide: 70 }); hiss(t, 0.05, 0.12, 'highpass', 3000, 0.8); });
+  const tick = fx(t => tone('square', 2200, t, 0.02, 0.04));
 
   // ---- rain on the roof ----
   function rainLevel(l) {
@@ -288,5 +290,5 @@ const Sound = (() => {
 
   return { unlock, setMuted, decode, voice, engineStart, engineStop, engineSet, hornOn, hornOff, door, airBrake, swish, gear, click,
     nope, reverseBeep, board, bye, fanfare, scribble, sparkle, rainLevel, radioOn, radioOff, radioTick,
-    whistleOn, whistleOff, chuff, clack, bell, moo, carBeep, boatHorn, shovel, crossDing, pop };
+    whistleOn, whistleOff, chuff, clack, bell, moo, carBeep, boatHorn, shovel, crossDing, pop, chop, tick };
 })();

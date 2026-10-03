@@ -41,7 +41,7 @@ const Train = (() => {
   function open(opts, done) {
     cfg = opts; onDone = done;
     T = fresh();
-    root.hidden = false; $('trEnd').hidden = true;
+    root.hidden = false;
     const r = ++run;
     resize();
     let last = performance.now();
@@ -55,9 +55,9 @@ const Train = (() => {
     toast('All aboard! 🚂', 3);
     setTimeout(() => { if (r === run) cfg.say(['t_aboard'], 'All aboard! Press the green Go button to drive the train home!'); }, 600);
   }
-  function close(next) {
+  function close() {
     run++; whistleUp(); root.hidden = true; cfg.hush();
-    if (onDone) onDone(next);
+    if (onDone) onDone();
   }
 
   // ---------- messages ----------
@@ -141,8 +141,6 @@ const Train = (() => {
     if (key === 'h' || key === 't' || key === 'w') { whistleUp(); wBtn.classList.remove('press'); }
   });
   addEventListener('blur', whistleUp);
-  $('trNext').addEventListener('click', () => { cfg.sound.click(); close('bus'); });
-  $('trSchool').addEventListener('click', () => { cfg.sound.click(); close('school'); });
 
   // ---------- home: the kids get off and run to the grown-ups ----------
   async function arrive() {
@@ -167,9 +165,7 @@ const Train = (() => {
     await sleep(500);
     if (r !== run) return;
     T.phase = 'end';
-    $('trEndMsg').textContent = 'See you tomorrow, ' + cfg.name + '!';
-    $('trEnd').hidden = false;
-    cfg.say(['t_bye'], 'Bye bye! See you tomorrow!');
+    close(); // on into the house
   }
 
   // ---------- update ----------
