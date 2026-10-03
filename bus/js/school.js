@@ -222,9 +222,12 @@ const School = (() => {
   function trainHome() {
     hush(); root.hidden = true; screen = 'train';
     Train.open({ kids, name: CHILD_NAME, id: PLAYER, color: cfg.color(), sound: cfg.sound, say, hush,
-      color2: (PROFILES.find(p => p.id === PLAYER) || PROFILES[0]).color }, () => {
+      color2: (PROFILES.find(p => p.id === PLAYER) || PROFILES[0]).color }, next => {
       bookLog().push('train'); cfg.persist();
-      close();
+      if (next !== 'school') return close();
+      // straight back to school for a new day: every game can be played again
+      doneToday.clear(); homeSaid = false; root.hidden = false;
+      show('classScreen');
     });
   }
 

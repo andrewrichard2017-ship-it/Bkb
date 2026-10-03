@@ -262,6 +262,9 @@
   #trNext { margin-top: 10px; font-size: clamp(20px, 5vh, 30px); font-weight: 700; padding: .3em 1.4em; border-radius: 999px; border: 0; background: #f59e0b; color: #fff;
     box-shadow: 0 6px 0 #b45309; }
   #trNext:active { transform: translateY(4px); box-shadow: 0 2px 0 #b45309; }
+  #trSchool { display: block; margin: 14px auto 0; font-size: clamp(16px, 3.6vh, 22px); font-weight: 700; padding: .3em 1.2em; border-radius: 999px; border: 0;
+    background: #2563eb; color: #fff; box-shadow: 0 5px 0 #1e3a8a; }
+  #trSchool:active { transform: translateY(4px); box-shadow: 0 1px 0 #1e3a8a; }
 
   @media (prefers-reduced-motion: reduce) { .homeCard .bellIco, #tTrain { animation: none; } }
   @media (prefers-reduced-motion: reduce) { #goClass, .btn.hint, .btn.hint2, .slot.new svg, #soundCard.pop { animation: none; } }
@@ -272,6 +275,7 @@
   <div id="view">
     <canvas id="game" aria-label="A bus driving down a street, picking up kids at bus stops"></canvas>
     <div id="corner">
+      <button id="bSchool" class="mini" aria-label="Go straight to school">🏫</button>
       <button id="bHome" class="mini" aria-label="Change player">🏠</button>
       <button id="bMute" class="mini" aria-label="Sound on or off">🔊</button>
       <button id="bFull" class="mini" aria-label="Full screen">
@@ -420,6 +424,7 @@
       <h2>Home sweet home! 🏠</h2>
       <p id="trEndMsg">See you tomorrow!</p>
       <button id="trNext">Next morning ☀️</button>
+      <button id="trSchool">Back to school 🏫</button>
     </div></div>
   </div>
   <div id="trDash">
@@ -465,11 +470,11 @@
   </div>
 </div>
 
-<script src="js/songs.js?v=10"></script>
-<script src="js/sound.js?v=10"></script>
-<script src="js/scene.js?v=10"></script>
-<script src="js/school.js?v=10"></script>
-<script src="js/train.js?v=10"></script>
-<script src="js/game.js?v=10"></script>
+<script src="js/songs.js?v=11"></script>
+<script src="js/sound.js?v=11"></script>
+<script src="js/scene.js?v=11"></script>
+<script src="js/school.js?v=11"></script>
+<script src="js/train.js?v=11"></script>
+<script src="js/game.js?v=11"></script>
 </body>
 </html>

@@ -353,8 +353,8 @@
   // ---------- stage two: inside the school ----------
   const classBtn = $('goClass');
   function hideClassBtn() { S.classReady = false; classBtn.hidden = true; }
-  classBtn.addEventListener('click', () => {
-    if (S.mode !== 'play') return;
+  classBtn.addEventListener('click', () => { if (S.mode === 'play') goToSchool(); });
+  function goToSchool() {
     hideClassBtn(); hornUp();
     const b = S.bus;
     if (b.engine) { b.engine = false; b.mode = 'stop'; Sound.engineStop(); }
@@ -365,6 +365,22 @@
       S.mode = 'play';
       toast(S.bus.doorsOpen ? 'Good morning! ☀️ Close the doors and start the engine.' : 'Good morning! ☀️ Start the engine, the kids are waiting!', 3.6);
     }, { save: me, persist, muted: () => save.muted, name: profile.name, id: profile.id, sound: Sound, color: () => S.color });
+  }
+  // The 🏫 shortcut (tap twice): skip the drive and go straight into class. Any kids on the bus
+  // come too; if there's nobody, a class turns up anyway. The bus starts a fresh route afterwards.
+  let schoolT = 0;
+  $('bSchool').addEventListener('click', () => {
+    if (S.mode !== 'play') return;
+    if (!schoolT || performance.now() - schoolT > 2500) { schoolT = performance.now(); toast('Tap 🏫 again to go straight to school', 2.5); return; }
+    schoolT = 0;
+    const b = S.bus;
+    b.v = 0; b.mode = 'stop'; b.doorsOpen = false; b.door = 0;
+    const kids = S.classKids.concat(S.onBus.map(k => k.look), S.walkers.map(k => k.look));
+    while (kids.length < 6) kids.push(makeKid().look);
+    S.classKids = kids.slice(0, 12);
+    S.onBus = []; S.walkers = []; S.stops = []; S.unloading = null; S.delivered = 0; S.pendingDay = false; S.fullWarned = false;
+    S.day++; newRoute();
+    goToSchool();
   });
 
   function updateKids(dt, doorX) {

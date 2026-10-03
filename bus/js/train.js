@@ -55,9 +55,9 @@ const Train = (() => {
     toast('All aboard! 🚂', 3);
     setTimeout(() => { if (r === run) cfg.say(['t_aboard'], 'All aboard! Press the green Go button to drive the train home!'); }, 600);
   }
-  function close() {
+  function close(next) {
     run++; whistleUp(); root.hidden = true; cfg.hush();
-    if (onDone) onDone();
+    if (onDone) onDone(next);
   }
 
   // ---------- messages ----------
@@ -141,7 +141,8 @@ const Train = (() => {
     if (key === 'h' || key === 't' || key === 'w') { whistleUp(); wBtn.classList.remove('press'); }
   });
   addEventListener('blur', whistleUp);
-  $('trNext').addEventListener('click', () => { cfg.sound.click(); close(); });
+  $('trNext').addEventListener('click', () => { cfg.sound.click(); close('bus'); });
+  $('trSchool').addEventListener('click', () => { cfg.sound.click(); close('school'); });
 
   // ---------- home: the kids get off and run to the grown-ups ----------
   async function arrive() {
