@@ -142,6 +142,12 @@ def clips():
         c['h_home_' + pid] = "Ding, ding! It's home time, %s! All your work is done. Let's drive the train home!" % nm
         c['p_star_train_' + pid] = 'You drove the train all the way home, %s! You get a gold star!' % nm
     home_clips(c, name)
+    src = open(os.path.join(ROOT, 'js', 'stencils.js'), encoding='utf-8').read()
+    for pid, line in re.findall(r"\{ id: '(\w+)', name: '[^']+', say: '([^']+)'", src): c['dr_' + pid] = line
+    c['dr_pick'] = 'Pick a picture to colour in!'
+    c['dr_how'] = 'Pick a colour, then tap the picture to colour it in!'
+    c['dr_more'] = 'Keep going! Colour in some more of the picture.'
+    for pid, nm in name: c['p_star_draw_' + pid] = 'What a beautiful picture, %s! You get a gold star!' % nm
     return name, c
 
 

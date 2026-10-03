@@ -82,7 +82,7 @@ const LUNCH = [
   { id: 'watermelon', name: 'Watermelon', say: "Watermelon! Nice and juicy!" },
 ];
 // The school games: each can be played once a school day, then it's home time on the train.
-const GAMES = { name: 'tName', count: 'tCount', numbers: 'tTrace', animals: 'tAnimals', lunch: 'tLunch' };
+const GAMES = { name: 'tName', count: 'tCount', numbers: 'tTrace', animals: 'tAnimals', lunch: 'tLunch', draw: 'tDraw' };
 const CRAYONS = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
 
 const School = (() => {
@@ -98,7 +98,7 @@ const School = (() => {
   // The voice is recorded clips in audio/voice/ (made by tools/make_voice.py), played through Web
   // Audio so it works on every device. say() takes the clips to play in a row, plus the words to
   // fall back on with the device's own speech voice if a clip is missing (or the name changed).
-  const VOICE_VERSION = 8, VOICE_DIR = 'audio/voice/';
+  const VOICE_VERSION = 9, VOICE_DIR = 'audio/voice/';
   const clips = {};
   let voiceLoad = null, sayId = 0, playing = null, last = null, primed = false;
   function loadVoice() {
@@ -179,6 +179,8 @@ const School = (() => {
     if (id === 'countScreen') startCount();
     if (id === 'animalScreen') startAnimals();
     if (id === 'lunchScreen') startLunch();
+    if (id === 'drawScreen') Colouring.start({ say, hush, sound: cfg.sound, id: PLAYER, name: CHILD_NAME, finished: () => addStar('draw') });
+    else Colouring.stop();
     if (id === 'classScreen') {
       const first = cfg.save.numNext || 1;
       $('tTraceSub').textContent = [0, 1, 2].slice(0, NUMBERS_PER_GO).map(k => (first - 1 + k) % 10 + 1).join(', ');
@@ -971,7 +973,7 @@ const School = (() => {
     if (!Array.isArray(sv.bookLog)) sv.bookLog = Array(sv.nameStars || 0).fill('name');
     return sv.bookLog;
   }
-  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾', lunch: '🍎', train: '🚂', dress: '👕', toys: '🧸', dinner: '🍽️' };
+  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾', lunch: '🍎', draw: '🎨', train: '🚂', dress: '👕', toys: '🧸', dinner: '🍽️' };
   function renderBook(fresh) {
     const log = bookLog(), n = log.length, per = 12, page = Math.max(0, Math.ceil(n / per) - 1);
     $('bookTitle').textContent = CHILD_NAME + '’s Star Book';
@@ -998,6 +1000,10 @@ const School = (() => {
   tap('aSay', sayAgain);
   tap('tBook', () => show('bookScreen'));
   tap('tLunch', () => show('lunchScreen'));
+  tap('tDraw', () => show('drawScreen'));
+  // ✕ while colouring goes back to the pictures; from the pictures, back to the desk
+  tap('dBack', () => { hush(); if (!$('colPaint').hidden) show('drawScreen'); else show('classScreen'); });
+  tap('dSay', () => Colouring.again());
   tap('lBack', () => { hush(); Lu.run++; Lu.drag = null; show('classScreen'); });
   tap('lSay', sayAgain);
   tap('tTrain', trainHome);
