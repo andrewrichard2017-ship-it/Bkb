@@ -71,6 +71,18 @@ const ANIMALS = [
   { name: 'zebra', pic: '🦓', say: "Zebra! The zebra has black and white stripes. Can you find the zebra?" },
 ];
 const ANIMALS_PER_GO = 6; // animals in one go; the next go carries on through the list
+
+// Lunch time: drag each food into its own shape in the lunch box. tools/make_voice.py reads
+// `name` and `say` from here.
+const LUNCH = [
+  { id: 'crackers', name: 'Crackers', say: "Crackers! Crunch, crunch, crunch!" },
+  { id: 'yoghurt', name: 'Yoghurt', say: "Yoghurt! Yummy in my tummy!" },
+  { id: 'juice', name: 'Juice drink', say: "A juice drink! Slurp, slurp!" },
+  { id: 'apple', name: 'Apple slices', say: "Apple slices! Crunchy and sweet!" },
+  { id: 'watermelon', name: 'Watermelon', say: "Watermelon! Nice and juicy!" },
+];
+// The school games: each can be played once a school day, then it's home time on the train.
+const GAMES = { name: 'tName', count: 'tCount', numbers: 'tTrace', animals: 'tAnimals', lunch: 'tLunch' };
 const CRAYONS = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
 
 const School = (() => {
@@ -78,6 +90,7 @@ const School = (() => {
   const root = $('school');
   const LETTER_FONT = 'Andika, Fredoka, "Trebuchet MS", sans-serif';
   let cfg = null, onExit = null, kids = [], screen = '';
+  const doneToday = new Set(); // the games already played this school day
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const buzz = ms => { try { if (navigator.vibrate) navigator.vibrate(ms); } catch (e) { /* ignore */ } };
 
@@ -85,7 +98,7 @@ const School = (() => {
   // The voice is recorded clips in audio/voice/ (made by tools/make_voice.py), played through Web
   // Audio so it works on every device. say() takes the clips to play in a row, plus the words to
   // fall back on with the device's own speech voice if a clip is missing (or the name changed).
-  const VOICE_VERSION = 6, VOICE_DIR = 'audio/voice/';
+  const VOICE_VERSION = 7, VOICE_DIR = 'audio/voice/';
   const clips = {};
   let voiceLoad = null, sayId = 0, playing = null, last = null, primed = false;
   function loadVoice() {
@@ -165,15 +178,18 @@ const School = (() => {
     if (id === 'traceScreen') startTrace();
     if (id === 'countScreen') startCount();
     if (id === 'animalScreen') startAnimals();
+    if (id === 'lunchScreen') startLunch();
     if (id === 'classScreen') {
       const first = cfg.save.numNext || 1;
       $('tTraceSub').textContent = [0, 1, 2].slice(0, NUMBERS_PER_GO).map(k => (first - 1 + k) % 10 + 1).join(', ');
+      menu();
     }
     if (id === 'bookScreen') renderBook(false);
   }
   function open(classKids, exit, opts) {
     cfg = opts; onExit = exit; kids = classKids.slice(0, 12);
     CHILD_NAME = opts.name; PLAYER = opts.id;
+    doneToday.clear(); homeSaid = false;
     loadVoice();
     root.hidden = false;
     $('menuHello').textContent = 'Today’s work for ' + CHILD_NAME;
@@ -184,6 +200,32 @@ const School = (() => {
     hush(); T.run++;
     root.hidden = true; screen = '';
     if (onExit) onExit();
+  }
+
+  // ---------- today's work: one go at each, then home time ----------
+  let homeSaid = false;
+  function menu() {
+    for (const [kind, id] of Object.entries(GAMES)) {
+      const b = $(id), done = doneToday.has(kind);
+      b.classList.toggle('done', done); b.disabled = done;
+    }
+    const home = Object.keys(GAMES).every(k => doneToday.has(k));
+    $('menuPaper').hidden = home; $('homeCard').hidden = !home;
+    if (home) {
+      $('homeMsg').textContent = 'All your work is done, ' + CHILD_NAME + '! Time to go home on the train.';
+      if (!homeSaid) {
+        homeSaid = true; cfg.sound.bell();
+        setTimeout(() => { if (screen === 'classScreen') say(['h_home_' + PLAYER], "Ding, ding! It's home time, " + CHILD_NAME + '! All your work is done. Let\'s drive the train home!'); }, 900);
+      }
+    }
+  }
+  function trainHome() {
+    hush(); root.hidden = true; screen = 'train';
+    Train.open({ kids, name: CHILD_NAME, id: PLAYER, color: cfg.color(), sound: cfg.sound, say, hush,
+      color2: (PROFILES.find(p => p.id === PLAYER) || PROFILES[0]).color }, () => {
+      bookLog().push('train'); cfg.persist();
+      close();
+    });
   }
 
   // ---------- the classroom ----------
@@ -485,6 +527,7 @@ const School = (() => {
   }
   function addStar(kind) {
     bookLog().push(kind); cfg.persist();
+    doneToday.add(kind);
     show('bookScreen'); renderBook(true);
   }
 
@@ -680,14 +723,245 @@ const School = (() => {
     if (run === A.run) addStar('animals');
   }
 
+  // ---------- lunch time: put each food in its own shape ----------
+  // Each food is drawn in a box about 2 units across (-1..1) scaled by s. path() is its outline,
+  // which is also the hole it fits in the lunch box; art() colours it in.
+  const FOOD = {
+    crackers: {
+      path(c, s) { Scene.rr(c, -0.8 * s, -0.8 * s, 1.6 * s, 1.6 * s, 0.14 * s); },
+      art(c, s) {
+        c.fillStyle = '#b7791f'; this.path(c, s); c.fill();
+        for (const [x, y] of [[-1, -1], [0, -1], [-1, 0], [0, 0]]) {
+          const g = 0.04 * s, w = 0.8 * s - g * 2;
+          c.fillStyle = '#e9b45c'; Scene.rr(c, x * 0.8 * s + g, y * 0.8 * s + g, w, w, 0.07 * s); c.fill();
+          c.fillStyle = '#c0862f';
+          for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) { c.beginPath(); c.arc(x * 0.8 * s + g + w * (0.25 + i * 0.25), y * 0.8 * s + g + w * (0.25 + j * 0.25), 0.035 * s, 0, 7); c.fill(); }
+        }
+      },
+    },
+    yoghurt: {
+      path(c, s) {
+        c.beginPath(); c.moveTo(-0.85 * s, -0.85 * s); c.lineTo(0.85 * s, -0.85 * s); c.lineTo(0.85 * s, -0.62 * s); c.lineTo(0.7 * s, -0.62 * s);
+        c.lineTo(0.5 * s, 0.85 * s); c.lineTo(-0.5 * s, 0.85 * s); c.lineTo(-0.7 * s, -0.62 * s); c.lineTo(-0.85 * s, -0.62 * s); c.closePath();
+      },
+      art(c, s) {
+        c.fillStyle = '#ffffff'; this.path(c, s); c.fill();
+        c.save(); this.path(c, s); c.clip();
+        c.fillStyle = '#f472b6'; c.fillRect(-s, -0.2 * s, 2 * s, 0.6 * s);
+        c.fillStyle = '#f9a8d4'; c.fillRect(-s, -0.85 * s, 2 * s, 0.23 * s);
+        c.restore();
+        c.fillStyle = '#dc2626'; c.beginPath(); c.moveTo(-0.15 * s, 0.02 * s); c.quadraticCurveTo(0, -0.04 * s, 0.15 * s, 0.02 * s); c.quadraticCurveTo(0.12 * s, 0.25 * s, 0, 0.3 * s); c.quadraticCurveTo(-0.12 * s, 0.25 * s, -0.15 * s, 0.02 * s); c.fill();
+        c.fillStyle = '#16a34a'; c.beginPath(); c.ellipse(-0.07 * s, -0.02 * s, 0.08 * s, 0.035 * s, -0.4, 0, 7); c.ellipse(0.07 * s, -0.02 * s, 0.08 * s, 0.035 * s, 0.4, 0, 7); c.fill();
+        c.strokeStyle = '#94a3b8'; c.lineWidth = 0.04 * s; this.path(c, s); c.stroke();
+      },
+    },
+    juice: {
+      path(c, s) {
+        c.beginPath(); c.moveTo(-0.5 * s, 0.9 * s); c.lineTo(-0.5 * s, -0.5 * s); c.lineTo(0, -0.72 * s); c.lineTo(0.5 * s, -0.5 * s); c.lineTo(0.5 * s, 0.9 * s); c.closePath();
+        c.moveTo(0.1 * s, -0.6 * s); c.lineTo(0.38 * s, -1.02 * s); c.lineTo(0.5 * s, -0.96 * s); c.lineTo(0.24 * s, -0.56 * s); c.closePath();
+      },
+      art(c, s) {
+        c.fillStyle = '#ec4899'; c.beginPath(); c.moveTo(0.1 * s, -0.6 * s); c.lineTo(0.38 * s, -1.02 * s); c.lineTo(0.5 * s, -0.96 * s); c.lineTo(0.24 * s, -0.56 * s); c.closePath(); c.fill();
+        c.fillStyle = '#fb923c'; c.beginPath(); c.moveTo(-0.5 * s, 0.9 * s); c.lineTo(-0.5 * s, -0.5 * s); c.lineTo(0, -0.72 * s); c.lineTo(0.5 * s, -0.5 * s); c.lineTo(0.5 * s, 0.9 * s); c.closePath(); c.fill();
+        c.fillStyle = '#fdba74'; c.beginPath(); c.moveTo(-0.5 * s, -0.36 * s); c.lineTo(-0.5 * s, -0.5 * s); c.lineTo(0, -0.72 * s); c.lineTo(0.5 * s, -0.5 * s); c.lineTo(0.5 * s, -0.36 * s); c.closePath(); c.fill();
+        c.fillStyle = '#f97316'; c.beginPath(); c.arc(0, 0.25 * s, 0.3 * s, 0, 7); c.fill();
+        c.strokeStyle = '#fed7aa'; c.lineWidth = 0.04 * s; c.beginPath();
+        for (let k = 0; k < 6; k++) { c.moveTo(0, 0.25 * s); c.lineTo(Math.cos(k * 1.047) * 0.26 * s, 0.25 * s + Math.sin(k * 1.047) * 0.26 * s); }
+        c.stroke();
+        c.fillStyle = '#16a34a'; c.beginPath(); c.ellipse(0.12 * s, -0.08 * s, 0.13 * s, 0.06 * s, -0.5, 0, 7); c.fill();
+      },
+    },
+    apple: {
+      path(c, s) { c.beginPath(); c.moveTo(-0.95 * s, -0.35 * s); c.lineTo(0.95 * s, -0.35 * s); c.arc(0, -0.35 * s, 0.95 * s, 0, Math.PI); c.closePath(); },
+      art(c, s) {
+        c.fillStyle = '#dc2626'; this.path(c, s); c.fill();
+        c.fillStyle = '#fef9c3'; c.beginPath(); c.moveTo(-0.84 * s, -0.35 * s); c.lineTo(0.84 * s, -0.35 * s); c.arc(0, -0.35 * s, 0.84 * s, 0, Math.PI); c.closePath(); c.fill();
+        c.strokeStyle = '#dc2626'; c.lineWidth = 0.05 * s; c.beginPath();
+        for (const a of [Math.PI / 3, Math.PI * 2 / 3]) { c.moveTo(0, -0.35 * s); c.lineTo(Math.cos(a) * 0.9 * s, -0.35 * s + Math.sin(a) * 0.9 * s); }
+        c.stroke();
+        c.fillStyle = '#78350f';
+        for (const x of [-0.14, 0.14]) { c.beginPath(); c.ellipse(x * s, -0.12 * s, 0.05 * s, 0.09 * s, x > 0 ? -0.3 : 0.3, 0, 7); c.fill(); }
+      },
+    },
+    watermelon: {
+      path(c, s) { c.beginPath(); c.moveTo(0, 0.9 * s); c.lineTo(-0.95 * s, -0.45 * s); c.quadraticCurveTo(0, -1.05 * s, 0.95 * s, -0.45 * s); c.closePath(); },
+      art(c, s) {
+        c.fillStyle = '#f43f5e'; this.path(c, s); c.fill();
+        c.save(); this.path(c, s); c.clip();
+        c.strokeStyle = '#15803d'; c.lineWidth = 0.32 * s;
+        c.beginPath(); c.moveTo(-0.95 * s, -0.45 * s); c.quadraticCurveTo(0, -1.05 * s, 0.95 * s, -0.45 * s); c.stroke();
+        c.strokeStyle = '#bbf7d0'; c.lineWidth = 0.1 * s;
+        c.beginPath(); c.moveTo(-0.95 * s, -0.3 * s); c.quadraticCurveTo(0, -0.88 * s, 0.95 * s, -0.3 * s); c.stroke();
+        c.restore();
+        c.fillStyle = '#111827';
+        for (const [x, y] of [[-0.3, -0.25], [0, -0.3], [0.3, -0.25], [-0.15, 0.05], [0.15, 0.05], [0, 0.35]]) { c.beginPath(); c.ellipse(x * s, y * s, 0.04 * s, 0.07 * s, 0, 0, 7); c.fill(); }
+      },
+    },
+  };
+  const lc = $('lunchCanvas'), lctx = lc.getContext('2d'), lwrap = $('lunchWrap');
+  const Lu = { run: 0, foods: [], slots: [], drag: null, idle: 0, done: false, starAt: 0, s: 40, box: null, last: 0 };
+  const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  function startLunch() {
+    const run = ++Lu.run;
+    Lu.slots = shuffle(LUNCH.map(f => ({ id: f.id, x: 0, y: 0 })));
+    Lu.foods = shuffle(LUNCH.map(f => ({ id: f.id, x: 0, y: 0, hx: 0, hy: 0, placed: false, pop: 0 })));
+    Lu.drag = null; Lu.idle = 0; Lu.done = false; Lu.starAt = 0; Lu.last = performance.now();
+    lunchLayout(true); lunchDots();
+    say(['lu_intro'], "It's lunch time! Put each food in its matching shape in the lunch box!");
+    requestAnimationFrame(t => lunchLoop(run, t));
+  }
+  function lunchLayout(snap) {
+    const r = lwrap.getBoundingClientRect(), dpr = Math.min(2, devicePixelRatio || 1);
+    const w = Math.max(50, r.width), h = Math.max(50, r.height), pad = 14;
+    lc.width = Math.round(w * dpr); lc.height = Math.round(h * dpr);
+    Lu.w = w; Lu.h = h; Lu.dpr = dpr;
+    let box, tray, cols, rows;
+    if (w > h * 1.15) {
+      box = { x: pad, y: pad, w: w * 0.6 - pad * 1.5, h: h - pad * 2 };
+      tray = { x: w * 0.6, y: pad, w: w * 0.4 - pad, h: h - pad * 2 }; cols = 2; rows = 3;
+    } else {
+      box = { x: pad, y: pad, w: w - pad * 2, h: h * 0.5 };
+      tray = { x: pad, y: h * 0.5 + pad * 2, w: w - pad * 2, h: h * 0.5 - pad * 3 }; cols = 3; rows = 2;
+    }
+    const m = Math.min(box.w, box.h) * 0.05, cw = (box.w - 4 * m) / 3, ch = (box.h - 3 * m) / 2, cw2 = (box.w - 3 * m) / 2;
+    Lu.box = box; Lu.cells = [];
+    for (let k = 0; k < 5; k++) {
+      const row = k < 3 ? 0 : 1, col = row ? k - 3 : k, ww = row ? cw2 : cw;
+      const cell = { x: box.x + m + col * (ww + m), y: box.y + m + row * (ch + m), w: ww, h: ch };
+      Lu.cells.push(cell);
+      Lu.slots[k].x = cell.x + cell.w / 2; Lu.slots[k].y = cell.y + cell.h / 2;
+    }
+    const tw = tray.w / cols, th = tray.h / rows;
+    Lu.s = Math.max(14, Math.min(cw * 0.42, ch * 0.4, tw * 0.4, th * 0.38));
+    Lu.foods.forEach((f, k) => {
+      const col = k % cols, row = Math.floor(k / cols);
+      // a little jumble, so it looks like food tipped out on the table
+      f.hx = tray.x + tw * (col + 0.5) + (k % 2 ? 1 : -1) * tw * 0.06;
+      f.hy = tray.y + th * (row + 0.5) + ((k * 7) % 3 - 1) * th * 0.05;
+      if (cols === 3 && row === 1) f.hx += tw / 2; // centre the second row of two
+      if (f.placed) { const sl = Lu.slots.find(x => x.id === f.id); f.x = sl.x; f.y = sl.y; }
+      else if (snap || f !== (Lu.drag && Lu.drag.f)) { f.x = f.hx; f.y = f.hy; }
+    });
+  }
+  function lunchDots() {
+    const n = Lu.foods.filter(f => f.placed).length;
+    $('lunchDots').innerHTML = LUNCH.map((_, k) => '<i class="' + (k < n ? 'done' : k === n ? 'now' : '') + '"></i>').join('');
+  }
+  function lpos(e) { const r = lc.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  lc.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    if (Lu.done || Lu.drag || screen !== 'lunchScreen') return;
+    const p = lpos(e);
+    let hit = null;
+    for (const f of Lu.foods) if (!f.placed && Math.hypot(p.x - f.x, p.y - f.y) < Lu.s * 1.1) hit = f;
+    if (!hit) return;
+    try { lc.setPointerCapture(e.pointerId); } catch (err) { /* ignore */ }
+    Lu.foods.splice(Lu.foods.indexOf(hit), 1); Lu.foods.push(hit); // carry it on top
+    Lu.drag = { f: hit, dx: hit.x - p.x, dy: hit.y - p.y, id: e.pointerId };
+    Lu.idle = 0; cfg.sound.pop(); buzz(10);
+    const it = LUNCH.find(x => x.id === hit.id);
+    hush(); say(['lu_n_' + hit.id], it.name + '!');
+  });
+  lc.addEventListener('pointermove', e => {
+    const d = Lu.drag;
+    if (!d || e.pointerId !== d.id) return;
+    const p = lpos(e);
+    d.f.x = Math.max(0, Math.min(Lu.w, p.x + d.dx)); d.f.y = Math.max(0, Math.min(Lu.h, p.y + d.dy));
+  });
+  const drop = e => {
+    const d = Lu.drag;
+    if (!d || (e.pointerId !== undefined && e.pointerId !== d.id)) return;
+    Lu.drag = null; Lu.idle = 0;
+    const f = d.f, own = Lu.slots.find(x => x.id === f.id);
+    let near = null, best = Lu.s * 1.1;
+    for (const sl of Lu.slots) {
+      if (Lu.foods.some(o => o.placed && o.id === sl.id)) continue;
+      const dist = Math.hypot(sl.x - f.x, sl.y - f.y);
+      if (dist < best) { best = dist; near = sl; }
+    }
+    if (near === own || Math.hypot(own.x - f.x, own.y - f.y) < Lu.s * 0.8) return placeFood(f, own);
+    if (near) { cfg.sound.nope(); buzz(30); hush(); say(['lu_nope'], "Oops, that's not its shape. Have another go!"); }
+  };
+  for (const ev of ['pointerup', 'pointercancel']) lc.addEventListener(ev, drop);
+  async function placeFood(f, sl) {
+    const run = Lu.run;
+    f.placed = true; f.x = sl.x; f.y = sl.y; f.pop = 1;
+    cfg.sound.sparkle(); buzz(25); lunchDots();
+    const it = LUNCH.find(x => x.id === f.id);
+    hush();
+    const said = say(['lu_' + f.id], it.say);
+    if (!Lu.foods.every(x => x.placed)) return;
+    Lu.done = true;
+    await said; await sleep(400);
+    if (run !== Lu.run) return;
+    cfg.sound.fanfare(); buzz([40, 60, 40]); Lu.starAt = performance.now();
+    $('lunchDots').innerHTML = LUNCH.map(() => '<i class="done"></i>').join('');
+    await say(['p_star_lunch_' + PLAYER], 'Yummy! Well done, ' + CHILD_NAME + '! You packed your lunch box! You get a gold star!', 0.9);
+    await sleep(500);
+    if (run === Lu.run) addStar('lunch');
+  }
+  function lunchLoop(run, now) {
+    if (run !== Lu.run || screen !== 'lunchScreen') return;
+    requestAnimationFrame(t => lunchLoop(run, t));
+    const dt = Math.min(0.05, (now - Lu.last) / 1000); Lu.last = now;
+    const c = lctx, { w, h, dpr, s, box } = Lu;
+    c.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // a checked tablecloth
+    c.fillStyle = '#fff7ed'; c.fillRect(0, 0, w, h);
+    c.fillStyle = 'rgba(239,68,68,.13)';
+    const q = 34;
+    for (let x = 0; x < w; x += q * 2) c.fillRect(x, 0, q, h);
+    for (let y = 0; y < h; y += q * 2) c.fillRect(0, y, w, q);
+    // the lunch box in the player's colour, with a hole for each food
+    const col = (PROFILES.find(p => p.id === PLAYER) || PROFILES[0]).color;
+    c.fillStyle = 'rgba(0,0,0,.18)'; Scene.rr(c, box.x + 4, box.y + 8, box.w, box.h, 22); c.fill();
+    c.fillStyle = col; Scene.rr(c, box.x, box.y, box.w, box.h, 22); c.fill();
+    for (const cell of Lu.cells) { c.fillStyle = '#f8fafc'; Scene.rr(c, cell.x, cell.y, cell.w, cell.h, 14); c.fill(); }
+    for (const sl of Lu.slots) {
+      if (Lu.foods.some(o => o.placed && o.id === sl.id)) continue;
+      c.save(); c.translate(sl.x, sl.y);
+      c.setLineDash([8, 6]); c.strokeStyle = '#64748b'; c.lineWidth = 3; FOOD[sl.id].path(c, s); c.stroke(); c.setLineDash([]);
+      c.fillStyle = '#cbd5e1'; FOOD[sl.id].path(c, s); c.fill();
+      c.restore();
+    }
+    // a ghost shows where a food goes if nothing has happened for a while
+    Lu.idle += dt;
+    if (!Lu.done && !Lu.drag && Lu.idle > 6) {
+      const f = Lu.foods.find(x => !x.placed), sl = f && Lu.slots.find(x => x.id === f.id);
+      if (f) {
+        const k = Math.min(1, ((Lu.idle - 6) % 2.2) / 1.6), e = k * k * (3 - 2 * k);
+        c.save(); c.globalAlpha = 0.45 * (1 - Math.max(0, k - 0.8) * 5);
+        c.translate(f.hx + (sl.x - f.hx) * e, f.hy + (sl.y - f.hy) * e); FOOD[f.id].art(c, s);
+        c.restore();
+        c.font = Math.round(s * 0.8) + 'px sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle';
+        c.fillText('👆', f.hx + (sl.x - f.hx) * e + s * 0.3, f.hy + (sl.y - f.hy) * e + s * 0.7);
+      }
+    }
+    for (const f of Lu.foods) {
+      if (!f.placed && f !== (Lu.drag && Lu.drag.f)) { f.x += (f.hx - f.x) * Math.min(1, dt * 12); f.y += (f.hy - f.y) * Math.min(1, dt * 12); }
+      f.pop = Math.max(0, f.pop - dt * 3);
+      const lift = f === (Lu.drag && Lu.drag.f), sc = (lift ? 1.12 : 1) * (1 + Math.sin(f.pop * Math.PI) * 0.18);
+      c.save(); c.translate(f.x, f.y);
+      if (!f.placed) { c.fillStyle = 'rgba(0,0,0,.15)'; c.beginPath(); c.ellipse(lift ? 8 : 3, s * 0.95 + (lift ? 10 : 2), s * 0.8, s * 0.16, 0, 0, 7); c.fill(); }
+      c.scale(sc, sc); FOOD[f.id].art(c, s);
+      c.restore();
+    }
+    if (Lu.starAt) {
+      const k = Math.min(1, (now - Lu.starAt) / 600), r = Math.min(w, h) * 0.2 * (0.3 + 0.7 * k);
+      c.save(); c.translate(box.x + box.w / 2, box.y + box.h / 2); c.rotate((1 - k) * 2);
+      star(c, 0, 0, r * 1.12, '#b45309'); star(c, 0, 0, r, '#fbbf24'); star(c, -r * 0.1, -r * 0.12, r * 0.45, '#fde68a');
+      c.restore();
+    }
+  }
+
   // ---------- star book ----------
-  // every star in the book, oldest first: 'name', 'numbers', 'count' or 'animals'
+  // every star in the book, oldest first: 'name', 'numbers', 'count', 'animals', 'lunch' or 'train'
   function bookLog() {
     const sv = cfg.save;
     if (!Array.isArray(sv.bookLog)) sv.bookLog = Array(sv.nameStars || 0).fill('name');
     return sv.bookLog;
   }
-  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾' };
+  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾', lunch: '🍎', train: '🚂' };
   function renderBook(fresh) {
     const log = bookLog(), n = log.length, per = 12, page = Math.max(0, Math.ceil(n / per) - 1);
     $('bookTitle').textContent = CHILD_NAME + '’s Star Book';
@@ -713,7 +987,11 @@ const School = (() => {
   tap('aBack', () => { hush(); A.run++; show('classScreen'); });
   tap('aSay', sayAgain);
   tap('tBook', () => show('bookScreen'));
-  tap('tBus', close);
+  tap('tLunch', () => show('lunchScreen'));
+  tap('lBack', () => { hush(); Lu.run++; Lu.drag = null; show('classScreen'); });
+  tap('lSay', sayAgain);
+  tap('tTrain', trainHome);
+  tap('tBook2', () => show('bookScreen'));
   tap('trBack', () => { hush(); T.run++; show('classScreen'); });
   tap('trSay', sayAgain);
   tap('bookBack', () => show('classScreen'));
@@ -723,6 +1001,7 @@ const School = (() => {
     if (screen === 'classScreen') drawClass();
     if (screen === 'traceScreen' && T.phase === 'trace' && T.grid && T.grid.count === 0 && !T.done) { layout(); letter(); }
     else if (screen === 'traceScreen' && T.phase !== 'trace') layout();
+    if (screen === 'lunchScreen') lunchLayout(false);
   }).observe(root);
 
   return { open, preload: loadVoice, set player(p) { CHILD_NAME = p.name; PLAYER = p.id; } };

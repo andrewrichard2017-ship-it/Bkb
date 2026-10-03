@@ -27,7 +27,7 @@
     box-shadow: 0 2px 6px rgba(0,0,0,.25); display: grid; place-items: center; padding: 0; color: var(--ink); }
 
   /* ---- dashboard ---- */
-  #dash { flex: 0 0 auto; height: clamp(150px, 40vh, 250px); display: grid; grid-template-columns: 1fr auto 1fr; gap: clamp(8px, 2vw, 22px);
+  #dash, #trDash { flex: 0 0 auto; height: clamp(150px, 40vh, 250px); display: grid; grid-template-columns: 1fr auto 1fr; gap: clamp(8px, 2vw, 22px);
     padding: 10px max(10px, env(safe-area-inset-right)) max(10px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
     background: linear-gradient(#41475a, #23262f); border-top: 5px solid #14161c; touch-action: none; }
   .cluster { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: clamp(6px, 1.4vw, 12px); min-width: 0; min-height: 0; }
@@ -47,6 +47,8 @@
   }
   .engine { --c: #f59e0b; } .stop { --c: #ef4444; } .go { --c: #16a34a; } .back { --c: #2563eb; }
   .door { --c: #0d9488; } .wipers { --c: #0284c7; } .radio { --c: #9333ea; }
+  .coal { --c: #57534e; } .lights { --c: #ca8a04; } .bell { --c: #0891b2; }
+  .rainbow { --c: linear-gradient(135deg, #ef4444, #f59e0b, #22c55e, #3b82f6, #a855f7); }
   .radioCell { position: relative; display: grid; min-height: 0; }
   #bNext { position: absolute; right: -4px; top: -4px; width: clamp(30px, 8vh, 40px); height: clamp(30px, 8vh, 40px); border-radius: 50%;
     border: 3px solid #23262f; background: #fff; color: #7e22ce; display: none; place-items: center; padding: 0; z-index: 2; }
@@ -54,18 +56,18 @@
   .radio-on #bNext { display: grid; }
 
   /* steering wheel with the horn in the middle */
-  #wheelWrap { position: relative; height: 100%; aspect-ratio: 1; display: grid; place-items: center; }
+  #wheelWrap, #gaugeWrap { position: relative; height: 100%; aspect-ratio: 1; display: grid; place-items: center; }
   #wheel { position: absolute; inset: 0; pointer-events: none; }
   #wheel svg { width: 100%; height: 100%; display: block; }
-  #bHorn { position: relative; width: 44%; height: 44%; border-radius: 50%; border: 0; color: var(--ink); font-weight: 700;
+  #bHorn, #tWhistle { position: relative; width: 44%; height: 44%; border-radius: 50%; border: 0; color: var(--ink); font-weight: 700;
     font-size: clamp(12px, min(3.4vh, 4.6vw), 24px); background: radial-gradient(circle at 40% 35%, #ffe066, #f59e0b);
     box-shadow: 0 4px 0 #b45309, inset 0 -3px 0 rgba(0,0,0,.18); }
-  #bHorn:active, #bHorn.press { transform: translateY(3px); box-shadow: 0 1px 0 #b45309; }
+  #bHorn:active, #bHorn.press, #tWhistle:active, #tWhistle.press { transform: translateY(3px); box-shadow: 0 1px 0 #b45309; }
 
   @media (orientation: portrait) {
-    #dash { height: clamp(300px, 52vh, 520px); grid-template-columns: 1fr 1fr; grid-template-rows: 36% 1fr; grid-template-areas: "wheel wheel" "left right"; }
-    #left { grid-area: left; } #right { grid-area: right; }
-    #wheelWrap { grid-area: wheel; justify-self: center; }
+    #dash, #trDash { height: clamp(300px, 52vh, 520px); grid-template-columns: 1fr 1fr; grid-template-rows: 36% 1fr; grid-template-areas: "wheel wheel" "left right"; }
+    #left, #trLeft { grid-area: left; } #right, #trRight { grid-area: right; }
+    #wheelWrap, #gaugeWrap { grid-area: wheel; justify-self: center; }
     .btn { font-size: clamp(12px, 2vh, 19px); }
     .btn svg { width: clamp(24px, 5vh, 46px); height: clamp(24px, 5vh, 46px); }
   }
@@ -222,6 +224,46 @@
   @keyframes stamp { from { transform: scale(3) rotate(-90deg); opacity: 0; } }
   .bigBtn { border: 0; border-radius: 999px; padding: .4em 1.4em; font-size: clamp(18px, 4.4vh, 26px); font-weight: 700; color: #7c3aed; background: #fff; box-shadow: 0 5px 0 #4c1d95; }
   @media (orientation: portrait) { .book { grid-template-columns: 1fr; } .book .left, #bookStars { border-radius: 6px; box-shadow: none; } }
+  /* menu: each game once a day, then home time */
+  .task.done { border: 3px solid #22c55e; background: #f0fdf4; opacity: .6; position: relative; }
+  .task.done::after { content: "✅"; position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font-size: 22px; }
+  .task.done:active { transform: none; }
+  .homeCard { text-align: center; }
+  .homeCard[hidden] { display: none; }
+  .homeCard .bellIco { font-size: clamp(40px, 10vh, 70px); line-height: 1; animation: ring 1s ease-in-out infinite; display: inline-block; }
+  @keyframes ring { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-14deg); } 75% { transform: rotate(14deg); } }
+  .homeCard p { margin: 4px 0 12px; font: 600 clamp(15px, 3.2vh, 20px)/1.3 Fredoka, sans-serif; }
+  .homeCard .task { margin: 0 auto 10px; justify-content: center; }
+  #tTrain { animation: nudge2 1.1s ease-in-out infinite; }
+  @keyframes nudge2 { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+
+  /* lunch time */
+  #lunchScreen { display: flex; flex-direction: column; background: #fff7ed;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #lunchScreen[hidden] { display: none; }
+  #lunchHead { flex: 1; display: grid; gap: 6px; justify-items: center; text-align: center; }
+  #lunchPrompt { font: 700 clamp(18px, min(4.2vh, 6vw), 30px)/1.1 var(--hand); color: #c2410c; }
+  #lunchWrap { position: relative; flex: 1 1 auto; min-height: 0; }
+  #lunchCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+
+  /* the train home */
+  #train { position: fixed; inset: 0; z-index: 7; display: flex; flex-direction: column; background: #23262f; }
+  #train[hidden] { display: none; }
+  #trView { position: relative; flex: 1 1 auto; min-height: 0; background: #9fd8ff; }
+  #trCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+  #gauge { position: absolute; inset: 0; pointer-events: none; }
+  #gauge svg { width: 100%; height: 100%; display: block; }
+  #steamArc { transition: stroke-dasharray .3s, stroke .3s; }
+  #tWhistle { width: 50%; height: 50%; background: radial-gradient(circle at 40% 35%, #f8fafc, #94a3b8); box-shadow: 0 4px 0 #475569, inset 0 -3px 0 rgba(0,0,0,.18); }
+  #tWhistle:active, #tWhistle.press { box-shadow: 0 1px 0 #475569; }
+  #trEnd { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(30, 20, 60, .35); z-index: 2; }
+  #trEnd[hidden] { display: none; }
+  #trEnd .card h2 { margin: 0; font-size: clamp(28px, 7vh, 48px); color: #7c3aed; }
+  #trNext { margin-top: 10px; font-size: clamp(20px, 5vh, 30px); font-weight: 700; padding: .3em 1.4em; border-radius: 999px; border: 0; background: #f59e0b; color: #fff;
+    box-shadow: 0 6px 0 #b45309; }
+  #trNext:active { transform: translateY(4px); box-shadow: 0 2px 0 #b45309; }
+
+  @media (prefers-reduced-motion: reduce) { .homeCard .bellIco, #tTrain { animation: none; } }
   @media (prefers-reduced-motion: reduce) { #goClass, .btn.hint, .btn.hint2, .slot.new svg, #soundCard.pop { animation: none; } }
 </style>
 </head>
@@ -312,9 +354,16 @@
         <button class="task main" id="tCount"><span class="ico">🧒</span><span>Count the kids<small>1, 2, 3…</small></span></button>
         <button class="task main" id="tTrace"><span class="ico">🔢</span><span>Colour numbers<small id="tTraceSub">1, 2, 3</small></span></button>
         <button class="task main" id="tAnimals"><span class="ico">🐮</span><span>Animals<small>Find the animal</small></span></button>
+        <button class="task main" id="tLunch"><span class="ico">🍎</span><span>Lunch time<small>Fill the lunch box</small></span></button>
         <button class="task" id="tBook"><span class="ico">⭐</span><span>My star book</span></button>
-        <button class="task" id="tBus"><span class="ico">🚌</span><span>Home time<small>Back to the bus</small></span></button>
       </div>
+    </div>
+    <div class="paper homeCard" id="homeCard" hidden>
+      <div class="bellIco">🔔</div>
+      <h2>Home time!</h2>
+      <p id="homeMsg">All your work is done! Time to go home on the train.</p>
+      <button class="task main wide" id="tTrain"><span class="ico">🚂</span><span>Drive the train home</span></button>
+      <button class="task wide" id="tBook2"><span class="ico">⭐</span><span>My star book</span></button>
     </div>
   </div>
   <div id="traceScreen" class="screen" hidden>
@@ -347,6 +396,14 @@
     </div>
     <div id="animalCards"></div>
   </div>
+  <div id="lunchScreen" class="screen" hidden>
+    <div class="topbar">
+      <button class="round" id="lBack" aria-label="Back to my desk">✕</button>
+      <div id="lunchHead"><div id="lunchPrompt">Put the food in the lunch box!</div><div id="lunchDots" class="dots"></div></div>
+      <button class="round" id="lSay" aria-label="Hear it again">🔊</button>
+    </div>
+    <div id="lunchWrap"><canvas id="lunchCanvas" aria-label="A lunch box with a shape for each food. Drag each food into its shape."></canvas></div>
+  </div>
   <div id="bookScreen" class="screen" hidden>
     <div class="book">
       <div class="page left"><h2 id="bookTitle">Star Book</h2><p id="bookCount"></p></div>
@@ -356,10 +413,63 @@
   </div>
 </div>
 
-<script src="js/songs.js?v=9"></script>
-<script src="js/sound.js?v=9"></script>
-<script src="js/scene.js?v=9"></script>
-<script src="js/school.js?v=9"></script>
-<script src="js/game.js?v=9"></script>
+<div id="train" hidden>
+  <div id="trView">
+    <canvas id="trCanvas" aria-label="A steam train driving home past fields, a level crossing, a tunnel and a river"></canvas>
+    <div id="trEnd" hidden><div class="card">
+      <h2>Home sweet home! 🏠</h2>
+      <p id="trEndMsg">See you tomorrow!</p>
+      <button id="trNext">Next morning ☀️</button>
+    </div></div>
+  </div>
+  <div id="trDash">
+    <div class="cluster" id="trLeft">
+      <button id="tCoal" class="btn coal" aria-label="Shovel coal on the fire">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><path d="M8 40 26 22"/><path d="M24 14l10-4 6 6-4 10-10 2-6-6z" fill="currentColor"/><path d="M14 10c0 3 3 3 3 6M8 18c0 3 3 3 3 6" stroke-width="3"/></svg>
+        <span>Coal</span></button>
+      <button id="tStop" class="btn stop" aria-label="Stop">
+        <svg viewBox="0 0 48 48"><polygon points="16,3 32,3 45,16 45,32 32,45 16,45 3,32 3,16" fill="#fff"/><rect x="11" y="20" width="26" height="8" rx="2" fill="#ef4444"/></svg>
+        <span>Stop</span></button>
+      <button id="tBack" class="btn back" aria-label="Reverse">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M40 24H10M22 11 9 24l13 13"/></svg>
+        <span>Back</span></button>
+      <button id="tGo" class="btn go" aria-label="Drive">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 24h30M26 11l13 13-13 13"/></svg>
+        <span>Go</span></button>
+    </div>
+
+    <div id="gaugeWrap">
+      <div id="gauge"><svg viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r="44" fill="#111318"/>
+        <circle cx="50" cy="50" r="44" fill="none" stroke="#3a3f4c" stroke-width="9" stroke-dasharray="207 999" stroke-linecap="round" transform="rotate(135 50 50)"/>
+        <circle id="steamArc" cx="50" cy="50" r="44" fill="none" stroke="#22c55e" stroke-width="9" stroke-dasharray="150 999" stroke-linecap="round" transform="rotate(135 50 50)"/>
+        <text x="50" y="94" text-anchor="middle" font-size="9" font-weight="700" fill="#cbd5e1" font-family="Fredoka, sans-serif">STEAM</text>
+      </svg></div>
+      <button id="tWhistle" aria-label="Toot the whistle">TOOT</button>
+    </div>
+
+    <div class="cluster" id="trRight">
+      <button id="tLights" class="btn lights" aria-label="Lights on or off">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M24 6a12 12 0 0 0-7 22v5h14v-5A12 12 0 0 0 24 6z"/><path d="M18 39h12M20 44h8"/></svg>
+        <span>Lights</span></button>
+      <button id="tBell" class="btn bell" aria-label="Ring the bell">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 34c3-4 3-8 3-14a9 9 0 0 1 18 0c0 6 0 10 3 14z"/><path d="M20 39a4 4 0 0 0 8 0M24 6v5"/></svg>
+        <span>Bell</span></button>
+      <button id="tRainbow" class="btn rainbow" aria-label="Rainbow smoke on or off">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round"><path d="M6 36a18 18 0 0 1 36 0M12 36a12 12 0 0 1 24 0M18 36a6 6 0 0 1 12 0"/></svg>
+        <span>Rainbow</span></button>
+      <button id="tDoors" class="btn door" aria-label="Open or close the doors">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="5" width="36" height="38" rx="3"/><path d="M21 24H11M15 19l-5 5 5 5M27 24h10M33 19l5 5-5 5"/></svg>
+        <span>Doors</span></button>
+    </div>
+  </div>
+</div>
+
+<script src="js/songs.js?v=10"></script>
+<script src="js/sound.js?v=10"></script>
+<script src="js/scene.js?v=10"></script>
+<script src="js/school.js?v=10"></script>
+<script src="js/train.js?v=10"></script>
+<script src="js/game.js?v=10"></script>
 </body>
 </html>

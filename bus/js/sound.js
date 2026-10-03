@@ -155,6 +155,53 @@ const Sound = (() => {
   const sparkle = fx(t => [1319, 1568, 1976, 2637, 3136].forEach((f, i) => tone('sine', f, t + i * 0.07, 0.35, 0.09)));
   const tuneIn = fx(t => hiss(t, 0.3, 0.08, 'bandpass', 2000, 0.5, 4000, music));
 
+  // ---- the train ----
+  // A steam whistle held for as long as the button is: a three-note chord plus a breath of steam.
+  let whistle = null;
+  function whistleOn() {
+    if (!ctx || whistle) return;
+    const t = now(), g = ctx.createGain(), lp = ctx.createBiquadFilter();
+    lp.type = 'lowpass'; lp.frequency.value = 2600;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.16, t + 0.08);
+    const os = [554, 698, 831].map(f => {
+      const o = ctx.createOscillator(); o.type = 'triangle'; o.frequency.setValueAtTime(f * 0.96, t);
+      o.frequency.exponentialRampToValueAtTime(f, t + 0.12); o.connect(lp); o.start(t); return o;
+    });
+    const s = ctx.createBufferSource(); s.buffer = noise; s.loop = true;
+    const bp = ctx.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1700; bp.Q.value = 1.2;
+    const sg = ctx.createGain(); sg.gain.value = 0.35;
+    s.connect(bp); bp.connect(sg); sg.connect(lp); s.start(t);
+    lp.connect(g); g.connect(sfx);
+    whistle = { g, os, s, t0: t };
+  }
+  function whistleOff() {
+    if (!whistle) return;
+    const w = whistle; whistle = null;
+    const t = Math.max(now(), w.t0 + 0.25);
+    w.g.gain.setValueAtTime(0.16, t); w.g.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+    for (const o of w.os) o.stop(t + 0.2);
+    w.s.stop(t + 0.2);
+  }
+  // a low, filtered note with an envelope: moos and boat horns
+  function low(type, f, t, dur, vol, slide, cut) {
+    const o = ctx.createOscillator(), lp = ctx.createBiquadFilter(), g = ctx.createGain();
+    o.type = type; o.frequency.setValueAtTime(f, t);
+    if (slide) o.frequency.exponentialRampToValueAtTime(slide, t + dur);
+    lp.type = 'lowpass'; lp.frequency.value = cut || 700;
+    g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(vol, t + 0.08);
+    g.gain.setValueAtTime(vol, t + dur * 0.7); g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    o.connect(lp); lp.connect(g); g.connect(sfx); o.start(t); o.stop(t + dur + 0.05);
+  }
+  const chuff = fx((t, v) => { hiss(t, 0.16, 0.05 + v * 0.1, 'bandpass', 900 + v * 500, 0.8, 500); tone('sine', 70, t, 0.1, 0.12); });
+  const clack = fx(t => { tone('square', 190, t, 0.03, 0.035); tone('square', 170, t + 0.1, 0.03, 0.035); });
+  const bell = fx(t => { for (const d of [0, 0.38]) { tone('sine', 1568, t + d, 0.9, 0.16); tone('sine', 3951, t + d, 0.4, 0.04); } });
+  const moo = fx(t => low('sawtooth', 150, t, 1.1, 0.22, 105, 520));
+  const carBeep = fx(t => { tone('square', 466, t, 0.13, 0.06); tone('square', 466, t + 0.2, 0.16, 0.06); });
+  const boatHorn = fx(t => { low('sawtooth', 98, t, 1.0, 0.2, 0, 600); low('sawtooth', 147, t, 1.0, 0.12, 0, 600); });
+  const shovel = fx(t => { hiss(t, 0.12, 0.14, 'highpass', 2600, 0.8); hiss(t + 0.15, 0.5, 0.2, 'lowpass', 500, 0.8, 200); });
+  const crossDing = fx(t => tone('triangle', 988, t, 0.22, 0.07));
+  const pop = fx(t => tone('sine', 520, t, 0.08, 0.14, { slide: 900 }));
+
   // ---- rain on the roof ----
   function rainLevel(l) {
     if (!ctx || Math.abs(l - lastRain) < 0.02) return;
@@ -240,5 +287,6 @@ const Sound = (() => {
   }
 
   return { unlock, setMuted, decode, voice, engineStart, engineStop, engineSet, hornOn, hornOff, door, airBrake, swish, gear, click,
-    nope, reverseBeep, board, bye, fanfare, scribble, sparkle, rainLevel, radioOn, radioOff, radioTick };
+    nope, reverseBeep, board, bye, fanfare, scribble, sparkle, rainLevel, radioOn, radioOff, radioTick,
+    whistleOn, whistleOff, chuff, clack, bell, moo, carBeep, boatHorn, shovel, crossDing, pop };
 })();

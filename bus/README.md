@@ -23,4 +23,20 @@ A game for young kids: drive the school bus, pick the kids up at the bus stops a
 - **Count the kids:** three rounds. First the kids you brought on the bus, then two sets of other things (apples, ducks...). Tap each one and the voice counts along; then pick how many from three numbers. A wrong pick just greys out.
 - **Colour numbers:** colour in three numbers in a row, the same way as the name. After each one, that many things pop up and get counted ("one, two, three: three apples!"). Next time it carries on from the next number, round and round 1 to 10 (`NUMBERS_PER_GO` in `bus/js/school.js`).
 - **Animals:** the animal's word is written up big and the voice says its name and its noise (or a clue, like the zebra's black and white stripes), then asks to find it out of three pictures. Six animals a go, working through all 17 (`ANIMALS` in `bus/js/school.js`).
+- **Lunch time:** a lunch box in the player's colour has a shaped hole for each food: crackers, a yoghurt, a juice drink, apple slices and a slice of watermelon. Drag each food into its own shape; the voice names it as you pick it up, and the wrong hole just sends it back. If nothing happens for a few seconds a see-through copy slides into place to show how. Fill the box for a gold star (`LUNCH` in `bus/js/school.js`).
 - Every finished activity puts a gold star in the star book, marked with what it was for.
+- **One go each, then home time.** Each game on the menu can be played once per school day; once it's done it gets a tick and greys out, so the day keeps moving forward (quitting a game part way with ✕ doesn't use up its go). When all five are done the menu turns into a **Home time!** card with a ringing bell, and the only way on is the train.
+
+**The train home** (`bus/js/train.js`). You drive a steam train home with the class in the carriage windows and yourself in the cab, through the afternoon into sunset. The dashboard swaps to train controls (keyboard in brackets):
+
+| Button | What it does |
+|---|---|
+| Go (→) / Back (←) / Stop (↓ or Space) | Drive, reverse, brake. |
+| Coal (C) | Shovel coal on the fire. The steam gauge round the whistle runs down as you go and the train slows as it drops; coal tops it up (with sparks from the chimney). |
+| TOOT, in the middle (hold H or T) | The steam whistle. The cows moo back, the car at the level crossing beeps, the boat on the river toots, and the kids cheer. |
+| Lights (L) | Headlamp and carriage lights. The tunnel is dark without them. |
+| Bell (B) | Ding ding, and the kids cheer. |
+| Rainbow (R) | Rainbow smoke. |
+| Doors (O) | Only at the home platform: the kids get off and run to the grown-ups. |
+
+Along the way: a field of cows, a level crossing whose barriers come down with flashing lights, a tunnel, a river bridge with a sailing boat, then the town and the home station. The train slows near the station and the buffers stop it gently, so it can't overshoot. Getting home is a gold star (🚂 in the star book), then *Next morning* goes back to the bus for a new day.

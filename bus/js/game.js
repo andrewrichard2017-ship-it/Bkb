@@ -361,8 +361,9 @@
     if (S.radio) { S.radio = false; Sound.radioOff(); }
     S.mode = 'class'; S.toast = null;
     School.open(S.classKids, () => {
+      // back from the train ride home: it's the next morning and the kids are waiting again
       S.mode = 'play';
-      toast(S.bus.doorsOpen ? 'Home time! Close the doors and start the engine.' : 'Home time! Start the engine.', 3.2);
+      toast(S.bus.doorsOpen ? 'Good morning! ☀️ Close the doors and start the engine.' : 'Good morning! ☀️ Start the engine, the kids are waiting!', 3.6);
     }, { save: me, persist, muted: () => save.muted, name: profile.name, id: profile.id, sound: Sound, color: () => S.color });
   });
 

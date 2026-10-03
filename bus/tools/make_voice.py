@@ -4,7 +4,8 @@
 The game speaks by playing these clips, so it sounds the same on every device and doesn't
 depend on the phone having a speech voice (Android in-app browsers, including the Claude app,
 have none). The words, numbers, things to count, animals and the players' names are read from
-bus/js/school.js, so after changing PROFILES or the word lists, run this again.
+bus/js/school.js (and the lunch foods), so after changing PROFILES or the word lists, run this again.
+The train lines are listed below; keep them matching js/train.js.
 
 Setup (once), then run from the repo root:
   python3 -m venv /tmp/tts && /tmp/tts/bin/pip install kokoro-onnx soundfile
@@ -36,11 +37,13 @@ def read_game():
     things = re.findall(r"\['[^']+', '([a-z ]+)', '([a-z ]+)'\]", block)
     block = src[src.index('const ANIMALS ='):src.index('const ANIMALS_PER_GO')]
     animals = re.findall(r"\{ name: '([a-z]+)', pic: '[^']+', say: \"([^\"]+)\" \}", block)
-    return name, letters, things, animals
+    block = src[src.index('const LUNCH'):src.index('const GAMES')]
+    lunch = re.findall(r"\{ id: '([a-z]+)', name: '([^']+)', say: \"([^\"]+)\" \}", block)
+    return name, letters, things, animals, lunch
 
 
 def clips():
-    name, letters, things, animals = read_game()
+    name, letters, things, animals, lunch = read_game()
     c = {}
     for l, (spoken, words, phrase) in letters.items():
         c['l_' + l] = spoken.capitalize() + '!'
@@ -60,12 +63,27 @@ def clips():
         c['ar_' + a] = "Yes! That's the %s!" % a
         c['aw_' + a] = "That's the %s." % a
     c['p_again'] = 'Have another go!'
+    c['lu_intro'] = "It's lunch time! Put each food in its matching shape in the lunch box!"
+    c['lu_nope'] = "Oops, that's not its shape. Have another go!"
+    for fid, nm, line in lunch:
+        c['lu_n_' + fid] = nm + '!'
+        c['lu_' + fid] = line
+    # the train ride home (js/train.js)
+    c['t_aboard'] = 'All aboard! Press the green Go button to drive the train home!'
+    c['t_coal'] = "We're running out of steam! Shovel some coal on the fire!"
+    c['t_tunnel'] = 'Here comes a tunnel! Turn on the lights!'
+    c['t_station'] = "There's your home station! Stop the train at the platform!"
+    c['t_doors'] = 'Open the doors!'
+    c['t_bye'] = 'Bye bye! See you tomorrow!'
     for pid, nm in name:
         c['p_spells_' + pid] = 'That spells %s!' % nm
         c['p_star_name_' + pid] = 'Well done, %s! You get a gold star!' % nm
         c['p_star_numbers_' + pid] = 'Brilliant counting, %s! You get a gold star!' % nm
         c['p_star_count_' + pid] = 'Great counting, %s! You get a gold star!' % nm
         c['p_star_animals_' + pid] = 'Brilliant, %s! You know your animals! You get a gold star!' % nm
+        c['p_star_lunch_' + pid] = 'Yummy! Well done, %s! You packed your lunch box! You get a gold star!' % nm
+        c['h_home_' + pid] = "Ding, ding! It's home time, %s! All your work is done. Let's drive the train home!" % nm
+        c['p_star_train_' + pid] = 'You drove the train all the way home, %s! You get a gold star!' % nm
     return name, c
 
 
