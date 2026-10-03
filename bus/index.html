@@ -246,6 +246,32 @@
   #lunchWrap { position: relative; flex: 1 1 auto; min-height: 0; }
   #lunchCanvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
 
+  /* memory */
+  #memScreen { display: flex; flex-direction: column; background: #fef3c7;
+    padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+  #memScreen[hidden] { display: none; }
+  #memHead { flex: 1; display: grid; gap: 6px; justify-items: center; text-align: center; }
+  #memPrompt { font: 700 clamp(20px, min(4.6vh, 6vw), 32px)/1.1 var(--hand); color: #b45309; }
+  #memBody { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: space-evenly; gap: 10px; padding: 6px 12px 14px; }
+  #memTop { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  #memEar { font-size: clamp(40px, 10vh, 72px); line-height: 1; opacity: .35; transition: opacity .3s; }
+  .listening #memEar { opacity: 1; }
+  #memEar.pulse { animation: pop .45s cubic-bezier(.3, 1.6, .5, 1); }
+  #memSlots { display: flex; gap: 12px; }
+  #memSlots i { width: clamp(46px, 11vh, 70px); height: clamp(46px, 11vh, 70px); border-radius: 16px; border: 4px dashed #f59e0b; background: #fff; display: grid; place-items: center;
+    font: 700 clamp(26px, 7vh, 44px)/1 var(--hand); font-style: normal; color: var(--pencil); }
+  #memSlots i.got { border-style: solid; border-color: #22c55e; background: #f0fdf4; animation: pop .3s cubic-bezier(.3, 1.6, .5, 1); }
+  #memPad { display: grid; grid-template-columns: repeat(3, auto); gap: clamp(8px, 1.6vh, 14px); }
+  .listening #memPad { pointer-events: none; }
+  .listening .memKey:not(.lit) { opacity: .45; }
+  .memKey { width: clamp(58px, min(13vh, 24vw), 96px); height: clamp(58px, min(13vh, 24vw), 96px); border-radius: 20px; border: 0; background: #fff; color: var(--pencil);
+    font: 700 clamp(30px, min(7vh, 12vw), 52px)/1 var(--hand); box-shadow: 0 6px 0 #f59e0b; transition: transform .1s, background .2s; }
+  .memKey:active { transform: translateY(4px); box-shadow: 0 2px 0 #f59e0b; }
+  .memKey.lit { background: #facc15; box-shadow: 0 6px 0 #ca8a04, 0 0 0 6px rgba(250,204,21,.45); transform: scale(1.08); }
+  .memKey.yes { background: #22c55e; color: #fff; }
+  .memKey.no { background: #fecaca; animation: wiggle .4s; }
+  @media (orientation: landscape) { #memBody { flex-direction: row; } }
+
   /* colouring */
   #drawScreen { display: flex; flex-direction: column; background: #ede9fe;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
@@ -423,6 +449,7 @@
         <button class="task main" id="tTrace"><span class="ico">🔢</span><span>Colour numbers<small id="tTraceSub">1, 2, 3</small></span></button>
         <button class="task main" id="tAnimals"><span class="ico">🐮</span><span>Animals<small>Find the animal</small></span></button>
         <button class="task main" id="tDraw"><span class="ico">🎨</span><span>Colouring<small>Pick a picture</small></span></button>
+        <button class="task main" id="tMemory"><span class="ico">🧠</span><span>Memory<small>Remember the numbers</small></span></button>
         <button class="task main" id="tLunch"><span class="ico">🍎</span><span>Lunch time<small>Fill the lunch box</small></span></button>
         <button class="task" id="tBook"><span class="ico">⭐</span><span>My star book</span></button>
       </div>
@@ -489,6 +516,17 @@
         <div id="colPal"></div>
         <button id="colDone">Finished! ⭐</button>
       </div>
+    </div>
+  </div>
+  <div id="memScreen" class="screen" hidden>
+    <div class="topbar">
+      <button class="round" id="mBack" aria-label="Back to my desk">✕</button>
+      <div id="memHead"><div id="memPrompt">Listen carefully…</div><div id="memDots" class="dots"></div></div>
+      <button class="round" id="mSay" aria-label="Hear the numbers again">🔊</button>
+    </div>
+    <div id="memBody">
+      <div id="memTop"><div id="memEar">👂</div><div id="memSlots"></div></div>
+      <div id="memPad"></div>
     </div>
   </div>
   <div id="bookScreen" class="screen" hidden>
@@ -565,14 +603,14 @@
   </div></div>
 </div>
 
-<script src="js/songs.js?v=14"></script>
-<script src="js/sound.js?v=14"></script>
-<script src="js/scene.js?v=14"></script>
-<script src="js/school.js?v=14"></script>
-<script src="js/stencils.js?v=14"></script>
-<script src="js/colour.js?v=14"></script>
-<script src="js/train.js?v=14"></script>
-<script src="js/home.js?v=14"></script>
-<script src="js/game.js?v=14"></script>
+<script src="js/songs.js?v=15"></script>
+<script src="js/sound.js?v=15"></script>
+<script src="js/scene.js?v=15"></script>
+<script src="js/school.js?v=15"></script>
+<script src="js/stencils.js?v=15"></script>
+<script src="js/colour.js?v=15"></script>
+<script src="js/train.js?v=15"></script>
+<script src="js/home.js?v=15"></script>
+<script src="js/game.js?v=15"></script>
 </body>
 </html>

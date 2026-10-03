@@ -82,7 +82,7 @@ const LUNCH = [
   { id: 'watermelon', name: 'Watermelon', say: "Watermelon! Nice and juicy!" },
 ];
 // The school games: each can be played once a school day, then it's home time on the train.
-const GAMES = { name: 'tName', count: 'tCount', numbers: 'tTrace', animals: 'tAnimals', lunch: 'tLunch', draw: 'tDraw' };
+const GAMES = { name: 'tName', count: 'tCount', numbers: 'tTrace', animals: 'tAnimals', lunch: 'tLunch', draw: 'tDraw', memory: 'tMemory' };
 const CRAYONS = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
 
 const School = (() => {
@@ -98,7 +98,7 @@ const School = (() => {
   // The voice is recorded clips in audio/voice/ (made by tools/make_voice.py), played through Web
   // Audio so it works on every device. say() takes the clips to play in a row, plus the words to
   // fall back on with the device's own speech voice if a clip is missing (or the name changed).
-  const VOICE_VERSION = 9, VOICE_DIR = 'audio/voice/';
+  const VOICE_VERSION = 10, VOICE_DIR = 'audio/voice/';
   const clips = {};
   let voiceLoad = null, sayId = 0, playing = null, last = null, primed = false;
   function loadVoice() {
@@ -179,6 +179,7 @@ const School = (() => {
     if (id === 'countScreen') startCount();
     if (id === 'animalScreen') startAnimals();
     if (id === 'lunchScreen') startLunch();
+    if (id === 'memScreen') startMemory();
     if (id === 'drawScreen') Colouring.start({ say, hush, sound: cfg.sound, id: PLAYER, name: CHILD_NAME, finished: () => addStar('draw'), saveArt });
     else Colouring.stop();
     if (id === 'classScreen') {
@@ -1008,6 +1009,89 @@ const School = (() => {
     }
   }
 
+  // ---------- memory: listen to three numbers, then tap them back in the same order ----------
+  // Five rounds. A wrong number is a miss: the numbers are said again. After four misses in a
+  // round the keys light up as the numbers are said, and the next one to tap glows.
+  const MEM_ROUNDS = 5, MEM_LEN = 3, MEM_HELP = 4;
+  const M = { run: 0, round: 0, seq: [], got: 0, misses: 0, state: 'listen' };
+  const memKey = n => $('memPad').querySelector('[data-n="' + n + '"]');
+  function startMemory() {
+    const run = ++M.run;
+    M.round = 0;
+    const pad = $('memPad');
+    if (!pad.children.length) for (let n = 1; n <= 9; n++) {
+      const b = document.createElement('button');
+      b.className = 'memKey'; b.textContent = n; b.dataset.n = n;
+      b.addEventListener('pointerdown', e => { e.preventDefault(); memTap(n, b); });
+      pad.appendChild(b);
+    }
+    memRound(run);
+  }
+  function memSlots() {
+    $('memSlots').innerHTML = M.seq.map((n, k) => '<i class="' + (k < M.got ? 'got' : '') + '">' + (k < M.got ? n : '') + '</i>').join('');
+  }
+  function memLight(n) {
+    for (const b of $('memPad').children) b.classList.toggle('lit', +b.dataset.n === n);
+  }
+  async function memRound(run) {
+    const pool = [1, 2, 3, 4, 5, 6, 7, 8, 9].sort(() => Math.random() - 0.5);
+    M.seq = pool.slice(0, MEM_LEN); M.got = 0; M.misses = 0;
+    $('memDots').innerHTML = Array.from({ length: MEM_ROUNDS }, (_, k) => '<i class="' + (k < M.round ? 'done' : k === M.round ? 'now' : '') + '"></i>').join('');
+    await sleep(500);
+    if (run === M.run) memListen(run, true);
+  }
+  // say the numbers, slowly, with the pad switched off
+  async function memListen(run, first) {
+    M.state = 'listen'; M.got = 0; memSlots(); memLight(0);
+    const help = M.misses >= MEM_HELP;
+    $('memScreen').classList.add('listening');
+    $('memPrompt').textContent = help ? 'Watch and listen!' : 'Listen carefully…';
+    hush();
+    await say(help ? ['me_help'] : first ? ['me_listen'] : ['me_again'], help ? 'Watch the numbers light up, and copy me!' : first ? 'Listen carefully!' : "Oops! Let's listen again.");
+    for (const n of M.seq) {
+      if (run !== M.run) return;
+      await sleep(700);
+      if (help) memLight(n);
+      $('memEar').classList.remove('pulse'); void $('memEar').offsetWidth; $('memEar').classList.add('pulse');
+      await say(['n_' + n], NUM_WORDS[n], 0.9);
+      await sleep(550);
+      memLight(0);
+    }
+    if (run !== M.run) return;
+    await sleep(500);
+    M.state = 'input';
+    $('memScreen').classList.remove('listening');
+    $('memPrompt').textContent = 'Your turn!';
+    if (help) memLight(M.seq[0]);
+    say(['me_turn'], 'Your turn! Tap the numbers in the same order.');
+  }
+  async function memTap(n, b) {
+    const run = M.run;
+    if (M.state !== 'input') return;
+    if (n !== M.seq[M.got]) {
+      M.state = 'wrong'; M.misses++;
+      b.classList.add('no'); setTimeout(() => b.classList.remove('no'), 500);
+      cfg.sound.nope(); buzz(30); memLight(0);
+      await sleep(700);
+      if (run === M.run) memListen(run, false);
+      return;
+    }
+    M.got++; memSlots(); cfg.sound.board(M.got - 1); buzz(12);
+    b.classList.add('yes'); setTimeout(() => b.classList.remove('yes'), 300);
+    hush(); say(['n_' + n], NUM_WORDS[n], 1.05);
+    memLight(M.misses >= MEM_HELP && M.got < MEM_LEN ? M.seq[M.got] : 0);
+    if (M.got < MEM_LEN) return;
+    M.state = 'done'; cfg.sound.sparkle();
+    await sleep(600);
+    await say(['me_yes'], 'Yes! You remembered them all!');
+    if (run !== M.run) return;
+    if (++M.round < MEM_ROUNDS) return memRound(run);
+    $('memDots').innerHTML = Array.from({ length: MEM_ROUNDS }, () => '<i class="done"></i>').join('');
+    cfg.sound.fanfare();
+    await say(['p_star_memory_' + PLAYER], 'Super memory, ' + CHILD_NAME + '! You get a gold star!', 0.9);
+    if (run === M.run) addStar('memory');
+  }
+
   // ---------- star book ----------
   // every star in the book, oldest first: a school game, 'train', or a home one ('dress', 'toys', 'dinner')
   function bookLog() {
@@ -1015,7 +1099,7 @@ const School = (() => {
     if (!Array.isArray(sv.bookLog)) sv.bookLog = Array(sv.nameStars || 0).fill('name');
     return sv.bookLog;
   }
-  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾', lunch: '🍎', draw: '🎨', train: '🚂', dress: '👕', toys: '🧸', dinner: '🍽️' };
+  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾', lunch: '🍎', draw: '🎨', memory: '🧠', train: '🚂', dress: '👕', toys: '🧸', dinner: '🍽️' };
   function renderBook(fresh) {
     const log = bookLog(), n = log.length, per = 12, page = Math.max(0, Math.ceil(n / per) - 1);
     $('bookTitle').textContent = CHILD_NAME + '’s Star Book';
@@ -1043,6 +1127,9 @@ const School = (() => {
   tap('tBook', () => show('bookScreen'));
   tap('tLunch', () => show('lunchScreen'));
   tap('tDraw', () => show('drawScreen'));
+  tap('tMemory', () => show('memScreen'));
+  tap('mBack', () => { hush(); M.run++; show('classScreen'); });
+  tap('mSay', () => { if (M.state === 'input') { M.got = 0; memListen(M.run, true); } });
   // ✕ while colouring goes back to the pictures; from the pictures, back to the desk
   tap('dBack', () => { hush(); if (!$('colPaint').hidden) show('drawScreen'); else show('classScreen'); });
   tap('dSay', () => Colouring.again());

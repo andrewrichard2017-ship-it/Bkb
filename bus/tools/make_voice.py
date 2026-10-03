@@ -145,6 +145,12 @@ def clips():
     src = open(os.path.join(ROOT, 'js', 'stencils.js'), encoding='utf-8').read()
     for pid, line in re.findall(r"\{ id: '(\w+)', name: '[^']+', say: '([^']+)'", src): c['dr_' + pid] = line
     c['dr_pick'] = 'Pick a picture to colour in!'
+    c['me_listen'] = 'Listen carefully!'
+    c['me_again'] = "Oops! Let's listen again."
+    c['me_help'] = 'Watch the numbers light up, and copy me!'
+    c['me_turn'] = 'Your turn! Tap the numbers in the same order.'
+    c['me_yes'] = 'Yes! You remembered them all!'
+    for pid, nm in name: c['p_star_memory_' + pid] = 'Super memory, %s! You get a gold star!' % nm
     c['dr_how'] = 'Pick a colour, then tap the picture to colour it in!'
     c['dr_more'] = 'Keep going! Colour in some more of the picture.'
     for pid, nm in name: c['p_star_draw_' + pid] = 'What a beautiful picture, %s! You get a gold star!' % nm
