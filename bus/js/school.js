@@ -98,7 +98,7 @@ const School = (() => {
   // The voice is recorded clips in audio/voice/ (made by tools/make_voice.py), played through Web
   // Audio so it works on every device. say() takes the clips to play in a row, plus the words to
   // fall back on with the device's own speech voice if a clip is missing (or the name changed).
-  const VOICE_VERSION = 10, VOICE_DIR = 'audio/voice/';
+  const VOICE_VERSION = 11, VOICE_DIR = 'audio/voice/';
   const clips = {};
   let voiceLoad = null, sayId = 0, playing = null, last = null, primed = false;
   function loadVoice() {
@@ -1099,7 +1099,7 @@ const School = (() => {
     if (!Array.isArray(sv.bookLog)) sv.bookLog = Array(sv.nameStars || 0).fill('name');
     return sv.bookLog;
   }
-  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾', lunch: '🍎', draw: '🎨', memory: '🧠', train: '🚂', dress: '👕', toys: '🧸', dinner: '🍽️' };
+  const STAR_FOR = { name: '✏️', numbers: '🔢', count: '🧒', animals: '🐾', lunch: '🍎', draw: '🎨', memory: '🧠', train: '🚂', dress: '👕', toys: '🧸', dinner: '🍽️', park: '⚽', icecream: '🍦', hide: '🙈', teeth: '🪥' };
   function renderBook(fresh) {
     const log = bookLog(), n = log.length, per = 12, page = Math.max(0, Math.ceil(n / per) - 1);
     $('bookTitle').textContent = CHILD_NAME + '’s Star Book';

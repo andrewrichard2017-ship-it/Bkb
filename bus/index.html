@@ -346,6 +346,11 @@
   .hCard b { font-size: clamp(16px, 3.6vh, 22px); }
   .hCard small { font-size: clamp(11px, 2.4vh, 14px); color: #64748b; font-weight: 600; }
   .hCard.sel { border-color: #22c55e; }
+  .eBtn { border: 0; border-radius: 22px; padding: .45em 1em; font-size: clamp(18px, 4.4vh, 26px); font-weight: 700; color: #fff; background: var(--b, #2563eb);
+    box-shadow: 0 5px 0 rgba(0,0,0,.25); min-width: 7em; }
+  .eBtn:active { transform: translateY(4px); box-shadow: 0 1px 0 rgba(0,0,0,.25); }
+  .eBtn.red { --b: #ef4444; } .eBtn.green { --b: #16a34a; } .eBtn.pink { --b: #ec4899; } .eBtn.brown { --b: #78350f; } .eBtn.blue { --b: #0284c7; }
+  .eBtn.hintBtn { animation: pulse .9s ease-in-out infinite; }
   #hEnd { position: absolute; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(20, 15, 50, .55); z-index: 3; }
   #hEnd[hidden] { display: none; }
   #hEnd .card h2 { margin: 0; font-size: clamp(26px, 6.5vh, 44px); color: #7c3aed; }
@@ -603,14 +608,15 @@
   </div></div>
 </div>
 
-<script src="js/songs.js?v=15"></script>
-<script src="js/sound.js?v=15"></script>
-<script src="js/scene.js?v=15"></script>
-<script src="js/school.js?v=15"></script>
-<script src="js/stencils.js?v=15"></script>
-<script src="js/colour.js?v=15"></script>
-<script src="js/train.js?v=15"></script>
-<script src="js/home.js?v=15"></script>
-<script src="js/game.js?v=15"></script>
+<script src="js/songs.js?v=16"></script>
+<script src="js/sound.js?v=16"></script>
+<script src="js/scene.js?v=16"></script>
+<script src="js/school.js?v=16"></script>
+<script src="js/stencils.js?v=16"></script>
+<script src="js/colour.js?v=16"></script>
+<script src="js/train.js?v=16"></script>
+<script src="js/home.js?v=16"></script>
+<script src="js/evening.js?v=16"></script>
+<script src="js/game.js?v=16"></script>
 </body>
 </html>

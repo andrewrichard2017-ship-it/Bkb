@@ -83,6 +83,7 @@ const Home = (() => {
       if (r !== run) return;
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       if (mammyLine && (mammyLine.t -= dt) <= 0) mammyLine = null;
+      cfg.sound.radioTick(); // the lullaby at bedtime
       cx.setTransform(DPR, 0, 0, DPR, 0, 0);
       if (game && game.draw) game.draw(cx, dt, now / 1000);
       if (starAt) bigStar(cx, W / 2, H * 0.42, Math.min(W, H) * 0.22 * (0.3 + 0.7 * Math.min(1, (now - starAt) / 600)), (1 - Math.min(1, (now - starAt) / 600)) * 2);
@@ -91,7 +92,7 @@ const Home = (() => {
     requestAnimationFrame(frame);
     dress();
   }
-  function finish(next) { run++; cfg.hush(); root.hidden = true; game = null; if (onDone) onDone(next); }
+  function finish(next) { run++; cfg.hush(); cfg.sound.radioOff(); root.hidden = true; game = null; if (onDone) onDone(next); }
   $('hNext').addEventListener('click', () => { cfg.sound.click(); finish('bus'); });
   $('hSchool').addEventListener('click', () => { cfg.sound.click(); finish('school'); });
   $('hSay').addEventListener('click', () => { cfg.sound.click(); if (game && game.again) game.again(); });
@@ -926,7 +927,7 @@ const Home = (() => {
             if (r !== run) return;
             await say(['e_allgone'], 'All gone! What a yummy dinner!');
             if (r !== run) return;
-            night();
+            Evening.start(kit, night); // play, bath time, bed
           }, 500);
         }
         drawFx(c, dt);
@@ -939,6 +940,13 @@ const Home = (() => {
     $('hEnd').hidden = false;
     say(['g_night_' + cfg.id], 'Goodnight, ' + cfg.name + '! See you tomorrow!');
   }
+
+  // what js/evening.js uses to build its stages here
+  const kit = {
+    stage, prompt, dots, say, mammy, goldStar, burst, drawFx, emoji, dot, rr, clamp, pick, shuffle, sleep, buzz, doll, look, mammyFig, MAMMY, tray, TAU,
+    get W() { return W; }, get H() { return H; }, get cfg() { return cfg; }, get run() { return run; }, get game() { return game; },
+    get outfit() { return cfg.save.outfit || outfit; },
+  };
 
   return { open };
 })();

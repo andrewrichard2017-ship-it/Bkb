@@ -21,7 +21,8 @@ from kokoro_onnx import Kokoro
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 OUT = os.path.join(ROOT, 'audio', 'voice')
 VOICE, LANG = 'bf_isabella', 'en-gb'
-MAMMY = 'bf_emma'  # Mammy's lines (keys starting m_) at home get a voice of their own  # a soft British English voice; --voice picks another (or a mix, "bf_emma:0.5,af_heart:0.5")
+MAMMY = 'bf_emma'  # Mammy's lines (keys starting m_) at home get a voice of their own
+SHOPMAN = 'bm_george'  # and the ice cream shop man's (keys starting s_)  # a soft British English voice; --voice picks another (or a mix, "bf_emma:0.5,af_heart:0.5")
 SPEED = 1.0  # natural talking speed: slower than this sounds robotic
 NUMS = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten']
 
@@ -145,6 +146,13 @@ def clips():
     src = open(os.path.join(ROOT, 'js', 'stencils.js'), encoding='utf-8').read()
     for pid, line in re.findall(r"\{ id: '(\w+)', name: '[^']+', say: '([^']+)'", src): c['dr_' + pid] = line
     c['dr_pick'] = 'Pick a picture to colour in!'
+    # the evening at home (js/evening.js): LINES, with {name} filled in for each player
+    src = open(os.path.join(ROOT, 'js', 'evening.js'), encoding='utf-8').read()
+    block = src[src.index('const LINES'):src.index('const Evening')]
+    for key, text in re.findall(r'^\s*(\w+): "([^"]+)",', block, re.M):
+        if '{name}' in text:
+            for pid, nm in name: c[key + '_' + pid] = text.replace('{name}', nm)
+        else: c[key] = text
     c['me_listen'] = 'Listen carefully!'
     c['me_again'] = "Oops! Let's listen again."
     c['me_help'] = 'Watch the numbers light up, and copy me!'
@@ -181,6 +189,7 @@ def main():
     k = Kokoro(args.model, args.voices)
     style = voice_style(k, args.voice)
     mammy = voice_style(k, MAMMY)
+    shopman = voice_style(k, SHOPMAN)
     lang = 'en-gb' if args.voice.startswith('b') else 'en-us'
     name, c = clips()
     os.makedirs(args.out, exist_ok=True)
@@ -188,7 +197,7 @@ def main():
         if f.endswith('.mp3'): os.remove(os.path.join(args.out, f))
     with tempfile.TemporaryDirectory() as tmp:
         for key, text in c.items():
-            a, sr = k.create(text, voice=mammy if key.startswith('m_') else style, speed=SPEED, lang=lang)
+            a, sr = k.create(text, voice=mammy if key.startswith('m_') else shopman if key.startswith('s_') else style, speed=SPEED, lang=lang)
             wav = os.path.join(tmp, 'c.wav'); sf.write(wav, trim(a, sr), sr)
             subprocess.run(['ffmpeg', '-loglevel', 'error', '-y', '-i', wav, '-ac', '1', '-b:a', '48k',
                             os.path.join(args.out, key + '.mp3')], check=True)
