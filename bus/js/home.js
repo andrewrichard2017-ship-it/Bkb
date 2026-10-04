@@ -68,6 +68,7 @@ const Home = (() => {
   const LOOKS = { kellan: { skin: '#f1c27d', hair: '#4a2f1b', style: 0, bag: '#2563eb' }, alaina: { skin: '#f1c27d', hair: '#8b5a2b', style: 1, bag: '#ec4899' } };
   const MAMMY = { skin: '#f1c27d', hair: '#7c2d12', style: 5, shirt: '#ec4899', pants: '#1e3a8a', bag: '#ec4899' };
 
+  let skipTo = null; // where Skip goes from the stage that's showing
   let cfg = null, onDone = null, run = 0, game = null, W = 1, H = 1, DPR = 1, starAt = 0, outfit = {}, dish = null, mammyLine = null;
   const look = () => LOOKS[cfg.id] || LOOKS.kellan;
   const the = f => 'the ' + FOODS[f].name.replace(/^an? /, '');
@@ -75,7 +76,7 @@ const Home = (() => {
   // ---------- the shell: one canvas, a tray of buttons under it, a stage at a time ----------
   function open(opts, done) {
     cfg = opts; onDone = done; outfit = {}; dish = null; starAt = 0; mammyLine = null;
-    root.hidden = false; $('hEnd').hidden = true;
+    root.hidden = false; $('hEnd').hidden = true; $('hSkip').hidden = false;
     const r = ++run;
     resize();
     let last = performance.now();
@@ -95,6 +96,11 @@ const Home = (() => {
   function finish(next) { run++; cfg.hush(); cfg.sound.radioOff(); root.hidden = true; game = null; if (onDone) onDone(next); }
   $('hNext').addEventListener('click', () => { cfg.sound.click(); finish('bus'); });
   $('hSchool').addEventListener('click', () => { cfg.sound.click(); finish('school'); });
+  skipButton($('hSkip'), () => {
+    if (!skipTo || !$('hEnd').hidden || root.hidden) return;
+    cfg.sound.click(); cfg.hush(); mammyLine = null; starAt = 0; fx = [];
+    skipTo();
+  });
   $('hSay').addEventListener('click', () => { cfg.sound.click(); if (game && game.again) game.again(); });
 
   function resize() {
@@ -115,11 +121,11 @@ const Home = (() => {
   function mammy(key, text) { mammyLine = { text: shortLine(text), t: 3.2 }; return say([key], text); }
   const shortLine = t => t.split(/(?<=[!?.])\s/)[0];
   async function goldStar(kind, key, text) {
-    const r = run;
+    const r = run, g = game;
     cfg.sound.fanfare(); buzz([40, 60, 40]); starAt = performance.now();
     await say([key], text); await sleep(600);
-    starAt = 0;
-    if (r !== run) return false;
+    if (game === g) starAt = 0;
+    if (r !== run || game !== g) return false; // skipped while the star was showing
     cfg.star(kind);
     return true;
   }
@@ -257,6 +263,7 @@ const Home = (() => {
 
   // ---------- 1. get changed ----------
   function dress() {
+    skipTo = toys;
     let cat = 0, ready = false;
     const L = look();
     const tabs = document.createElement('div'), items = document.createElement('div'), go = document.createElement('button');
@@ -324,6 +331,7 @@ const Home = (() => {
 
   // ---------- 2. tidy up: find each toy from its description and put it in the toy box ----------
   function toys() {
+    skipTo = chooseDinner;
     const first = (cfg.save.toyNext || 0) % TOYS.length, list = [];
     for (let k = 0; k < TOYS_PER_GO; k++) list.push(TOYS[(first + k) % TOYS.length]);
     const items = shuffle(list.map(t => ({ t, x: 0, y: 0, hx: 0, hy: 0, placed: false, in: 0, sx: 0, sy: 0 })));
@@ -471,6 +479,7 @@ const Home = (() => {
   }
 
   function chooseDinner() {
+    skipTo = () => { if (!dish) { const id = pick(Object.keys(DISHES)); dish = Object.assign({ id }, DISHES[id]); } eat(); };
     const g = {
       start() {
         const row = document.createElement('div'); row.className = 'hCards';
@@ -482,7 +491,7 @@ const Home = (() => {
             dish = Object.assign({ id }, d); cfg.sound.sparkle(); cfg.hush();
             b.classList.add('sel');
             const r = run;
-            mammy('m_dish_' + id, d.intro).then(() => { if (r === run) cook(0); });
+            mammy('m_dish_' + id, d.intro).then(() => { if (r === run && game === g) cook(0); });
           });
           row.appendChild(b);
         }
@@ -879,6 +888,7 @@ const Home = (() => {
 
   // ---------- 4. eat it together, then goodnight ----------
   function eat() {
+    skipTo = () => Evening.start(kit, night);
     const amt = [1, 1];
     let bites = 0, nextBite = 1.2, fork = null, bub = [], ended = false;
     const LINES = [['Mmm!', 'Yummy!'], ['Is it nice?', 'Well done!'], ['Yum yum!', 'Thank you, Mammy!'], ['Delicious!', 'All gone!']];
@@ -926,7 +936,7 @@ const Home = (() => {
           setTimeout(async () => {
             if (r !== run) return;
             await say(['e_allgone'], 'All gone! What a yummy dinner!');
-            if (r !== run) return;
+            if (r !== run || game !== g) return;
             Evening.start(kit, night); // play, bath time, bed
           }, 500);
         }
@@ -936,6 +946,7 @@ const Home = (() => {
     stage(g, 'Dinner time!');
   }
   function night() {
+    skipTo = null; $('hSkip').hidden = true;
     $('hEndMsg').textContent = 'Goodnight, ' + cfg.name + '! 🌙';
     $('hEnd').hidden = false;
     say(['g_night_' + cfg.id], 'Goodnight, ' + cfg.name + '! See you tomorrow!');
@@ -943,6 +954,7 @@ const Home = (() => {
 
   // what js/evening.js uses to build its stages here
   const kit = {
+    setSkip: fn => { skipTo = fn; },
     stage, prompt, dots, say, mammy, goldStar, burst, drawFx, emoji, dot, rr, clamp, pick, shuffle, sleep, buzz, doll, look, mammyFig, MAMMY, tray, TAU,
     get W() { return W; }, get H() { return H; }, get cfg() { return cfg; }, get run() { return run; }, get game() { return game; },
     get outfit() { return cfg.save.outfit || outfit; },

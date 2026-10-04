@@ -113,6 +113,7 @@ const Evening = (() => {
 
   // ---------- what will we do? ----------
   function choose() {
+    K.setSkip(bedtime);
     let picked = false;
     const g = {
       start() {
@@ -553,6 +554,7 @@ const Evening = (() => {
 
   // ---------- bedtime: brush your teeth ----------
   function bedtime() {
+    K.setSkip(bed);
     const teeth = [];
     for (let k = 0; k < 6; k++) teeth.push({ row: 'top', x: 290 + k * 84, y: 210, dirt: 1 }, { row: 'bottom', x: 290 + k * 84, y: 360, dirt: 1 });
     const germs = teeth.map((_, k) => ({ dx: ((k * 37) % 30) - 15, dy: ((k * 53) % 24) - 12 }));
@@ -641,6 +643,7 @@ const Evening = (() => {
 
   // ---------- bed: lamp off, stars, a lullaby, goodnight ----------
   function bed() {
+    K.setSkip(() => done());
     let dark = 0, off = false, asleep = 0, zs = [], fade = 0;
     const lamp = [120, 250, 120, 190];
     const g = {

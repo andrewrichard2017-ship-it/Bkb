@@ -19,6 +19,8 @@ A game for young kids: drive the school bus, pick the kids up at the bus stops a
 
 **Straight to school.** The 🏫 button in the top corner (tap twice) skips the drive and goes straight into the classroom. Any kids on the bus come too, and if there's nobody a class turns up anyway; back on the bus it's a fresh route. After the train ride home, *Back to school 🏫* goes straight into a new school day instead of the bus.
 
+**Skip ⏭.** In the classroom, on the train and at every stage at home there's a *Skip* button (top corner): tap it, then tap again within a couple of seconds, and it jumps to the next part of the day (school → home time, the train → home, getting dressed → tidying up → dinner → eating → the evening → teeth → bed → goodnight). Skipping doesn't give a star.
+
 **Inside the school.** After the kids go in, a *Go into school!* button takes you into the classroom: the kids you dropped off sit at their tables, the teacher's whiteboard says good morning, and a paper menu of today's work is on your desk.
 
 - **My name:** colour in each letter of the name, one at a time, on handwriting lines. Each letter says its name and a picture word ("K is for kite", "E is for elephant"), then the name is spelt out ("K, E, L, L, A, N. That spells Kellan!") and a gold star goes into the **star book**. Every letter a-z has words, so any name works. The voice is recorded clips in `bus/audio/voice/` (a soft British English voice, speaking whole sentences), so it works the same on every phone. After changing the players or the word lists, regenerate them with `bus/tools/make_voice.py` (instructions at the top of it); until then the game falls back to the device's own speech voice for the missing clips.

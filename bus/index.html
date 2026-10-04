@@ -315,6 +315,13 @@
   #steamArc { transition: stroke-dasharray .3s, stroke .3s; }
   #tWhistle { width: 50%; height: 50%; background: radial-gradient(circle at 40% 35%, #f8fafc, #94a3b8); box-shadow: 0 4px 0 #475569, inset 0 -3px 0 rgba(0,0,0,.18); }
   #tWhistle:active, #tWhistle.press { box-shadow: 0 1px 0 #475569; }
+  /* skip to the next part of the day (tap twice) */
+  .skipBtn { flex: 0 0 auto; border: 0; border-radius: 999px; padding: 0 14px; height: 40px; min-width: 46px; background: rgba(255,255,255,.85); color: #475569;
+    font: 700 15px/1 Fredoka, sans-serif; box-shadow: 0 2px 6px rgba(0,0,0,.2); white-space: nowrap; }
+  .skipBtn.corner { position: absolute; z-index: 3; top: max(8px, env(safe-area-inset-top)); right: max(8px, env(safe-area-inset-right)); }
+  .skipBtn.armed { background: #f59e0b; color: #fff; }
+  .skipBtn[hidden] { display: none; }
+
   /* home: dressing up, tidying, dinner */
   #home { position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; background: #fef3c7;
     padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
@@ -343,7 +350,7 @@
   .hCard { display: grid; justify-items: center; gap: 2px; width: clamp(96px, 26vw, 150px); padding: 10px 6px; border: 4px solid transparent; border-radius: 22px;
     background: #fff; box-shadow: 0 5px 0 rgba(0,0,0,.15); color: var(--ink); }
   .hCard .pic { font-size: clamp(40px, 11vh, 64px); line-height: 1.1; }
-  .hCard b { font-size: clamp(16px, 3.6vh, 22px); }
+  .hCard b { font-size: clamp(14px, min(3.6vh, 4.6vw), 22px); }
   .hCard small { font-size: clamp(11px, 2.4vh, 14px); color: #64748b; font-weight: 600; }
   .hCard.sel { border-color: #22c55e; }
   .eBtn { border: 0; border-radius: 22px; padding: .45em 1em; font-size: clamp(18px, 4.4vh, 26px); font-weight: 700; color: #fff; background: var(--b, #2563eb);
@@ -445,6 +452,7 @@
 
 <div id="school" hidden>
   <div id="classScreen" class="screen">
+    <button class="skipBtn corner" id="classSkip">Skip ⏭</button>
     <canvas id="classCanvas" aria-label="A classroom: the class at their tables and the teacher by the whiteboard"></canvas>
     <div class="paper" id="menuPaper">
       <h2 id="menuHello">Today’s work</h2>
@@ -545,6 +553,7 @@
 
 <div id="train" hidden>
   <div id="trView">
+    <button class="skipBtn corner" id="trSkip">Skip ⏭</button>
     <canvas id="trCanvas" aria-label="A steam train driving home past fields, a level crossing, a tunnel and a river"></canvas>
   </div>
   <div id="trDash">
@@ -592,7 +601,7 @@
 
 <div id="home" hidden>
   <div class="topbar">
-    <div class="round" aria-hidden="true" style="background:none"></div>
+    <button class="skipBtn" id="hSkip">Skip ⏭</button>
     <div id="hHead"><div id="hPrompt"></div><div id="hDots" class="dots"></div></div>
     <button class="round" id="hSay" aria-label="Hear it again">🔊</button>
   </div>
@@ -608,15 +617,15 @@
   </div></div>
 </div>
 
-<script src="js/songs.js?v=16"></script>
-<script src="js/sound.js?v=16"></script>
-<script src="js/scene.js?v=16"></script>
-<script src="js/school.js?v=16"></script>
-<script src="js/stencils.js?v=16"></script>
-<script src="js/colour.js?v=16"></script>
-<script src="js/train.js?v=16"></script>
-<script src="js/home.js?v=16"></script>
-<script src="js/evening.js?v=16"></script>
-<script src="js/game.js?v=16"></script>
+<script src="js/songs.js?v=17"></script>
+<script src="js/sound.js?v=17"></script>
+<script src="js/scene.js?v=17"></script>
+<script src="js/school.js?v=17"></script>
+<script src="js/stencils.js?v=17"></script>
+<script src="js/colour.js?v=17"></script>
+<script src="js/train.js?v=17"></script>
+<script src="js/home.js?v=17"></script>
+<script src="js/evening.js?v=17"></script>
+<script src="js/game.js?v=17"></script>
 </body>
 </html>

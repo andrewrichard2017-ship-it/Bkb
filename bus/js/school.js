@@ -85,6 +85,20 @@ const LUNCH = [
 const GAMES = { name: 'tName', count: 'tCount', numbers: 'tTrace', animals: 'tAnimals', lunch: 'tLunch', draw: 'tDraw', memory: 'tMemory' };
 const CRAYONS = ['#ef4444', '#f97316', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
 
+// A "Skip ⏭" button: the first tap asks, a second tap within a couple of seconds skips. A
+// stray tap from a small child does nothing.
+function skipButton(btn, fn) {
+  let armed = 0, timer = 0;
+  const reset = () => { armed = 0; btn.classList.remove('armed'); btn.textContent = 'Skip ⏭'; };
+  btn.textContent = 'Skip ⏭';
+  btn.addEventListener('click', () => {
+    if (armed && performance.now() - armed < 2500) { clearTimeout(timer); reset(); fn(); return; }
+    armed = performance.now(); btn.classList.add('armed'); btn.textContent = 'Tap again to skip';
+    clearTimeout(timer); timer = setTimeout(reset, 2500);
+  });
+  return reset;
+}
+
 const School = (() => {
   const $ = id => document.getElementById(id);
   const root = $('school');
@@ -192,7 +206,7 @@ const School = (() => {
   function open(classKids, exit, opts) {
     cfg = opts; onExit = exit; kids = classKids.slice(0, 12);
     CHILD_NAME = opts.name; PLAYER = opts.id;
-    doneToday.clear(); homeSaid = false;
+    doneToday.clear(); homeSaid = false; skippedDay = false;
     loadVoice();
     root.hidden = false;
     $('menuHello').textContent = 'Today’s work for ' + CHILD_NAME;
@@ -206,13 +220,14 @@ const School = (() => {
   }
 
   // ---------- today's work: one go at each, then home time ----------
-  let homeSaid = false;
+  let homeSaid = false, skippedDay = false;
   function menu() {
     for (const [kind, id] of Object.entries(GAMES)) {
       const b = $(id), done = doneToday.has(kind);
       b.classList.toggle('done', done); b.disabled = done;
     }
-    const home = Object.keys(GAMES).every(k => doneToday.has(k));
+    const home = skippedDay || Object.keys(GAMES).every(k => doneToday.has(k));
+    $('classSkip').hidden = home;
     $('menuPaper').hidden = home; $('homeCard').hidden = !home;
     if (home) {
       $('homeMsg').textContent = 'All your work is done, ' + CHILD_NAME + '! Time to go home on the train.';
@@ -225,8 +240,8 @@ const School = (() => {
   function trainHome() {
     hush(); root.hidden = true; screen = 'train';
     Train.open({ kids, name: CHILD_NAME, id: PLAYER, color: cfg.color(), sound: cfg.sound, say, hush,
-      color2: (PROFILES.find(p => p.id === PLAYER) || PROFILES[0]).color }, () => {
-      bookLog().push('train'); cfg.persist();
+      color2: (PROFILES.find(p => p.id === PLAYER) || PROFILES[0]).color }, skipped => {
+      if (!skipped) { bookLog().push('train'); cfg.persist(); }
       atHome();
     });
   }
@@ -236,7 +251,7 @@ const School = (() => {
       star: kind => { bookLog().push(kind); cfg.persist(); } }, next => {
       if (next !== 'school') return close();
       // straight back to school for a new day: every game can be played again
-      doneToday.clear(); homeSaid = false; root.hidden = false;
+      doneToday.clear(); homeSaid = false; skippedDay = false; root.hidden = false;
       show('classScreen');
     });
   }
@@ -1136,6 +1151,8 @@ const School = (() => {
   tap('lBack', () => { hush(); Lu.run++; Lu.drag = null; show('classScreen'); });
   tap('lSay', sayAgain);
   tap('tTrain', trainHome);
+  // skip the rest of today's school work: straight to home time
+  skipButton($('classSkip'), () => { if (screen !== 'classScreen') return; cfg.sound.click(); hush(); skippedDay = true; menu(); });
   tap('tBook2', () => show('bookScreen'));
   tap('trBack', () => { hush(); T.run++; show('classScreen'); });
   tap('trSay', sayAgain);

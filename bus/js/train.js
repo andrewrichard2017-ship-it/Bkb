@@ -55,10 +55,11 @@ const Train = (() => {
     toast('All aboard! 🚂', 3);
     setTimeout(() => { if (r === run) cfg.say(['t_aboard'], 'All aboard! Press the green Go button to drive the train home!'); }, 600);
   }
-  function close() {
+  function close(skipped) {
     run++; whistleUp(); root.hidden = true; cfg.hush();
-    if (onDone) onDone();
+    if (onDone) onDone(skipped);
   }
+  skipButton($('trSkip'), () => { if (active()) { cfg.sound.click(); close(true); } });
 
   // ---------- messages ----------
   function toast(text, dur) { T.toast = { text, t: 0, dur: dur || 2.4 }; }
