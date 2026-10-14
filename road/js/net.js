@@ -97,7 +97,7 @@
     const g = RR.game, race = g.race && !g.attract ? g.race : null;
     if (N.role === 'host') {
       if (race) { // the guest's rider carries on as a computer rider
-        for (const r of race.riders) if (r.remote) { if (r.crash) r.remount(); r.remote = false; r.human = false; r.ai = null; r.view = null; }
+        for (const r of race.riders) if (r.remote) { if (r.crash) r.remount(); r.remote = false; r.human = false; r.view = null; r.ai = { pref: 3.6, targetD: r.d, laneT: 0, prey: null, preyT: 0, cd: 0, skill: 1, aggro: 0.5 }; }
         RR.hud.message(0, 'YOUR MATE DISCONNECTED', { big: true, color: '#64b5f6', hold: 3 });
       } else { N.lobby.names[1] = ''; if (RR.menu.screen === 'lobby') RR.menu.show('hosting', { status: 'Your mate left. Waiting for someone to join…' }); }
       N.conn = null;
@@ -195,7 +195,7 @@
   N.sendWeapon = (r, w) => send({ t: 'weapon', r: r.id, w });
   N.sendBusted = r => send({ t: 'busted', r: r.id });
   // host -> guest: things the guest should hear and see that happened on the host
-  const RELAY = new Set(['hit', 'crash', 'finish', 'copGo', 'nitro', 'steal', 'busted', 'raceOver']);
+  const RELAY = new Set(['hit', 'crash', 'finish', 'copGo', 'nitro', 'steal', 'busted', 'raceOver', 'shoot', 'gun', 'blaze', 'frenzy', 'smash', 'pickup']);
   N.relayEvent = e => {
     if (!N.connected || !RELAY.has(e.type) || e.net) return;
     if (e.type === 'raceOver') { send({ t: 'results', results: e.results }); return; }
@@ -203,7 +203,8 @@
     if (e.tgt) m.tgt = e.tgt.id;
     if (e.by) m.by = e.by.id;
     if (e.prey) m.prey = e.prey.id;
-    if (e.info) m.info = { sfx: e.info.sfx, side: e.info.side };
+    if (e.info) m.info = { sfx: e.info.sfx, side: e.info.side, kind: e.info.kind };
+    if (e.side) m.side = e.side;
     if (e.cause) m.cause = e.cause;
     if (e.place) m.place = e.place;
     if (e.w) m.w = e.w;
@@ -222,6 +223,7 @@
     if (m.by !== undefined) e.by = race.byId.get(m.by);
     if (m.prey !== undefined) e.prey = race.byId.get(m.prey);
     if (m.info) e.info = m.info;
+    if (m.side) e.side = m.side;
     if (m.cause) e.cause = m.cause;
     if (m.place) e.place = m.place;
     if (m.w) e.w = m.w;

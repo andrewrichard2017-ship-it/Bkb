@@ -98,6 +98,7 @@
     constructor(track, renderer, quality) {
       T = window.THREE;
       if (!TEX.road) makeTextures(renderer);
+      RR.scenery.init(renderer);
       this.track = track; this.th = track.theme; this.renderer = renderer; this.quality = quality;
       const th = this.th, scene = this.scene = new T.Scene();
       scene.fog = new T.Fog(th.fog, th.fogNear, th.fogFar);
@@ -129,13 +130,8 @@
         const gl = new T.Sprite(new T.SpriteMaterial({ map: TEX.glare, fog: false, depthWrite: false, blending: T.AdditiveBlending, transparent: true, opacity: 0.8 }));
         gl.scale.setScalar(th.fogFar * 0.5); this.glare = gl; scene.add(gl);
       }
-      this.clouds = new T.Group(); scene.add(this.clouds);
-      const rng = RR.rng(track.seed + 3);
-      for (let i = 0; i < (th.night ? 6 : 26); i++) {
-        const sp = new T.Sprite(new T.SpriteMaterial({ map: TEX.cloud, fog: false, depthWrite: false, transparent: true, opacity: th.night ? 0.12 : rng.range(0.45, 0.85), color: th.night ? 0x8080a0 : 0xffffff }));
-        const s = rng.range(0, track.total), p = track.pos(s, rng.range(-1400, 1400), rng.range(260, 520), new T.Vector3());
-        sp.position.copy(p); sp.scale.set(rng.range(400, 900), rng.range(120, 220), 1); this.clouds.add(sp);
-      }
+      this.skyDress = new RR.scenery.Sky(scene, track, quality);
+      this.people = new RR.scenery.People(scene, track.people, track, quality.name === 'low' ? 120 : 260);
       // water
       if (th.sea) {
         TEX.water.repeat.set(220, 220);
@@ -230,8 +226,13 @@
       }
       // props
       const flat = new RR.models.Merge(), smoothM = new RR.models.Merge(), chrome = new RR.models.Merge(), glow = new RR.models.Merge(), bld = new RR.models.Merge(true), pool = new RR.models.Merge(true);
-      const B = { flat, smooth: smoothM, chrome, glow, bld, pool };
-      for (const pr of tr.props) if (pr.s >= s0 && pr.s < s1) this.addProp(B, pr);
+      const texM = {};
+      const B = { flat, smooth: smoothM, chrome, glow, bld, pool, anim: [], tex: k => texM[k] || (texM[k] = new RR.models.Merge(true)) };
+      const low = this.quality.name === 'low';
+      for (const pr of tr.props) if (pr.s >= s0 && pr.s < s1) {
+        if (low && Math.abs(pr.d) > H + 90 && pr.kind !== 'tower' && pr.kind !== 'turbine') continue;
+        this.addProp(B, pr);
+      }
       for (const rl of tr.rails) if (rl.s1 > s0 && rl.s0 < s1) this.addRail(B, Math.max(rl.s0, s0), Math.min(rl.s1, s1), rl.side);
       if (!flat.empty) own(flat.build(), this.mat.props, true);
       if (!smoothM.empty) own(smoothM.build(), this.mat.smooth, true);
@@ -239,6 +240,9 @@
       if (!glow.empty) own(glow.build(), this.mat.glow, false, false);
       if (!bld.empty) own(bld.build(), this.mat.building, this.quality.shadows >= 2048);
       if (!pool.empty) own(pool.build(), this.mat.pool, false, false);
+      for (const k in texM) own(texM[k].build(), RR.scenery.material(k, this.th.night), this.quality.shadows >= 2048 && k !== 'neon', k !== 'neon');
+      g.userData.anim = B.anim; for (const a of B.anim) g.add(a);
+      if (!low) this.addWires(g, s0, s1);
       // km boards
       for (const pr of tr.props) if (pr.kind === 'kmsign' && pr.s >= s0 && pr.s < s1) g.add(this.kmSign(pr));
       this.scene.add(g);
@@ -251,6 +255,9 @@
       if (e < 2.4) C.copy(cd).multiplyScalar(0.8 + 0.2 * n);                  // gravel shoulder
       else if (e < 5) C.lerp(cd, 0.35);
       if (id === 'city') { C.setHex(e < 3.8 ? 0x8d8a86 : 0x6b6966).multiplyScalar(0.92 + 0.1 * n); return; }
+      const tw = d > 0 && id === 'coast' ? 0 : this.track.townW(s);
+      if (tw > 0.5 && e < 5.2) { C.setHex(0x9a9690).multiplyScalar(0.92 + 0.1 * n); return; }
+      if (tw > 0.5 && e < 32) C.lerp(C2.setHex(id === 'desert' ? 0xb08a62 : 0x7d7462), 0.45);
       const yr = this.track.height(s);
       if (id === 'coast') {
         if (d > 0 && e > 5) C.copy(crk).multiplyScalar(0.85 + 0.25 * n);
@@ -273,6 +280,7 @@
     addProp(B, pr) {
       const G = RR.models.geo, tr = this.track, p = this._place(pr, new T.Vector3()), sc = pr.sc, hd = tr.heading(pr.s);
       const yaw = -hd + pr.rot, rng = RR.rng(Math.floor(pr.s * 13 + pr.d * 7) + 11), J = 0.18;
+      if (RR.scenery.prop(B, pr, { p, hd, base: tr.height(pr.s), rng, night: this.th.night, theme: tr.themeId })) return;
       const at = (dx, dy, dz) => { // local offset rotated by yaw
         const c = Math.cos(yaw), s = Math.sin(yaw);
         return [p.x + dx * c + dz * s, p.y + dy, p.z - dx * s + dz * c];
@@ -333,6 +341,7 @@
           B.chrome.rod(arm0, [arm1.x, arm1.y, arm1.z], 0.06, 0x4a4e54, 6);
           B.glow.add(G.BOX(), 0xffe3a8, [arm1.x, arm1.y - 0.12, arm1.z], [0, yaw, 0], [0.7, 0.1, 0.35]);
           // pool of light on the road
+          if (!this.th.night) break;
           const pc = tr.pos(pr.s, pr.d - sd * 3.4, 0.05, new T.Vector3());
           B.pool.add(QUAD(), 0xffffff, [pc.x, pc.y, pc.z], [-Math.PI / 2, 0, 0], [17, 17, 1]);
           break;
@@ -348,7 +357,6 @@
         }
         case 'mailbox': B.flat.add(G.BOX(), 0x5a4636, at(0, 0.55, 0), [0, 0, 0], [0.1, 1.1, 0.1]); B.smooth.add(G.BOX(), 0x30475e, at(0, 1.15, 0), [0, 0, 0], [0.3, 0.28, 0.5]); break;
         case 'hydrant': B.smooth.add(G.CYL(8), 0xc62828, at(0, 0.4, 0), [0, 0, 0], [0.16, 0.8, 0.16]); B.smooth.add(G.SPH(8, 6), 0xc62828, at(0, 0.8, 0), [0, 0, 0], 0.17); break;
-        case 'house': case 'cabin': case 'barn': case 'shack': this.addHouse(B, pr, p, yaw, rng); break;
         case 'silo': B.smooth.add(G.CYL(14), 0xb8bcc0, [p.x, p.y + 7, p.z], [0, 0, 0], [2.6, 14, 2.6]); B.chrome.add(G.SPH(14, 8), 0xc0c4c8, [p.x, p.y + 14, p.z], [0, 0, 0], [2.6, 1.6, 2.6]); break;
         case 'vines': {
           for (let s = pr.s; s < pr.s + pr.sc; s += 8) {
@@ -362,7 +370,6 @@
           for (const y of [0.55, 1.05]) B.flat.add(G.BOX(), 0x9b8466, at(0, y, 2), [0, 0, 0], [0.06, 0.1, 4.05]);
           break;
         }
-        case 'building': case 'tower': this.addBuilding(B, pr, p); break;
         case 'neon': {
           const c = [0xff2d95, 0x00e5ff, 0xffd400, 0x7cff4f][pr.v];
           const q = tr.pos(pr.s, pr.d, 0, new T.Vector3());
@@ -382,36 +389,28 @@
         }
       }
     }
-    addHouse(B, pr, p, yaw, rng) {
-      const G = RR.models.geo, kind = pr.kind, sc = pr.sc;
-      const at = (dx, dy, dz) => { const c = Math.cos(yaw), s = Math.sin(yaw); return [p.x + dx * c + dz * s, p.y + dy, p.z - dx * s + dz * c]; };
-      const W = (kind === 'barn' ? 12 : kind === 'shack' ? 6 : 9) * sc, D = (kind === 'barn' ? 16 : kind === 'shack' ? 5 : 8) * sc, Hh = (kind === 'barn' ? 6 : kind === 'shack' ? 3 : 3.4) * sc;
-      const wall = { house: [0xe8dcc8, 0xc9dbe6, 0xf2e2a8, 0xe3c4c4, 0xffffff][pr.v], cabin: 0x6b4a32, barn: 0xa3302a, shack: 0x8f9296 }[kind];
-      const roof = { house: [0x6b3a2e, 0x3d4a5a, 0x5a5a5a, 0x7a4a32, 0x404040][pr.v], cabin: 0x2f4a32, barn: 0x4a4a4a, shack: 0x6f7377 }[kind];
-      B.flat.add(G.BOX(), wall, at(0, Hh / 2 - 0.3, 0), [0, 0, 0], [W, Hh + 0.6, D]);
-      if (kind === 'shack') B.flat.add(G.BOX(), roof, at(0, Hh + 0.3, 0), [0, 0, 0.12], [W + 0.6, 0.15, D + 0.6]);
-      else {
-        const rh = (kind === 'barn' ? 4 : 2.2) * sc;
-        B.flat.add(G.CYL(3), roof, at(0, Hh + rh / 2 - 0.01, 0), [Math.PI / 2, 0, Math.PI / 2], [rh * 1.15, D + 0.6, (W / 2 + 0.4) * 1.1]);
+    // sagging telephone wires between consecutive poles
+    addWires(g, s0, s1) {
+      const tr = this.track, poles = tr.props.filter(p => p.kind === 'pole' && p.s >= s0 - 50 && p.s < s1);
+      if (poles.length < 2) return;
+      const pts = [], a = new T.Vector3(), b = new T.Vector3();
+      for (let i = 0; i + 1 < poles.length; i++) {
+        const P0 = poles[i], P1 = poles[i + 1];
+        if (P1.s - P0.s > 60 || P0.s >= s1) continue;
+        for (const off of [-0.9, 0, 0.9]) {
+          let prev = null;
+          for (let k = 0; k <= 8; k++) {
+            const u = k / 8, s = P0.s + (P1.s - P0.s) * u;
+            tr.pos(s, P0.d + off, 0, a); a.y = lerp(tr.ground(P0.s, P0.d), tr.ground(P1.s, P1.d), u) + 8.6 - Math.sin(u * Math.PI) * 0.9;
+            if (prev) pts.push(prev.x, prev.y, prev.z, a.x, a.y, a.z);
+            prev = b.copy(a).clone();
+          }
+        }
       }
-      const win = this.th.night ? 0xffd27a : 0x22303c, wg = this.th.night ? B.glow : B.flat;
-      for (const dz of [-D * 0.25, D * 0.25]) wg.add(G.BOX(), win, at(W / 2 + 0.02, Hh * 0.55, dz), [0, 0, 0], [0.06, 1.0 * sc, 1.2 * sc]);
-      B.flat.add(G.BOX(), kind === 'barn' ? 0xf2f2f2 : 0x4a3426, at(W / 2 + 0.02, (kind === 'barn' ? 2.2 : 1.0) * sc, 0), [0, 0, 0], [0.06, (kind === 'barn' ? 4.4 : 2.0) * sc, (kind === 'barn' ? 4 : 1.0) * sc]);
-      if (kind === 'cabin' || kind === 'house') B.flat.add(G.BOX(), 0x6a5a50, at(-W * 0.25, Hh + 2.2 * sc, D * 0.25), [0, 0, 0], [0.6, 2.2, 0.6]);
-    }
-    addBuilding(B, pr, p) {
-      const tr = this.track, hd = tr.heading(pr.s), w = pr.sc, h = pr.h, dep = pr.depth;
-      const yaw = -hd + (pr.rot || 0), base = tr.height(pr.s) - 0.2;
-      const col = new T.Color([0xc9b8a0, 0x9fa8b3, 0xb5a090, 0x8a8f99, 0xd8d0c0][pr.v]);
-      const c = Math.cos(yaw), s = Math.sin(yaw), cx = p.x, cz = p.z;
-      const corner = (dx, dz) => [cx + dx * c + dz * s, cz - dx * s + dz * c];
-      const hw = dep / 2, hl = w / 2; // dep across (x), w along road (z)
-      const pts = [corner(-hw, -hl), corner(hw, -hl), corner(hw, hl), corner(-hw, hl)];
-      for (let i = 0; i < 4; i++) {
-        const a = pts[i], b = pts[(i + 1) % 4], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
-        B.bld.quad([a[0], base, a[1]], [b[0], base, b[1]], [b[0], base + h, b[1]], [a[0], base + h, a[1]], col, [0, 0, L / 15, 0, L / 15, h / 22, 0, h / 22]);
-      }
-      B.bld.quad([pts[0][0], base + h, pts[0][1]], [pts[1][0], base + h, pts[1][1]], [pts[2][0], base + h, pts[2][1]], [pts[3][0], base + h, pts[3][1]], new T.Color(0x3a3a3e), [0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99, 0.99]);
+      if (!pts.length) return;
+      const geo = new T.BufferGeometry(); geo.setAttribute('position', new T.Float32BufferAttribute(pts, 3));
+      const l = new T.LineSegments(geo, this.mat.wire || (this.mat.wire = new T.LineBasicMaterial({ color: 0x1a1a1a, transparent: true, opacity: 0.7 })));
+      l.userData.own = true; g.add(l);
     }
     addRail(B, s0, s1, side) {
       const G = RR.models.geo, tr = this.track, d = side * (H + 1.65);
@@ -533,8 +532,14 @@
     }
 
     // per view, before rendering: sky, sun and shadow box follow the camera / focus point
+    // animated props and people (call once per frame)
+    animate(t, views) {
+      for (const [, ch] of this.chunks) for (const a of ch.userData.anim || []) a.userData.tick(t);
+      this.people.update(t, views);
+    }
     frame(cam, focus, t) {
       this.sky.position.copy(cam.position);
+      this.skyDress.frame(cam, t);
       if (this.glare) this.glare.position.copy(cam.position).addScaledVector(this.sunDir, this.th.fogFar * 1.4);
       this.sun.position.copy(focus).addScaledVector(this.sunDir, 150);
       this.sun.target.position.copy(focus);

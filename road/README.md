@@ -22,7 +22,7 @@ Play it at `/Bkb/road/` on the GitHub Pages site, or open `road/index.html` thro
 | **Canyon Run** | Golden hour in red-rock desert. Long straights, mesas, cactus, and big crests that throw you into the air. |
 | **Downtown** | Night in the city: lit office blocks, neon, street lights, parked cars, rush-hour traffic and more cops. Your headlight lights the road. |
 
-Every road is generated from a seed: the bends, hills, jumps, roadside props and traffic. It's a different layout on each level.
+Every road is generated from a seed: the bends, hills, jumps, roadside props and traffic. It's a different layout on each level. The country roads pass through small towns (shops, diners, gas stations, motels, churches, people on the pavements, a welcome sign), and there's life along the way: billboards, wind turbines and cattle in the valley, oil pumps and rock arches in the desert, sailing boats and lighthouses on the coast, campsites in the forest, and crowds cheering at the start and finish. The city has shopfronts, fire escapes, rooftop water tanks, traffic lights, bus stops and a second row of taller blocks. A painted panorama of mountains, mesas or skyline sits on the horizon, with clouds and birds overhead.
 
 ## Bikes
 
@@ -49,6 +49,9 @@ Every road is generated from a seed: the bends, hills, jumps, roadside props and
 | R1 | Nitro (super bikes) |
 | L1 | Look behind |
 | R3 / touchpad click | Change camera (chase, far, low, helmet) |
+| Right stick | Swing the camera round the bike (springs back when you let go) |
+| D-pad ↑ (or L3) | **Turbo Blaze** special, when its meter is full |
+| D-pad ↓ | **Frenzy** special, when its meter is full |
 | Options | Pause |
 | Menus | D-pad / stick to move, ✕ select, ○ back, ◀ ▶ (or L1/R1) to change a setting |
 
@@ -56,7 +59,7 @@ Hits, crashes, landings and the start all **rumble** the pad. Web pages can't us
 
 **Pairing a PS5 controller:** hold **Create** (top left) and the **PS** button until the light bar flashes, then pair it in your phone's or computer's Bluetooth settings (or plug it in with USB-C). Open the game in Chrome or Edge (Safari works too on recent Apple devices) and press any button.
 
-**Keyboard:** W/↑ throttle, S/↓ brake, A D/← → steer, J / K hit left / right, L kick, Space nitro, B look behind, V camera, Esc pause. **Two players on one keyboard:** P1 WASD + F/G hit + H kick + Q nitro; P2 arrows + , . hit + / kick + Right Shift nitro. With one controller plugged in, the controller is P1 and the keyboard P2.
+**Keyboard:** W/↑ throttle, S/↓ brake, A D/← → steer, J / K hit left / right, L kick, Space nitro, T Turbo Blaze, R Frenzy, B look behind, V camera, Esc pause. **Two players on one keyboard:** P1 WASD + F/G hit + H kick + Q nitro + 1/2 specials; P2 arrows + , . hit + / kick + Right Shift nitro + Numpad 7/8 specials. With one controller plugged in, the controller is P1 and the keyboard P2.
 
 **Touch (phones without a controller):** the bike accelerates on its own; drag across the left half to steer; buttons on the right for hit left/right, kick, brake and nitro.
 
@@ -64,7 +67,10 @@ Hits, crashes, landings and the start all **rumble** the pad. Web pages can't us
 
 - **Fighting.** Ride alongside a rival and hit them. Their health bar shows at the top while you're close. At zero they come off the bike. Kicks do less damage but shove them sideways, into traffic or a tree if you time it.
 - **Weapons.** Some rivals carry a chain, club, crowbar, pipe or bat. Punch one just as they wind up a swing and you **steal it**; knock an armed rider off bare-handed and you pick theirs up. Police carry batons.
-- **Crashes.** Hitting a car, tree, pole, rock or parked car at speed throws you off. You tumble, then **run back to your bike**; mash ✕ to run faster. Every crash damages the bike; at 0% it's **wrecked**.
+- **Shotguns.** Glowing crates sit on the road every kilometre or so; ride through one for a shotgun with three shells. Fire with □ / ○: each blast knocks the nearest rider ahead on that side straight off their bike. Rivals grab crates too, so watch out.
+- **Turbo Blaze** (orange meter). Fills as you ride fast, catch air, land jumps, scrape past traffic and keep riding without crashing (a crash halves it). When it's full, D-pad ↑ gives four seconds of flat-out speed with flames pouring off the wheels: you can't crash or be hurt, and you smash through traffic and flatten any rider you touch.
+- **Frenzy** (red meter). Fills when you take a beating and when you land hits on riders and police (knock-offs count most). When it's full, D-pad ↓ hands you a machine gun for ten seconds: it fires on its own at the nearest rider or cop, and you take half damage.
+- **Crashes.** Hitting a car, tree, pole, rock or parked car at speed throws you off. You tumble, then **run back to your bike** (quickly; mash ✕ to sprint). Every crash damages the bike; at 0% it's **wrecked**.
 - **Police.** Cops wait at the roadside and chase you when you pass (siren, ★ POLICE tag, flashing warning). They'll try to club you off. If one reaches you while you're off your bike, you're **busted**.
 - **Riding.** The faster you go, the harder the bends pull you to the outside, so lean into them or brake. Crests and jumps launch you into the air (no steering up there). Off the tarmac you slow right down. The left side of the road is oncoming traffic.
 - **The pack** races hard, picks fights (with you and each other), swerves through traffic and crashes too. It stays roughly around you, so there's always someone to fight.
@@ -85,6 +91,7 @@ For testing, run a local PeerServer (`npx peer --port 9000`) and add `?peerhost=
 - `index.html`: page, styles, script tags (bump the `?v=` numbers after changing anything in `js/`).
 - `js/core.js` maths, seeded RNG/noise, settings and career save · `js/data.js` bikes, rivals, weapons, themes, levels
 - `js/track.js` road generation (bends, hills, jumps, props, deterministic traffic) · `js/world.js` the three.js scene, streamed in 240 m chunks
+- `js/scenery.js` buildings with canvas-texture facades, towns, roadside life, animated props, pedestrians and crowds, clouds, the horizon panorama and birds
 - `js/models.js` procedural bikes, riders (IK limbs), weapons and cars · `js/rider.js` physics, combat, crashes, AI, cops, posing
 - `js/race.js` a race: grid, countdown, hits, bumps, busts, standings, results · `js/main.js` loop, cameras, split screen, events → sound/rumble/sparks
 - `js/input.js` pad/keyboard/touch · `js/hud.js` HUD · `js/menu.js` menus, career, garage · `js/net.js` online · `js/audio.js` synthesised engines, hits and music · `js/fx.js` particles

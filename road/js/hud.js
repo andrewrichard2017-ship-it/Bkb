@@ -30,6 +30,7 @@
       const bk = el('div', 'meter bikem', bl, '<label>BIKE</label><div><i></i></div>');
       const wpn = el('div', 'weapon', bl);
       const nitro = el('div', 'nitro', bl);
+      const spx = el('div', 'specials', p, '<div class="sm turbo"><label>TURBO</label><div><i></i></div><em></em></div><div class="sm frenzy"><label>FRENZY</label><div><i></i></div><em></em></div>');
       const sp = el('div', 'speedo', p, `<svg viewBox="0 0 120 70"><path class="arc" d="M10 64 A52 52 0 0 1 110 64" /><path class="rpm" d="M10 64 A52 52 0 0 1 110 64" /></svg><b>0</b><span>${RR.speedUnit()}</span><em>1</em>`);
       const rival = el('div', 'rival', p, '<label></label><div><i></i></div>');
       const cop = el('div', 'copwarn', p, 'POLICE');
@@ -41,7 +42,8 @@
       const tags = [];
       for (let i = 0; i < 7; i++) tags.push(el('div', 'tag', p));
       if (v.rider.human && race.humans.length > 1) el('div', 'who', p, v.rider.name).style.color = hex(v.rider.look.tag || 0xffffff);
-      panels.push({ v, p, pos, time, dots, hp: hp.querySelector('i'), bk: bk.querySelector('i'), wpn, nitro, sp, spB: sp.querySelector('b'), spE: sp.querySelector('em'), rpm: sp.querySelector('.rpm'), rival, rivalL: rival.querySelector('label'), rivalB: rival.querySelector('i'), cop, msgs, taunt, count, hint, flashL, flashR, tags, rivalHold: 0, last: {} });
+      panels.push({ v, p, pos, time, dots, hp: hp.querySelector('i'), bk: bk.querySelector('i'), wpn, nitro, sp, spB: sp.querySelector('b'), spE: sp.querySelector('em'), rpm: sp.querySelector('.rpm'), rival, rivalL: rival.querySelector('label'), rivalB: rival.querySelector('i'), cop, msgs, taunt, count, hint, flashL, flashR, tags, rivalHold: 0, last: {},
+        tb: spx.querySelector('.turbo'), fz: spx.querySelector('.frenzy'), tbI: spx.querySelector('.turbo i'), fzI: spx.querySelector('.frenzy i'), tbE: spx.querySelector('.turbo em'), fzE: spx.querySelector('.frenzy em') });
     }
     H.layout(views);
     const touch = RR.isTouch && !RR.input.padCount && views.length === 1;
@@ -87,7 +89,13 @@
       // meters
       set(P, 'hp', Math.round(r.hp), x => { P.hp.style.width = x + '%'; P.hp.className = x < 25 ? 'low' : ''; });
       set(P, 'bk', Math.round(100 - r.dmg), x => { P.bk.style.width = x + '%'; P.bk.className = x < 30 ? 'low' : ''; });
-      set(P, 'wpn', r.weapon || '', x => { P.wpn.textContent = x ? RR.WEAPONS[x].name : 'FISTS'; P.wpn.classList.toggle('armed', !!x); });
+      set(P, 'wpn', (r.frenzyT > 0 ? 'mg' : r.weapon || '') + r.ammo, () => { const x = r.frenzyT > 0 ? null : r.weapon; P.wpn.textContent = r.frenzyT > 0 ? 'MACHINE GUN' : x ? RR.WEAPONS[x].name + (x === 'shotgun' ? ' ×' + r.ammo : '') : 'FISTS'; P.wpn.classList.toggle('armed', !!x || r.frenzyT > 0); });
+      // specials
+      const dev = RR.input.deviceFor(v.index), keyT = dev === 'pad' ? 'D-PAD ↑' : dev === 'keys-wasd' ? '1' : dev === 'keys-arrows' ? 'NUM 7' : dev === 'touch' ? 'TAP' : 'T';
+      const keyF = dev === 'pad' ? 'D-PAD ↓' : dev === 'keys-wasd' ? '2' : dev === 'keys-arrows' ? 'NUM 8' : dev === 'touch' ? 'TAP' : 'R';
+      const tbState = r.blazeT > 0 ? 'on' : r.turbo >= 100 ? 'ready' : '', fzState = r.frenzyT > 0 ? 'on' : r.frenzy >= 100 ? 'ready' : '';
+      set(P, 'tb', Math.round(r.blazeT > 0 ? r.blazeT / RR.SPECIALS.blazeTime * 100 : r.turbo) + tbState, () => { P.tbI.style.width = (r.blazeT > 0 ? r.blazeT / RR.SPECIALS.blazeTime * 100 : r.turbo) + '%'; P.tb.className = 'sm turbo ' + tbState; P.tbE.textContent = tbState === 'ready' ? keyT : tbState === 'on' ? r.blazeT.toFixed(1) : ''; });
+      set(P, 'fz', Math.round(r.frenzyT > 0 ? r.frenzyT / RR.SPECIALS.frenzyTime * 100 : r.frenzy) + fzState, () => { P.fzI.style.width = (r.frenzyT > 0 ? r.frenzyT / RR.SPECIALS.frenzyTime * 100 : r.frenzy) + '%'; P.fz.className = 'sm frenzy ' + fzState; P.fzE.textContent = fzState === 'ready' ? keyF : fzState === 'on' ? r.frenzyT.toFixed(1) : ''; });
       set(P, 'nitro', r.bike.nitro ? r.nitro + '/' + r.bike.nitro + (r.nitroT > 0 ? '!' : '') : '', x => {
         P.nitro.innerHTML = r.bike.nitro ? 'NITRO ' + Array.from({ length: r.bike.nitro }, (_, i) => `<i class="${i < r.nitro ? 'on' : ''}"></i>`).join('') : '';
         P.nitro.classList.toggle('burn', r.nitroT > 0);

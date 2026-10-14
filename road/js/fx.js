@@ -74,6 +74,23 @@
     flame(p, vx, vz) {
       this.sparks.spawn(p.x, p.y, p.z, vx + (Math.random() - 0.5), Math.random() * 0.5, vz + (Math.random() - 0.5), 0.12 + Math.random() * 0.1, 0.18, 0.35, 0.55, 1, 0, 3);
     }
+    // Turbo Blaze: fire streaming off a wheel
+    fire(p, vx, vz) {
+      for (let i = 0; i < 2; i++) {
+        const r = Math.random();
+        this.sparks.spawn(p.x + (Math.random() - 0.5) * 0.3, p.y + Math.random() * 0.25, p.z + (Math.random() - 0.5) * 0.3, vx * 0.6 + (Math.random() - 0.5) * 1.4, 0.8 + Math.random() * 2, vz * 0.6 + (Math.random() - 0.5) * 1.4,
+          0.16 + Math.random() * 0.2, 0.18 + Math.random() * 0.16, 1, 0.28 + r * 0.32, 0.03, -2, 2.5);
+      }
+    }
+    // bullets / buckshot: a quick bright streak from a to b, plus a muzzle flash
+    tracer(a, b, n = 1, spread = 0) {
+      const dx = b.x - a.x, dy = b.y - a.y, dz = b.z - a.z, L = Math.hypot(dx, dy, dz) || 1, sp = 140;
+      for (let i = 0; i < n; i++) {
+        const j = () => (Math.random() - 0.5) * spread * sp;
+        this.sparks.spawn(a.x, a.y, a.z, dx / L * sp + j(), dy / L * sp + j(), dz / L * sp + j(), Math.min(0.25, L / sp), 0.09, 1, 0.92, 0.6, 0, 0);
+      }
+      for (let i = 0; i < 6; i++) this.sparks.spawn(a.x, a.y, a.z, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, (Math.random() - 0.5) * 3, 0.06, 0.22, 1, 0.85, 0.4, 0, 0);
+    }
     update(dt) { this.sparks.update(dt); this.dust.update(dt); }
   }
   RR.FX = FX;

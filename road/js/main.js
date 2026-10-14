@@ -95,7 +95,7 @@
   // ---- views and cameras ----
   function makeView(rider, index) {
     const cam = new T.PerspectiveCamera(62, 1, 0.3, 4000);
-    return { rider, index, cam, mode: RR.settings.camera || 0, shake: 0, fov: 62, back: 5.5, camD: rider.d, camH: 2, rect: { x: 0, y: 0, w: 1, h: 1 }, cine: { t: 0, kind: 0, who: 0 }, s: rider.s };
+    return { rider, index, cam, mode: RR.settings.camera || 0, orbit: 0, orbitP: 0, shake: 0, fov: 62, back: 5.5, camD: rider.d, camH: 2, rect: { x: 0, y: 0, w: 1, h: 1 }, cine: { t: 0, kind: 0, who: 0 }, s: rider.s };
   }
   function layoutViews() {
     const W = innerWidth, Hh = innerHeight, n = G.views.length;
@@ -140,19 +140,20 @@
       const p = tr.pos(r.s + 0.05, r.d, 0, tmp.v); p.y = r.Y + r.model.D.seat + 0.78;
       cam.position.copy(p);
       const ahead = tr.pos(r.s + 30, r.d + Math.tan(r.phi) * 30, 0, tmp.v2); ahead.y = tr.height(r.s + 30) + 1.2;
-      cam.up.set(0, 1, 0); cam.lookAt(ahead); cam.rotateZ(r.lean * 0.6);
+      cam.up.set(0, 1, 0); cam.lookAt(ahead); cam.rotateZ(r.lean * 0.6); cam.rotateY(-v.orbit);
     } else {
-      const look = r.lookBack;
-      const back = (M.back + sp * 0.014) * (look ? -1.3 : 1);
+      // right stick swings the camera round the bike (a = yaw, v.orbitP = height)
+      const look = r.lookBack, a = v.orbit, k = Math.min(1, Math.abs(a) * 1.5);
+      const back = (M.back + sp * 0.014 + k * 1.2) * (look ? -1.3 : 1);
       v.camD = snap ? r.d : damp(v.camD, r.d - Math.sin(r.phi) * 1.5, 6, dt);
-      const cs = r.s - back;
-      const p = tr.pos(cs, v.camD, 0, tmp.v);
+      const cs = r.s - back * Math.cos(a), cd = v.camD - back * Math.sin(a);
+      const p = tr.pos(cs, cd, 0, tmp.v);
       const ground = Math.max(tr.height(cs), r.Y - 0.6);
-      v.camH = snap ? ground + M.h : damp(v.camH, ground + M.h + (r.air ? 0.4 : 0), 7, dt);
-      p.y = Math.max(v.camH, tr.height(cs) + 0.8);
+      v.camH = snap ? ground + M.h : damp(v.camH, ground + M.h + (r.air ? 0.4 : 0) + v.orbitP * 3, 7, dt);
+      p.y = Math.max(v.camH, tr.height(cs) + 0.6);
       cam.position.copy(p);
-      const la = look ? tr.pos(r.s, r.d, 0, tmp.v2) : tr.pos(r.s + 7 + sp * 0.12, r.d * 0.85 + v.camD * 0.15, 0, tmp.v2);
-      la.y = look ? r.Y + 1.1 : r.Y + 0.95 + (tr.height(r.s + 7 + sp * 0.12) - tr.height(r.s)) * 0.5;
+      const la = look ? tr.pos(r.s, r.d, 0, tmp.v2) : tr.pos(r.s + (7 + sp * 0.12) * (1 - k), r.d * 0.85 + v.camD * 0.15, 0, tmp.v2);
+      la.y = look ? r.Y + 1.1 : r.Y + 0.95 + (tr.height(r.s + 7 + sp * 0.12) - tr.height(r.s)) * 0.5 * (1 - k);
       cam.up.set(0, 1, 0); cam.lookAt(la);
       cam.rotateZ(r.lean * -0.18 * (look ? -1 : 1));
     }
@@ -214,10 +215,11 @@
         case 'hit': {
           const tp = focusOf(e.tgt, tmp.v2); tp.y += 0.4;
           const nv = nearestView(tp), hv = clamp(1 - nv.d / 70, 0, 1);
-          if (hv > 0.02) RR.audio.sfx(e.info.sfx || 'punch', { vol: 0.5 + hv * 0.5 });
+          if (hv > 0.02 && e.info.kind !== 'gun') RR.audio.sfx(e.info.sfx || 'punch', { vol: 0.5 + hv * 0.5 });
           if (fx) fx.hitFlash(tp);
           const tv = viewOf(e.tgt);
-          if (tv) { tv.shake = Math.min(1, tv.shake + 0.55); RR.input.rumble(tv.index, 0.85, 0.6, 170); RR.hud.flash(tv.index, e.info.side); if (!who.human && Math.random() < 0.3) msg(tv.index, `${who.name}: ${pick(RR.TAUNTS.hit)}`, { taunt: true }); }
+          if (tv && e.info.kind === 'gun') { tv.shake = Math.min(0.6, tv.shake + 0.08); RR.input.rumble(tv.index, 0.3, 0.5, 60); }
+          else if (tv) { tv.shake = Math.min(1, tv.shake + 0.55); RR.input.rumble(tv.index, 0.85, 0.6, 170); RR.hud.flash(tv.index, e.info.side); if (!who.human && Math.random() < 0.3) msg(tv.index, `${who.name}: ${pick(RR.TAUNTS.hit)}`, { taunt: true }); }
           if (wv) { wv.shake = Math.min(1, wv.shake + 0.2); RR.input.rumble(wv.index, 0.2, 0.7, 90); }
           break;
         }
@@ -228,7 +230,7 @@
           if (fx && pos && e.cause !== 'knock') fx.sparkBurst(pos, 40, 6);
           if (wv) {
             wv.shake = 1; RR.input.rumble(wv.index, 1, 1, 450);
-            msg(wv.index, who.out === 'wrecked' ? 'BIKE WRECKED!' : e.cause === 'knock' ? 'KNOCKED OFF!' : 'WIPEOUT!', { big: true, color: '#ff5252' });
+            msg(wv.index, who.out === 'wrecked' ? 'BIKE WRECKED!' : e.cause === 'shot' ? 'SHOT OFF!' : e.cause === 'knock' ? 'KNOCKED OFF!' : 'WIPEOUT!', { big: true, color: '#ff5252' });
             if (who.out === 'wrecked') RR.audio.sfx('wrecked');
           }
           if (e.by && e.by.human) {
@@ -248,6 +250,26 @@
         case 'copGo': for (const v of G.views) if (v.rider === e.prey) msg(v.index, 'COPS!', { big: true, color: '#64b5f6' }); break;
         case 'busted': if (wv) { msg(wv.index, 'BUSTED!', { big: true, color: '#64b5f6', hold: 3 }); RR.audio.sfx('busted'); RR.input.rumble(wv.index, 0.8, 0.8, 600); } break;
         case 'finish': if (wv) { msg(wv.index, `${RR.ordinal(e.place).toUpperCase()} PLACE!`, { big: true, color: e.place <= RR.QUALIFY ? '#ffd54f' : '#ffffff', hold: 3 }); RR.audio.sfx('finish'); RR.input.rumble(wv.index, 0.5, 0.8, 400); } break;
+        case 'shoot': {
+          const a = focusOf(who, tmp.v2).clone(); a.y += 0.5;
+          const b = e.tgt ? focusOf(e.tgt, tmp.v3).clone() : tr.pos(who.s + 25, who.d + e.side * 3, 1.2, tmp.v3).clone();
+          if (fx) fx.tracer(a, b, 10, 0.05);
+          RR.audio.sfx('shotgun', { vol: wv ? 1 : Math.max(0.2, vol) });
+          if (wv) { wv.shake = Math.min(1, wv.shake + 0.4); RR.input.rumble(wv.index, 1, 0.6, 180); }
+          break;
+        }
+        case 'gun': {
+          const a = focusOf(who, tmp.v2).clone(); a.y += 0.6;
+          const b = e.tgt ? focusOf(e.tgt, tmp.v3).clone() : a.clone();
+          if (fx && e.tgt) { fx.tracer(a, b, 1, 0.02); fx.hitFlash(b); }
+          if (vol > 0.05 || wv) RR.audio.sfx('gun', { vol: wv ? 0.55 : vol * 0.5 });
+          if (wv) RR.input.rumble(wv.index, 0.15, 0.4, 50);
+          break;
+        }
+        case 'blaze': if (wv) { msg(wv.index, 'TURBO BLAZE!', { big: true, color: '#ff8a00' }); RR.input.rumble(wv.index, 0.8, 1, 500); wv.shake = 0.6; } RR.audio.sfx('nitro', { vol: wv ? 1 : vol, rate: 0.8 }); break;
+        case 'frenzy': if (wv) { msg(wv.index, 'FRENZY!', { big: true, color: '#ff1744' }); RR.input.rumble(wv.index, 1, 0.8, 400); } RR.audio.sfx('busted', { vol: wv ? 0.8 : vol, rate: 1.4 }); break;
+        case 'smash': if (fx && pos) fx.sparkBurst(pos, 16, 6); if (vol > 0.05) RR.audio.sfx('metal', { vol: 0.4 + vol * 0.4, rate: 0.7 }); if (e.car && (wv || vol > 0.3)) RR.audio.sfx('horn', { vol: 0.6, rate: e.car.horn }); if (wv) RR.input.rumble(wv.index, 0.7, 0.5, 150); break;
+        case 'pickup': if (wv) { msg(wv.index, 'SHOTGUN! ×3', { color: '#ffd54f' }); RR.audio.sfx('steal'); RR.input.rumble(wv.index, 0.3, 0.8, 150); } break;
         case 'raceOver': if (!G.attract) setTimeout(() => RR.menu.raceOver(e.results, race), 50); break;
       }
       if (RR.net && RR.net.active && race.role === 'host') RR.net.relayEvent(e);
@@ -286,6 +308,7 @@
         fx.puff(p, 1, th === 'desert' ? [0.75, 0.55, 0.38] : th === 'coast' ? [0.7, 0.62, 0.5] : [0.45, 0.4, 0.32], 0.7);
       }
       if (!r.crash && r.nitroT > 0) { const p = tr.pos(r.s - 0.95, r.d + 0.12, 0, tmp.v2); p.y = r.Y + 0.45; fx.flame(p, 0, 0); }
+      if (!r.crash && r.blazeT > 0) for (const off of [-0.7, 0.72]) { const p = tr.pos(r.s + off, r.d, 0, tmp.v2); p.y = r.Y + 0.25; fx.fire(p, 0, 0); }
     }
     fx.update(dt);
   }
@@ -304,6 +327,8 @@
           if (G.attract) continue;
           const p = RR.input.players[G.views.length === 2 ? v.index : 0], r = v.rider;
           Object.assign(r.inp, { throttle: p.throttle, brake: p.brake, steer: p.steer, nitro: p.nitro });
+          if (p.turbo) r.inp.turbo = true; if (p.frenzy) r.inp.frenzy = true;
+          v.orbit = damp(v.orbit || 0, p.camX * 2.6, p.camX ? 6 : 4, dt); v.orbitP = damp(v.orbitP || 0, p.camY, 5, dt);
           if (p.atkL) r.inp.atkL = true; if (p.atkR) r.inp.atkR = true; if (p.kick) { r.inp.kick = true; r.inp.kickSide = p.kickSide; }
           r.inp.mash = p.mash; r.lookBack = p.look;
           if (p.cam) { v.mode = (v.mode + 1) % 4; RR.settings.camera = v.mode; RR.saveSettings(); }
@@ -321,6 +346,7 @@
       for (const v of G.views) updateCam(v, dt);
       race.world.stream(G.views, 1);
       race.world.updateTraffic(G.views);
+      race.world.animate(G.t, G.views);
       if (!G.attract) RR.hud.update(dt, G.views, race);
     }
     render();

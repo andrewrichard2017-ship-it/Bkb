@@ -238,6 +238,18 @@
         m.rod([0, 0, 0.06], [0, 0, -0.58], 0.022, 0x111111, 8);
         m.rod([0, 0, -0.04], [0, 0.09, -0.04], 0.016, 0x111111, 6);
         break;
+      case 'shotgun':
+        m.rod([0, 0, 0.1], [0, 0, -0.75], 0.022, 0x2a2a2a, 8);
+        m.rod([0.03, -0.01, -0.05], [0.03, -0.01, -0.72], 0.02, 0x2a2a2a, 8);
+        m.add(BOX(), 0x6d4425, [0, -0.05, 0.12], [0.3, 0, 0], [0.07, 0.12, 0.3]);
+        m.add(BOX(), 0x6d4425, [0, -0.04, -0.3], [0, 0, 0], [0.08, 0.07, 0.2]);
+        break;
+      case 'smg':
+        m.add(BOX(), 0x1c1c1c, [0, 0.02, -0.12], [0, 0, 0], [0.07, 0.11, 0.38]);
+        m.rod([0, 0.04, -0.3], [0, 0.04, -0.58], 0.018, 0x111111, 8);
+        m.add(BOX(), 0x1c1c1c, [0, -0.12, -0.12], [0.15, 0, 0], [0.05, 0.22, 0.07]);
+        m.add(BOX(), 0x333333, [0, -0.02, 0.1], [0, 0, 0], [0.05, 0.08, 0.16]);
+        break;
       case 'crowbar':
         m.rod([0, 0, 0.06], [0, 0, -0.6], 0.018, 0x8b1a1a, 6);
         m.rod([0, 0, -0.6], [0, 0.08, -0.7], 0.018, 0x8b1a1a, 6);
@@ -298,7 +310,7 @@
       this.weaponKind = kind;
       if (kind) {
         this.weaponMesh = new T.Mesh(weaponGeo(kind), MAT.matte); this.weaponMesh.castShadow = true;
-        this.weaponMesh.position.set(0, 0, -LIMB.fore - 0.02); this.weaponMesh.rotation.x = 0.5;
+        this.weaponMesh.position.set(0, 0, -LIMB.fore - 0.02); this.weaponMesh.rotation.x = kind === 'shotgun' || kind === 'smg' ? 0 : 0.5;
         this.limbs.foreR.add(this.weaponMesh);
       }
     }

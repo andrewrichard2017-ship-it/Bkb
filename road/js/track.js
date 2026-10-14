@@ -39,7 +39,8 @@
       this.buildElevation(rng);
       this.integrate();
       this.buildBase();
-      this.props = []; this.rails = []; this.obstacles = [];
+      this.props = []; this.rails = []; this.obstacles = []; this.people = []; this.pickups = [];
+      this.buildTowns(RR.rng(this.seed + 55));
       this.buildLimits(rng);
       this.placeProps(RR.rng(this.seed + 99));
       this.obstacles.sort((a, b) => a.s - b.s);
@@ -187,8 +188,12 @@
       const e = Math.abs(d) - H, yr = this.height(s);
       if (e < 0) return yr - 0.12;
       const coastSea = this.themeId === 'coast' && d > 0;
-      const start = coastSea ? 4 : this.themeId === 'city' ? 7 : 10.5, len = coastSea ? 9 : 48;
-      const shoulder = yr - 0.12 - (e > 1.2 && e < start ? 0.25 * Math.sin(Math.PI * clamp((e - 1.2) / (start - 1.2), 0, 1)) : 0);
+      const tw = coastSea ? 0 : this.townW(s);
+      let start = coastSea ? 4 : this.themeId === 'city' ? 7 : 10.5;
+      const len = coastSea ? 9 : 48;
+      const ditch = e > 1.2 && e < start ? 0.25 * Math.sin(Math.PI * clamp((e - 1.2) / (start - 1.2), 0, 1)) * (1 - tw) : 0;
+      start = lerp(start, 34, tw);
+      const shoulder = yr - 0.12 - ditch;
       if (e < start) return shoulder;
       if (x === undefined) { const p = this.pos(s, d, 0, {}); x = p.x; z = p.z; }
       return lerp(shoulder, this.natural(x, z, d), smooth(clamp((e - start) / len, 0, 1)));
@@ -213,6 +218,27 @@
       }
     }
 
+    // ---- small towns along the country roads ----
+    buildTowns(rng) {
+      const id = this.themeId; this.towns = [];
+      if (id === 'city') return;
+      const gap = { coast: 1500, forest: 2300, valley: 1700, desert: 1900 }[id];
+      if (id !== 'forest') this.towns.push({ s0: this.startS - 160, s1: this.startS + 120, name: rng.int(0, 7) });
+      let s = this.startS + 650;
+      while (s < this.finishS - 420) {
+        const len = rng.range(240, 420);
+        if (rng() < 0.85) this.towns.push({ s0: s, s1: s + len, name: rng.int(0, 7) });
+        s += len + gap * rng.range(0.7, 1.3);
+      }
+    }
+    // 0..1: how much of a town this point of road is in (ramps over 60 m at each end)
+    townW(s) {
+      let w = 0;
+      for (const t of this.towns) if (s > t.s0 - 60 && s < t.s1 + 60) w = Math.max(w, smooth(clamp((s - t.s0 + 60) / 60, 0, 1)) * smooth(clamp((t.s1 + 60 - s) / 60, 0, 1)));
+      return w;
+    }
+    inTown(s, pad = 0) { return this.towns.some(t => s > t.s0 - pad && s < t.s1 + pad); }
+
     // ---- walls (guard rails, buildings, banks) ----
     buildLimits(rng) {
       const { n, limR, limL, themeId } = this;
@@ -223,6 +249,12 @@
         for (let i = Math.max(0, Math.floor(s0 / DS)); i <= Math.min(n - 1, Math.ceil(s1 / DS)); i++) { if (side > 0) limR[i] = H + 1.55; else limL[i] = -(H + 1.55); }
       };
       if (themeId === 'coast') rail(this.startS + 60, this.total, 1);
+      // kerbs in town, and crowd barriers round the start and finish
+      for (let i = 0; i < n; i++) {
+        const s = i * DS;
+        if (this.inTown(s, 10)) { limR[i] = Math.min(limR[i], H + 4.6); limL[i] = Math.max(limL[i], -(H + 4.6)); }
+        if (Math.abs(s - this.startS + 8) < 40 || Math.abs(s - this.finishS + 8) < 50) { limR[i] = Math.min(limR[i], H + 2.6); limL[i] = Math.max(limL[i], -(H + 2.6)); }
+      }
       if (themeId === 'forest' || themeId === 'coast') {
         // guard rails round the outside of the tighter bends
         let i = 0;
@@ -261,7 +293,7 @@
       if (id === 'city') return this.placeCity(rng);
       for (let s = 20; s < T; s += 4) {
         // near the road: things you can crash into
-        if (rng() < { coast: 0.12, forest: 0.42, valley: 0.14, desert: 0.08 }[id]) {
+        if (rng() < { coast: 0.12, forest: 0.42, valley: 0.14, desert: 0.08 }[id] && !this.inTown(s, 20)) {
           const sd = id === 'coast' ? -1 : side();
           if (this.railAt(s, sd)) continue;
           const d = sd * (H + rng.range(3.2, 9.5));
@@ -275,7 +307,8 @@
         while (q > 0) {
           if (rng() < q) {
             const sd = id === 'coast' ? -1 : side();
-            const d = sd * (H + 11 + Math.pow(rng(), 1.6) * 190);
+            let d = sd * (H + 11 + Math.pow(rng(), 1.6) * 190);
+            if (this.inTown(s, 10) && Math.abs(d) < H + 45) d = sd * (H + 45 + rng() * 100);
             const kind = {
               coast: rng.pick(['palm', 'bush', 'bush', 'rock', 'palm']),
               forest: rng() < 0.9 ? 'pine' : 'rock',
@@ -290,16 +323,17 @@
       // telegraph poles
       if (id !== 'forest') {
         const pd = id === 'coast' ? -(H + 4.5) : H + 4.8;
-        for (let s = 30; s < T; s += 48) if (!this.railAt(s, Math.sign(pd)) && clearOfStart(s)) P(s, pd, 'pole', 1, 0, 0);
+        for (let s = 30; s < T; s += 48) if (!this.railAt(s, Math.sign(pd)) && clearOfStart(s) && !this.inTown(s, 8)) P(s, pd, 'pole', 1, 0, 0);
       }
       // houses, barns, cabins, shacks
       const bcount = Math.floor(T / { coast: 160, forest: 420, valley: 220, desert: 520 }[id]);
       for (let b = 0; b < bcount; b++) {
         const s = rng.range(80, T - 40), sd = id === 'coast' ? -1 : side();
         const d = sd * (H + rng.range(16, 60));
-        const kind = { coast: 'house', forest: 'cabin', valley: rng() < 0.4 ? 'barn' : 'house', desert: 'shack' }[id];
-        P(s, d, kind, rng.range(0.9, 1.25), sd > 0 ? -Math.PI / 2 : Math.PI / 2, rng.int(0, 4));
-        if (kind === 'barn' && rng() < 0.6) P(s + 14, d + sd * 4, 'silo', 1, 0, 0);
+        const kind = { coast: rng() < 0.6 ? 'beach' : 'house', forest: 'cabin', valley: rng() < 0.4 ? 'barn' : rng() < 0.5 ? 'farm' : 'house', desert: 'shack' }[id];
+        if (this.inTown(s, 30)) continue;
+        this.props.push({ s, d, kind, sc: rng.range(0.9, 1.2), rot: 0, turn: rng.range(-0.25, 0.25), v: rng.int(0, 7) });
+        if (kind === 'barn') { if (rng() < 0.6) P(s + 14, d + sd * 4, 'silo', 1, 0, 0); if (rng() < 0.5) this.props.push({ s: s - 16, d: d + sd * 6, kind: 'windmill', sc: 1, rot: 0, v: 0 }); }
         if (kind !== 'shack' && kind !== 'cabin' && rng() < 0.5) P(s - 3, sd * (H + 3.4), 'mailbox', 1, sd > 0 ? -Math.PI / 2 : Math.PI / 2, 0);
       }
       if (id === 'valley') {
@@ -312,8 +346,84 @@
         for (let s = 40; s < T; s += 4) if (N.noise1(s / 300, this.seed) > 0.1) { this.props.push({ s, d: H + 10.5, kind: 'fence', sc: 1, rot: 0, v: 0 }); this.props.push({ s, d: -(H + 10.5), kind: 'fence', sc: 1, rot: 0, v: 0 }); }
       }
       if (id === 'coast') {
-        for (let s = 60; s < T; s += 30) if (rng() < 0.5) P(s, -(H + rng.range(2.5, 6)), 'bush', rng.range(0.6, 1.1), rng.range(0, 6), 0);
+        for (let s = 60; s < T; s += 30) if (rng() < 0.5 && !this.inTown(s, 10)) P(s, -(H + rng.range(2.5, 6)), 'bush', rng.range(0.6, 1.1), rng.range(0, 6), 0);
       }
+      this.placeLife(rng);
+    }
+    // billboards, landmarks, animals, machines, towns, crowds and the shotgun crates
+    placeLife(rng) {
+      const id = this.themeId, T = this.total, push = (o) => this.props.push(Object.assign({ sc: 1, rot: 0, v: 0 }, o));
+      const side = () => rng() < 0.5 ? -1 : 1, free = s => !this.inTown(s, 40) && Math.abs(s - this.startS) > 80;
+      for (let s = 300; s < T; s += rng.range(500, 900)) {
+        const sd = id === 'coast' ? -1 : side();
+        if (free(s)) push({ s, d: sd * (H + 12.5), kind: 'billboard', v: rng.int(0, 7), turn: sd * 0.45 });
+      }
+      if (id !== 'forest') for (let s = 40; s < T; s += 50) for (const sd of [-1, 1]) if (!this.railAt(s, sd) && !this.inTown(s, 10)) push({ s, d: sd * (H + 2.4), kind: 'delineator' });
+      if (id === 'valley') {
+        for (let s = 200; s < T; s += rng.range(250, 450)) push({ s, d: side() * (H + rng.range(160, 600)), kind: 'turbine', sc: rng.range(0.8, 1.1) });
+        for (let s = 300; s < T; s += rng.range(350, 700)) if (free(s)) { const sd = side(), d0 = H + rng.range(25, 60); for (let k = 0; k < rng.int(3, 7); k++) push({ s: s + rng.range(-20, 20), d: sd * (d0 + rng.range(-8, 8)), kind: 'cow', rot: rng() * 6.28, v: rng.int(0, 2) }); }
+        for (let s = 200; s < T; s += rng.range(300, 600)) if (free(s)) { const sd = side(); for (let k = 0; k < 5; k++) push({ s: s + k * 7, d: sd * (H + 20 + rng.range(0, 30)), kind: 'haybale', rot: rng() * 3 }); }
+      }
+      if (id === 'desert') {
+        for (let s = 250; s < T; s += rng.range(400, 800)) if (free(s)) { const sd = side(); for (let k = 0; k < rng.int(2, 4); k++) push({ s: s + k * rng.range(18, 35), d: sd * (H + rng.range(35, 160)), kind: 'pumpjack', rot: rng() * 6 }); }
+        for (let s = 800; s < T; s += rng.range(1500, 2600)) push({ s, d: side() * (H + rng.range(120, 300)), kind: 'arch', sc: rng.range(0.9, 1.4) });
+      }
+      if (id === 'coast') {
+        for (let s = 100; s < T; s += rng.range(180, 320)) push({ s, d: H + rng.range(140, 900), kind: 'boat' });
+        for (let s = 1200; s < T; s += rng.range(2500, 3500)) if (free(s)) push({ s, d: H + 6.5, kind: 'lighthouse' });
+      }
+      if (id === 'forest') {
+        for (let s = 300; s < T; s += rng.range(350, 600)) if (free(s)) { const sd = side(); push({ s, d: sd * (H + rng.range(12, 30)), kind: rng() < 0.5 ? 'tent' : 'logpile', rot: rng() * 6 }); }
+      }
+      for (const t of this.towns) this.placeTown(t, rng);
+      this.placeCrowds(rng);
+    }
+    // cheering crowds behind barriers at the start and finish, and the shotgun crates on the road
+    placeCrowds(rng) {
+      for (const [c, a, b] of [[this.startS, -40, 22], [this.finishS, -50, 30]]) {
+        for (let s = c + a; s < c + b; s += 4.2) for (const sd of [-1, 1]) this.props.push({ s, d: sd * (H + 3.0), kind: 'barrier', sc: 1, rot: 0, v: (s / 4.2 | 0) % 2 });
+        for (let s = c + a + 1; s < c + b; s += 1.3) for (const sd of [-1, 1]) for (let row = 0; row < 3; row++) if (rng() < 0.75) this.person(s + rng.range(-0.4, 0.4), sd * (H + 3.8 + row * 0.95), 'cheer', rng);
+      }
+      for (let s = this.startS + 600; s < this.finishS - 200; s += rng.range(900, 1400)) {
+        const d = rng.pick([1.8, 5.4, -1.8, 3.6]);
+        this.pickups.push({ s, d }); this.props.push({ s, d, kind: 'crate', sc: 1, rot: 0, v: 0 });
+      }
+    }
+    person(s, d, kind, rng, o = {}) {
+      const S = RR.scenery;
+      this.people.push(Object.assign({ s, d, kind, a: s, b: s, v: 0, ph: rng() * 9, shirt: rng.pick(S.SHIRTS), pants: rng.pick(S.PANTS), skin: rng.pick(S.SKIN), hair: rng.pick(S.HAIR), turn: kind === 'stand' ? rng.range(-0.8, 0.8) : 0 }, o));
+    }
+    placeTown(t, rng) {
+      const id = this.themeId, push = (o) => this.props.push(Object.assign({ sc: 1, rot: 0, v: 0 }, o));
+      const types = { coast: ['store', 'store', 'diner', 'motel', 'gas', 'beach'], forest: ['store', 'cabin', 'diner', 'motel', 'bar', 'gas', 'church'], valley: ['store', 'store', 'diner', 'church', 'gas', 'house', 'motel'], desert: ['store', 'bar', 'motel', 'gas', 'diner', 'store'] }[id];
+      const W = { store: [9, 16], diner: [13, 16], gas: [16, 18], motel: [24, 34], church: [12, 14], bar: [12, 15], house: [12, 13], beach: [11, 12], cabin: [10, 11] };
+      const DEP = { store: 12, diner: 9, gas: 15, motel: 9, church: 14, bar: 10 };
+      push({ s: t.s0 - 28, d: H + 3.6, kind: 'welcome', v: t.name, turn: Math.PI / 2 });
+      this.obstacles.push({ s: t.s0 - 28, d: H + 3.6, hs: 0.3, hd: 2, kind: 'sign' });
+      for (const sd of id === 'coast' ? [-1] : [-1, 1]) {
+        let s = t.s0 + rng.range(0, 8);
+        while (s < t.s1 - 8) {
+          const type = rng.pick(types), w = rng.range(...W[type]);
+          if (s + w > t.s1) break;
+          const mid = s + w / 2;
+          if (DEP[type]) push({ s: mid, d: sd * (H + 6.6 + DEP[type] / 2), kind: 'tb', type, sc: w, depth: DEP[type], v: rng.int(0, 11) });
+          else push({ s: mid, d: sd * (H + 11.5), kind: type, sc: 0.95, v: rng.int(0, 7) });
+          if (rng() < 0.5 && type !== 'gas' && Math.abs(mid - this.startS) > 60) {
+            const ty = rng.pick(['sedan', 'hatch', 'pickup', 'van']), ct = RR.CAR_TYPES[ty];
+            push({ s: mid, d: sd * (H + 1.35), kind: 'parked', rot: sd > 0 ? 0 : Math.PI, type: ty, color: rng.pick(CAR_COLOURS) });
+            this.obstacles.push({ s: mid, d: sd * (H + 1.35), hs: ct.len / 2, hd: ct.w / 2, kind: 'parked' });
+          }
+          if (rng() < 0.35) push({ s: s + w - 1, d: sd * (H + 5.3), kind: rng.pick(['bench', 'bin', 'planter']) });
+          s += w + rng.range(2, 7);
+        }
+        for (let q = t.s0 + 8; q < t.s1; q += 30) this.addProp(q, sd * (H + 3.2), 'lamp', 1, sd > 0 ? Math.PI : 0, 0);
+        for (let k = 0; k < (t.s1 - t.s0) / 10; k++) {
+          const v = rng.range(1.1, 1.7) * (rng() < 0.5 ? -1 : 1);
+          if (rng() < 0.7) this.person(rng.range(t.s0, t.s1), sd * (H + rng.range(5.0, 5.8)), 'walk', rng, { a: t.s0, b: t.s1, v });
+          else this.person(rng.range(t.s0, t.s1), sd * (H + rng.range(5.2, 6.0)), 'stand', rng);
+        }
+      }
+      if (id !== 'coast' && rng() < 0.6) push({ s: (t.s0 + t.s1) / 2, d: (rng() < 0.5 ? -1 : 1) * (H + 40), kind: 'watertower' });
     }
     placeCity(rng) {
       const T = this.total, P = (s, d, k, sc, rot, v) => this.addProp(s, d, k, sc, rot, v);
@@ -343,9 +453,21 @@
           }
           if (rng() < 0.4) P(s + rng.range(10, block - 10), sd * (H + 2.6), 'hydrant', 1, 0, 0);
           this.props.push({ s: s + block + 9, d: sd * (H + 7), kind: 'crossing', sc: 18, rot: 0, v: 0 });
+          // traffic lights at the corner, a bus stop, trees, people on the pavement
+          this.props.push({ s: s + block + 1, d: sd * (H + 3.0), kind: 'trafficlight', sc: 1, rot: 0, v: 0 });
+          this.obstacles.push({ s: s + block + 1, d: sd * (H + 3.0), hs: 0.2, hd: 0.2, kind: 'pole' });
+          if (rng() < 0.5) this.props.push({ s: s + rng.range(20, block - 20), d: sd * (H + 5.4), kind: 'busstop', sc: 1, rot: 0, v: 0 });
+          for (let q = s + 21; q < s + block - 6; q += 30) if (rng() < 0.6) { this.props.push({ s: q, d: sd * (H + 3.4), kind: 'planter', sc: 1, rot: 0, v: 0 }); this.obstacles.push({ s: q, d: sd * (H + 3.4), hs: 0.6, hd: 0.6, kind: 'planter' }); }
+          for (let k = 0; k < block / 9; k++) {
+            if (rng() < 0.75) this.person(rng.range(s, s + block), sd * (H + rng.range(5.0, 5.8)), 'walk', rng, { a: s, b: s + block, v: rng.range(1.1, 1.7) * (rng() < 0.5 ? -1 : 1) });
+            else this.person(rng.range(s, s + block), sd * (H + rng.range(5.0, 5.9)), 'stand', rng);
+          }
+          // taller blocks behind the street front
+          for (let b2 = s; b2 < s + block;) { const w = rng.range(18, 34); this.props.push({ s: b2 + w / 2, d: sd * (H + 6.2 + 14 + 5 + 9), kind: 'building', sc: w, rot: 0, v: rng.int(0, 5), h: rng.range(26, 75), depth: 18, back: true }); b2 += w + rng.range(0, 6); }
           s += block + 18;
         }
       }
+      this.placeCrowds(rng);
       // distant skyline
       for (let i = 0; i < T / 60; i++) {
         const sd = rng() < 0.5 ? -1 : 1;

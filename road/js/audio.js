@@ -328,6 +328,19 @@
 
   // ---- one-shots: fn(dest, time, rate, nodeList) returns its length in seconds ----
   const SFX = {
+    shotgun(d, t, r) {
+      noise(d, t, 0.03, 1.0, 'highpass', 3000 * r); // crack
+      noise(d, t, 0.45, 1.1, 'lowpass', 1400 * r, { to: 160 });
+      tone(d, t, 'sine', 95 * r, 0.35, 1.0, { to: 38 * r, gt: 0.12 });
+      noise(d, t + 0.06, 0.6, 0.25, 'bandpass', 700 * r, { q: 0.7 }); // echo tail
+      return 0.7;
+    },
+    gun(d, t, r) {
+      noise(d, t, 0.025, 0.8, 'highpass', 2400 * r);
+      noise(d, t, 0.08, 0.6, 'bandpass', 900 * r, { q: 1.1 });
+      tone(d, t, 'square', 140 * r, 0.05, 0.35, { to: 70 * r });
+      return 0.1;
+    },
     punch(d, t, r) {
       tone(d, t, 'sine', 150 * r, 0.16, 0.9, { to: 55 * r, gt: 0.08 });
       tone(d, t, 'triangle', 260 * r, 0.07, 0.3, { to: 110 * r });

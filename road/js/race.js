@@ -74,7 +74,7 @@
       const lv = RR.LEVELS[this.level];
       const lead = this.leadHuman();
       for (const r of this.riders) {
-        if (!r.human && !r.cop && !r.remote) r.pace = this.mode === 'attract' ? 0.9 * r.ai.skill : lv.pace * r.ai.skill * this.rubber(r, lead);
+        if (!r.human && !r.cop && !r.remote) r.pace = this.mode === 'attract' ? 0.9 * (r.ai ? r.ai.skill : 1) : lv.pace * (r.ai ? r.ai.skill : 1) * this.rubber(r, lead);
         else if (r.cop) r.pace = r.copState === 'done' ? 0.5 : 1;
         else r.pace = 1;
         if (racing || r.remote) r.step(dt);
@@ -113,7 +113,9 @@
           const ov = 0.85 - Math.abs(dd), sg = Math.sign(dd) || 1, wa = a.bike.weight, wb = b.bike.weight, ra = wb / (wa + wb), rb = wa / (wa + wb);
           if (!a.remote) { a.d -= sg * ov * ra; a.pushV -= sg * 1.6 * ra; }
           if (!b.remote) { b.d += sg * ov * rb; b.pushV += sg * 1.6 * rb; }
-          if (Math.abs(dd) < 0.45) { const rear = ds > 0 ? a : b, front = ds > 0 ? b : a; if (!rear.remote) rear.v = Math.min(rear.v, front.v - 0.5); }
+          if (Math.abs(dd) < 0.45) { const rear = ds > 0 ? a : b, front = ds > 0 ? b : a; if (!rear.remote && rear.blazeT <= 0) rear.v = Math.min(rear.v, front.v - 0.5); }
+          // a blazing bike flattens whoever it touches
+          for (const [x, y] of [[a, b], [b, a]]) if (x.blazeT > 0 && y.blazeT <= 0 && !x.remote && y.active && this.time - (y.blzT || -9) > 0.5 && (y.blzT = this.time)) this.deliver(x, y, { dmg: 200, push: 6, side: Math.sign(y.d - x.d) || 1, kind: 'blaze', sfx: 'kick', knock: true });
           if (this.bumpT <= 0) { this.bumpT = 0.25; this.emit('bump', { who: a, other: b }); }
         }
       }
@@ -139,9 +141,56 @@
         info.steal = true; this.giveWeapon(att, tgt.weapon);
         this.emit('steal', { who: att, from: tgt, w: tgt.weapon });
       }
+      this.deliver(att, tgt, info);
+    }
+    // apply a hit locally, or send it to the machine that owns the target
+    deliver(att, tgt, info) {
       if (tgt.remote && this.net) this.net.sendHit(att, tgt, info);
       else tgt.takeHit(att, info);
+      att.meter('frenzy', tgt.cop ? 9 : info.kind === 'gun' ? 0.6 : 6);
       this.emit('hit', { who: att, tgt, info });
+    }
+    // shotgun: the nearest rider in a cone ahead on that side
+    shoot(att, side) {
+      const W = RR.WEAPONS.shotgun;
+      let best = null, bs = 1e9;
+      for (const o of this.riders) {
+        if (o === att || !o.active || (o.cop && o.copState === 'parked')) continue;
+        const ds = o.s - att.s, dd = o.d - att.d;
+        if (ds < -3 || ds > W.reach || Math.abs(dd) > 2.5 + Math.max(0, ds) * 0.18 || dd * side < -1.2) continue;
+        const sc = Math.abs(ds) + Math.abs(dd) * 2;
+        if (sc < bs) { bs = sc; best = o; }
+      }
+      this.emit('shoot', { who: att, tgt: best, side });
+      if (best) this.deliver(att, best, { dmg: W.dmg, push: W.push, side: Math.sign(best.d - att.d) || side, kind: 'shot', sfx: 'shotgun', knock: true });
+    }
+    // frenzy machine gun: nearest rider (or cop) in range, preferring those ahead
+    gunTarget(att) {
+      let best = null, bs = 1e9;
+      for (const o of this.riders) {
+        if (o === att || !o.active || (o.cop && o.copState === 'parked')) continue;
+        const ds = o.s - att.s, dd = o.d - att.d, dist = Math.hypot(ds, dd);
+        if (dist > RR.SPECIALS.gunRange) continue;
+        const sc = dist + (ds < 0 ? 20 : 0);
+        if (sc < bs) { bs = sc; best = o; }
+      }
+      return best;
+    }
+    gunHit(att, tgt) {
+      this.emit('gun', { who: att, tgt });
+      this.deliver(att, tgt, { dmg: RR.SPECIALS.gunDmg, push: 0.35, side: Math.sign(tgt.d - att.d) || 1, kind: 'gun', sfx: null });
+    }
+    // glowing crates on the road hand out a shotgun
+    checkPickup(r) {
+      r.pickT = Math.max(0, r.pickT - 1 / 60);
+      if (r.pickT > 0 || r.cop) return;
+      for (const p of this.track.pickups) {
+        if (Math.abs(p.s - r.s) < 1.8 && Math.abs(p.d - r.d) < 1.5) {
+          if (r.weapon === 'shotgun' && r.ammo >= 3) return;
+          r.giveShotgun(); r.pickT = 2; this.emit('pickup', { who: r });
+          return;
+        }
+      }
     }
     // a hit that arrived over the network
     netHit(att, tgt, info) {

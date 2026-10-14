@@ -39,7 +39,12 @@
     pipe: { name: 'PIPE', dmg: 15, push: 1.4, reach: 2.4, wind: 0.17, hit: 0.12, rec: 0.3, sfx: 'metal' },
     bat: { name: 'BAT', dmg: 14, push: 1.5, reach: 2.4, wind: 0.15, hit: 0.12, rec: 0.27, sfx: 'club' },
     baton: { name: 'BATON', dmg: 12, push: 1.0, reach: 2.2, wind: 0.12, hit: 0.12, rec: 0.24, sfx: 'club' },
+    // picked up from the glowing crates on the road: three shells, each blast knocks a rider off
+    shotgun: { name: 'SHOTGUN', ranged: true, ammo: 3, dmg: 30, push: 4, reach: 30, wind: 0.07, hit: 0.05, rec: 0.55, sfx: 'shotgun' },
   };
+  // Specials. Turbo Blaze: built by riding fast, air time and riding clean; unstoppable for a few seconds.
+  // Frenzy: built by taking damage and by hitting riders and police; a machine gun for ten seconds.
+  RR.SPECIALS = { blazeTime: 4, blazeTop: 1.45, frenzyTime: 10, gunRate: 0.085, gunDmg: 4.5, gunRange: 48 };
 
   // The pack. skill scales their pace, aggro how often they pick fights.
   RR.RIVALS = [

@@ -3,6 +3,7 @@
 //   PS5 pad:  R2 / ✕  throttle        L2  brake               left stick / D-pad  steer
 //             □  hit left             ○  hit right            △  kick (towards the nearest rider)
 //             R1 nitro                L1 look behind          R3 / touchpad  change camera
+//             D-pad ↑ (or L3) Turbo Blaze special      D-pad ↓  Frenzy special      right stick  swing the camera round
 //             Options  pause          menus: D-pad / stick to move, ✕ select, ○ back, L1/R1 change
 (() => {
   'use strict';
@@ -10,7 +11,7 @@
   const B = { cross: 0, circle: 1, square: 2, triangle: 3, l1: 4, r1: 5, l2: 6, r2: 7, share: 8, options: 9, l3: 10, r3: 11, up: 12, down: 13, left: 14, right: 15, ps: 16, pad: 17 };
   const NAMES = Object.fromEntries(Object.entries(B).map(([k, v]) => [v, k]));
   const DEAD = 0.18;
-  const blankPlayer = () => ({ throttle: 0, brake: 0, steer: 0, atkL: false, atkR: false, kick: false, kickSide: 0, nitro: false, look: false, cam: false, mash: false, pause: false });
+  const blankPlayer = () => ({ throttle: 0, brake: 0, steer: 0, atkL: false, atkR: false, kick: false, kickSide: 0, nitro: false, look: false, cam: false, mash: false, pause: false, turbo: false, frenzy: false, camX: 0, camY: 0 });
 
   const IN = RR.input = {
     pads: [], padCount: 0, players: [blankPlayer(), blankPlayer()], menu: [], twoLocal: false,
@@ -31,9 +32,9 @@
   const K = c => IN.keys.has(c), P = c => IN.pressedKeys.has(c);
   const anyK = (...c) => c.some(K), anyP = (...c) => c.some(P);
   const SCHEMES = {
-    all: { up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], l: ['KeyJ', 'KeyZ', 'KeyF'], r: ['KeyK', 'KeyX', 'KeyG'], kick: ['KeyL', 'KeyC', 'KeyH'], nitro: ['Space', 'KeyN'], look: ['KeyB'], cam: ['KeyV'] },
-    wasd: { up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], l: ['KeyF'], r: ['KeyG'], kick: ['KeyH'], nitro: ['KeyQ'], look: ['KeyE'], cam: ['KeyV'] },
-    arrows: { up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], l: ['Comma', 'Numpad1'], r: ['Period', 'Numpad2'], kick: ['Slash', 'Numpad3'], nitro: ['ShiftRight', 'Numpad0'], look: ['Numpad5', 'ControlRight'], cam: ['Numpad9'] },
+    all: { up: ['KeyW', 'ArrowUp'], down: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], l: ['KeyJ', 'KeyZ', 'KeyF'], r: ['KeyK', 'KeyX', 'KeyG'], kick: ['KeyL', 'KeyC', 'KeyH'], nitro: ['Space', 'KeyN'], look: ['KeyB'], cam: ['KeyV'], turbo: ['KeyT'], frenzy: ['KeyR'] },
+    wasd: { up: ['KeyW'], down: ['KeyS'], left: ['KeyA'], right: ['KeyD'], l: ['KeyF'], r: ['KeyG'], kick: ['KeyH'], nitro: ['KeyQ'], look: ['KeyE'], cam: ['KeyV'], turbo: ['Digit1'], frenzy: ['Digit2'] },
+    arrows: { up: ['ArrowUp'], down: ['ArrowDown'], left: ['ArrowLeft'], right: ['ArrowRight'], l: ['Comma', 'Numpad1'], r: ['Period', 'Numpad2'], kick: ['Slash', 'Numpad3'], nitro: ['ShiftRight', 'Numpad0'], look: ['Numpad5', 'ControlRight'], cam: ['Numpad9'], turbo: ['Numpad7', 'Home'], frenzy: ['Numpad8', 'End'] },
   };
   function readKeys(sc, out) {
     const S = SCHEMES[sc];
@@ -48,6 +49,8 @@
     if (anyK(...S.look)) out.look = true;
     if (anyP(...S.cam)) out.cam = true;
     if (anyP(...S.up, ...S.l, ...S.r)) out.mash = true;
+    if (anyP(...S.turbo)) out.turbo = true;
+    if (anyP(...S.frenzy)) out.frenzy = true;
   }
 
   // ---- gamepads ----
@@ -73,9 +76,13 @@
         if (on && !s.prev[j]) s.pressed[name] = true;
         s.prev[j] = on;
       });
+      s.bp = Object.assign({}, s.pressed); // real button presses (not stick flicks)
       let x = p.axes[0] || 0, y = p.axes[1] || 0;
       if (Math.hypot(x, y) < DEAD) x = y = 0;
       s.x = x; s.y = y;
+      let rx = p.axes[2] || 0, ry = p.axes[3] || 0;
+      if (Math.hypot(rx, ry) < 0.2) rx = ry = 0;
+      s.rx = rx; s.ry = ry;
       const fx = x > 0.6 ? 1 : x < -0.6 ? -1 : 0, fy = y > 0.6 ? 1 : y < -0.6 ? -1 : 0;
       if (fx && fx !== s.flickX) s.pressed[fx > 0 ? 'right' : 'left'] = true;
       if (fy && fy !== s.flickY) s.pressed[fy > 0 ? 'down' : 'up'] = true;
@@ -98,6 +105,10 @@
     if (e.r3 || e.pad) out.cam = true;
     if (e.cross || e.r2 || e.square || e.circle) out.mash = true;
     if (e.options) out.pause = true;
+    if (s.bp.up || s.bp.l3) out.turbo = true;
+    if (s.bp.down) out.frenzy = true;
+    if (Math.abs(s.rx) > Math.abs(out.camX)) out.camX = s.rx;
+    if (Math.abs(s.ry) > Math.abs(out.camY)) out.camY = s.ry;
   }
 
   // ---- touch (auto-throttle; drag the left half to steer, buttons on the right) ----
@@ -126,6 +137,8 @@
     if (touch.r === 'press') { out.atkR = true; out.mash = true; touch.r = false; }
     if (touch.kick === 'press') { out.kick = true; touch.kick = false; }
     if (touch.nitro) out.nitro = true;
+    if (touch.turbo === 'press') { out.turbo = true; touch.turbo = false; }
+    if (touch.frenzy === 'press') { out.frenzy = true; touch.frenzy = false; }
   }
 
   // ---- per frame ----

@@ -26,7 +26,12 @@
       this.model.setWeapon(this.weapon);
       this.wheelA = 0; this.runPh = 0; this.anim = 0;
       this.net = null; // remote interpolation buffer
+      this.ammo = this.weapon === 'shotgun' ? 3 : 0; this.pickT = 0;
+      // specials (players only): meters 0..100 and the time left on each
+      this.turbo = 0; this.frenzy = 0; this.blazeT = 0; this.frenzyT = 0; this.gunCD = 0; this.gunTgt = null; this.cleanT = 0;
     }
+    meter(kind, x) { if (!this.human || this.remote) return; if (kind === 'turbo' && this.blazeT <= 0) this.turbo = clamp(this.turbo + x, 0, 100); if (kind === 'frenzy' && this.frenzyT <= 0) this.frenzy = clamp(this.frenzy + x, 0, 100); }
+    giveShotgun() { this.weapon = 'shotgun'; this.ammo = RR.WEAPONS.shotgun.ammo; }
 
     get active() { return !this.crash && !this.out; }
     get progress() { return this.crash ? Math.max(this.crash.b.s, this.s) : this.s; }
@@ -43,10 +48,12 @@
       this.offroad = this.d > H + 0.4 || this.d < -H - 0.4;
       if (inp.nitro && this.nitro > 0 && this.nitroT <= 0 && !this.air && this.v > 8) { this.nitro--; this.nitroT = 3; this.race.emit('nitro', { who: this }); }
       this.nitroT = Math.max(0, this.nitroT - dt);
-      const top = b.top * this.pace * (this.offroad ? 0.58 : 1) * (this.nitroT > 0 ? 1.22 : 1) * (this.dmg > 75 ? 0.93 : 1);
+      this.specials(dt);
+      const blaze = this.blazeT > 0;
+      const top = b.top * this.pace * (this.offroad && !blaze ? 0.58 : 1) * (this.nitroT > 0 ? 1.22 : 1) * (blaze ? RR.SPECIALS.blazeTop : 1) * (this.dmg > 75 ? 0.93 : 1);
       if (!this.air) {
         let a;
-        if (inp.throttle > 0.02 && this.v <= top) a = b.accel * inp.throttle * Math.max(0.05, 1 - Math.pow(this.v / top, 3)) * (this.nitroT > 0 ? 1.7 : 1);
+        if (inp.throttle > 0.02 && this.v <= top) a = b.accel * inp.throttle * Math.max(0.05, 1 - Math.pow(this.v / top, 3)) * (this.nitroT > 0 ? 1.7 : 1) * (blaze ? 2.6 : 1);
         else if (this.v > top) a = -(this.v - top) * (this.offroad ? 2.2 : 0.9) - 1;
         else a = -1.4 - this.v * 0.012;
         a -= inp.brake * 17 + G * tr.slope(this.s) * 0.5;
@@ -67,7 +74,7 @@
       if (this.d > lr || this.d < ll) {
         const side = this.d > lr ? 1 : -1, into = (this.vlat + this.pushV) * side;
         this.d = side > 0 ? lr : ll;
-        if (into > 11 && this.v > 25) return this.startCrash('wall', { side: -side });
+        if (into > 11 && this.v > 25 && !blaze) return this.startCrash('wall', { side: -side });
         this.pushV = -side * Math.max(1.5, into * 0.4);
         this.v *= 1 - 0.6 * dt; this.wallT = 0.15;
         this.race.emit('scrape', { who: this, side });
@@ -82,7 +89,8 @@
           this.air = false; this.Y = yr; this.vy = this.v * tr.slope(ns);
           this.landT = Math.min(1, impact / 10);
           this.race.emit('land', { who: this, impact });
-          if (impact > 13) { this.wobble = 0.6; this.dmg += 2; }
+          if (impact > 13 && !blaze) { this.wobble = 0.6; this.dmg += 2; }
+          if (impact > 6) this.meter('turbo', Math.min(10, impact * 0.5));
         }
       } else {
         // leave the ground only where the road falls away faster than gravity (crests / jumps)
@@ -98,9 +106,32 @@
       const pt = this.air ? Math.atan2(this.vy, Math.max(this.v, 1)) * 0.6 + 0.06 : Math.atan(tr.slope(this.s));
       this.pitch = damp(this.pitch, pt, this.air ? 3 : 12, dt);
       if (!this.air) this.collide(dt);
+      if (this.crash) return;
+      this.race.checkPickup(this);
       this.combat(dt);
       if (this.hp < 100 && this.hitT <= 0) this.hp = Math.min(100, this.hp + 1.2 * dt);
       this.hitT = Math.max(0, this.hitT - dt);
+    }
+
+    // build the meters, fire them, and run the machine gun
+    specials(dt) {
+      const inp = this.inp, S = RR.SPECIALS;
+      if (this.human && !this.finished) {
+        if (this.blazeT <= 0) {
+          this.cleanT += dt;
+          this.meter('turbo', dt * ((this.v > this.bike.top * 0.8 ? 2.4 : 0.3) + (this.air ? 14 : 0)));
+          if (this.cleanT > 8) { this.cleanT = 0; this.meter('turbo', 5); }
+        }
+        if (inp.turbo && this.turbo >= 100 && this.blazeT <= 0) { this.turbo = 0; this.blazeT = S.blazeTime; this.race.emit('blaze', { who: this }); }
+        if (inp.frenzy && this.frenzy >= 100 && this.frenzyT <= 0) { this.frenzy = 0; this.frenzyT = S.frenzyTime; this.race.emit('frenzy', { who: this }); }
+      }
+      inp.turbo = inp.frenzy = false;
+      this.blazeT = Math.max(0, this.blazeT - dt);
+      if (this.frenzyT > 0) {
+        this.frenzyT = Math.max(0, this.frenzyT - dt); this.gunCD -= dt;
+        this.gunTgt = this.race.gunTarget(this);
+        if (this.gunTgt && this.gunCD <= 0) { this.gunCD = S.gunRate; this.race.gunHit(this, this.gunTgt); }
+      } else this.gunTgt = null;
     }
 
     collide() {
@@ -109,6 +140,7 @@
       // roadside things
       let hit = null;
       tr.obstaclesNear(this.s, 1.2, ob => { if (!hit && Math.abs(this.d - ob.d) < ob.hd + 0.32 && Math.abs(this.s - ob.s) < ob.hs + 0.7) hit = ob; });
+      if (hit && this.blazeT > 0) { if (this.race.time - (hit.smashT || -9) > 1) { hit.smashT = this.race.time; this.race.emit('smash', { who: this }); } hit = null; }
       if (hit && this.v > 6) return this.startCrash('obstacle', { side: this.d > hit.d ? 1 : -1, ob: hit });
       if (hit) { this.v = 0; this.s = hit.s - hit.hs - 0.8; return; }
       // traffic
@@ -117,6 +149,7 @@
         const ds = car.s - this.s, dd = car.d - this.d;
         if (Math.abs(ds) < car.len / 2 + 0.95 && Math.abs(dd) < car.w / 2 + 0.33) {
           const rv = this.v - car.v;
+          if (this.blazeT > 0) { if (this.race.time - (car.smashT || -9) > 1.5) { car.smashT = this.race.time; car.honked = this.race.time; this.race.emit('smash', { who: this, car }); } return; }
           if (car.v > 0 && Math.abs(rv) < 7) { // nudged a car going our way
             if (ds > 0) { this.v = Math.max(0, car.v - 2); this.s = car.s - car.len / 2 - 0.96; } else { this.v = car.v + 2; }
             this.pushV = -Math.sign(dd || 1) * 2.5; this.wobble = 0.5; this.dmg += 1;
@@ -124,6 +157,7 @@
           } else this.startCrash('car', { side: dd > 0 ? -1 : 1, car, rv });
         } else if (Math.abs(ds) < car.len / 2 + 6 && Math.abs(dd) < car.w / 2 + 1.6 && this.race.time - car.honked > 3 && Math.abs(this.v - car.v) > 8) {
           car.honked = this.race.time; this.race.emit('horn', { who: this, car });
+          this.meter('turbo', 4); // near miss
         }
       });
     }
@@ -139,7 +173,7 @@
     combat(dt) {
       this.atkCD = Math.max(0, this.atkCD - dt);
       const inp = this.inp;
-      if (this.human && !this.finished) {
+      if (this.human && !this.finished && this.frenzyT <= 0) {
         if (inp.kick) this.startAttack('kick', inp.kickSide || this.nearSide());
         else if (inp.atkL) this.startAttack(this.weapon ? 'weapon' : 'punch', -1);
         else if (inp.atkR) this.startAttack(this.weapon ? 'weapon' : 'punch', 1);
@@ -149,6 +183,7 @@
       if (!a) return;
       a.t += dt;
       const D = a.def;
+      if (D.ranged && !a.done && a.t >= D.wind) { a.done = true; this.race.shoot(this, a.side); if (--this.ammo <= 0) { this.weapon = null; this.ammo = 0; } }
       if (!a.done && a.t >= D.wind && a.t <= D.wind + D.hit) {
         const tgt = this.race.findTarget(this, a.side, D.reach);
         if (tgt) { a.done = true; this.race.hit(this, tgt, a); }
@@ -169,8 +204,11 @@
     // applied by the race when a hit lands on a rider simulated here
     takeHit(from, info) {
       if (this.crash || this.out) return;
+      if (this.blazeT > 0) return; // unstoppable
       const ratio = clamp((from ? from.bike.weight : 1) / this.bike.weight, 0.6, 1.6);
-      this.hp -= info.dmg * (this.cop ? 0.8 : 1);
+      const dmg = info.dmg * (this.cop ? 0.8 : 1) * (this.frenzyT > 0 ? 0.5 : 1);
+      this.hp -= dmg; this.meter('frenzy', dmg * 0.8);
+      if (info.knock) { this.hp = 0; this.startCrash(info.kind === 'shot' ? 'shot' : 'knock', { side: info.side, by: from }); return; }
       this.pushV += info.side * info.push * ratio;
       this.v *= 0.985; this.hitT = 0.35; this.hitSide = info.side; this.wobble = Math.max(this.wobble, 0.25);
       if (info.bike) this.dmg += info.bike;
@@ -183,11 +221,11 @@
     startCrash(cause, o = {}) {
       if (this.crash || this.out) return;
       const tr = this.race.track, v = this.v, side = o.side || (Math.random() < 0.5 ? -1 : 1);
-      const car = cause === 'car', knock = cause === 'knock';
+      const car = cause === 'car', knock = cause === 'knock' || cause === 'shot';
       const h0 = this.Y - tr.height(this.s);
       this.crash = {
         t: 0, cause, phase: 'fly', by: o.by || null, lieT: 0, runBoost: 0, side,
-        r: { s: this.s, d: this.d, h: h0 + 0.95, vs: v * (car ? 0.35 : 0.82), vd: side * rand(1, 3.5) + this.vlat * 0.4, vh: (car ? 5.5 : 2.4) + v * (car ? 0.09 : 0.05),
+        r: { s: this.s, d: this.d, h: h0 + 0.95, vs: v * (car ? 0.35 : 0.82), vd: side * rand(1, 3.5) + this.vlat * 0.4, vh: (car ? 3.4 : 2.0) + v * (car ? 0.04 : 0.025),
           rx: this.pitch, ry: this.phi, rz: this.lean, wx: -rand(3, 7) * Math.min(1.5, v / 30), wy: rand(-3, 3), wz: side * rand(1, 4), bounces: 0 },
         b: { s: this.s, d: this.d, h: h0, vs: v * (car ? 0.15 : 0.75), vd: side * rand(0.4, 2) + this.vlat * 0.3, vh: 0.8 + v * 0.025,
           rx: this.pitch, ry: this.phi, rz: this.lean, wx: 0, wy: rand(-2, 2) * Math.min(1.5, v / 25), wz: (this.lean < 0 ? -1 : 1) * rand(2, 4), bounces: 0, bike: true },
@@ -196,7 +234,8 @@
       if (!knock) this.hp = Math.max(0, this.hp - (car ? 22 : 14));
       if (this.dmg >= 100) { this.dmg = 100; this.out = 'wrecked'; }
       // an empty-handed attacker picks up the weapon of the rider he knocked off
-      if (knock && o.by) o.by.knockoffs++;
+      if (knock && o.by) { o.by.knockoffs++; o.by.meter('frenzy', 12); }
+      this.turbo *= 0.5; this.cleanT = 0; this.blazeT = 0; this.frenzyT = 0; this.meter('frenzy', 8);
       if (knock && o.by && this.weapon && !o.by.weapon) { this.race.giveWeapon(o.by, this.weapon); this.weapon = null; }
       this.atk = null; this.air = false; this.v = 0; this.nitroT = 0;
       this.race.emit('crash', { who: this, cause, by: o.by || null, speed: v });
@@ -218,33 +257,34 @@
         }
         return Math.hypot(o.vs, o.vd);
       };
-      const bs = body(c.b, 0.42);
+      const bs = body(c.b, 0.8);
       // a sliding bike lies down on its side
       if (c.b.h <= 0.05) { const want = c.b.rz >= 0 ? Math.PI / 2 : -Math.PI / 2; c.b.rz = damp(c.b.rz, want, 4, dt); c.b.rx = damp(c.b.rx, 0, 4, dt); c.b.wz *= 0.9; }
       c.sliding = bs > 3 && c.b.h <= 0.1;
       if (c.phase === 'fly' || c.phase === 'lie') {
-        const rs = body(c.r, 0.9);
-        if (c.phase === 'fly' && c.r.h <= 0 && rs < 1.2 && c.t > 0.7) { c.phase = 'lie'; c.lieT = 0; }
+        const rs = body(c.r, 1.5);
+        if (c.phase === 'fly' && c.r.h <= 0 && (rs < 3 || c.t > 0.9) && c.t > 0.35) { c.phase = 'lie'; c.lieT = 0; }
         if (c.phase === 'lie') {
           c.lieT += dt;
           c.r.rx = damp(c.r.rx, -Math.PI / 2, 5, dt); c.r.rz = damp(c.r.rz, 0, 5, dt);
-          if (c.lieT > 0.9 && !this.out && bs < 1.5) { c.phase = 'run'; c.r.rx = 0; c.r.rz = 0; c.r.h = 0; }
+          if (c.lieT > 0.2 && !this.out) { c.phase = 'run'; c.r.rx = 0; c.r.rz = 0; c.r.h = 0; }
         }
       } else if (c.phase === 'run') {
         // run back to the bike (mash to run faster)
         if (this.human && this.inp.mash) c.runBoost = Math.min(3, c.runBoost + 0.6);
         c.runBoost = Math.max(0, c.runBoost - dt * 1.5);
         const ds = c.b.s - c.r.s, dd = c.b.d + c.side * 0.7 - c.r.d, dist = Math.hypot(ds, dd);
-        const sp = 6.2 + c.runBoost + (this.ai ? this.ai.skill * 0.6 : 0);
+        const sp = 11 + c.runBoost * 1.5 + (this.ai ? this.ai.skill * 0.6 : 0) + Math.max(0, dist - 6) * 0.8;
         if (dist > 0.35) { c.r.s += ds / dist * sp * dt; c.r.d += dd / dist * sp * dt; }
         c.r.ry = Math.atan2(dd, -ds) * -1 + Math.PI;
         this.runPh += dt * sp * 2.2;
-        if (dist < 0.9 && bs < 0.5) { c.phase = 'mount'; c.mountT = 0; }
+        if (dist < 1.4) { c.phase = 'mount'; c.mountT = 0; c.b.vs = c.b.vd = 0; }
       } else if (c.phase === 'mount') {
         c.mountT += dt;
-        if (c.mountT > 0.45) this.remount();
+        if (c.mountT > 0.2) this.remount();
       }
       if (this.out) c.phase = c.phase === 'run' ? 'lie' : c.phase;
+      else if (c.t > 2.6 && c.phase !== 'mount') { c.phase = 'mount'; c.mountT = 0; c.b.vs = c.b.vd = 0; } // never more than a couple of seconds
       this.s = c.r.s; this.d = c.r.d;
     }
     remount() {
@@ -322,17 +362,25 @@
       inp.throttle = this.v < want ? 1 : 0;
       inp.brake = this.v > want + 2 ? clamp((this.v - want) / 10, 0, 1) : 0;
       inp.nitro = this.nitro > 0 && !prey && kmax < 0.002 && Math.random() < dt * 0.15;
+      // blast someone ahead with a shotgun
+      if (this.weapon === 'shotgun' && !this.atk && !this.finished && ai.cd <= 0) {
+        for (const o of race.riders) {
+          if (o === this || !o.active || (this.cop && o.cop)) continue;
+          const ds = o.s - this.s, dd = o.d - this.d;
+          if (ds > 3 && ds < 24 && Math.abs(dd) < 3 && Math.random() < dt * 1.5 * (o.human ? 1 : 0.4)) { this.startAttack('weapon', Math.sign(dd) || 1); ai.cd = 1.5; break; }
+        }
+      }
       // swing at whoever is alongside
       ai.cd -= dt;
       if (ai.cd <= 0 && !this.atk && !this.finished) {
         for (const o of race.riders) {
           if (o === this || !o.active || o.finished) continue;
           if (o.cop && this.cop) continue;
-          const ds = o.s - this.s, dd = o.d - this.d, reach = (this.weapon ? this.weaponDef.reach : 1.9);
+          const ds = o.s - this.s, dd = o.d - this.d, reach = (this.weapon && !this.weaponDef.ranged ? this.weaponDef.reach : 1.9);
           if (Math.abs(ds) < 1.5 && Math.abs(dd) > 0.35 && Math.abs(dd) < reach) {
             const keen = this.cop ? (o.human ? 1 : 0) : (o.human || o.cop ? 1 : 0.4) * ai.aggro;
             if (Math.random() < keen * 0.6) {
-              const kind = this.weapon ? 'weapon' : Math.random() < 0.3 ? 'kick' : 'punch';
+              const kind = this.weapon && this.weapon !== 'shotgun' ? 'weapon' : Math.random() < 0.3 ? 'kick' : 'punch';
               this.startAttack(kind, Math.sign(dd));
             }
             ai.cd = rand(0.35, 0.9) / Math.max(0.3, ai.aggro);
@@ -418,6 +466,7 @@
         this.runPh += dt * 14;
       } else if (this.crash) this.crash = null;
       if (tgt.weapon !== undefined) this.weapon = tgt.weapon;
+      this.blazeT = tgt.bl ? 1 : 0; this.frenzyT = tgt.fz ? 1 : 0; this.gunTgt = tgt.gt !== undefined ? this.race.byId.get(tgt.gt) : null;
       this.finishedRemote = tgt.fin; this.out = tgt.out || null;
     }
     // compact state for the network
@@ -428,6 +477,8 @@
       if (this.atk) st.atk = [this.atk.kind, this.atk.side, r2(this.atk.t)];
       if (this.crash) { const c = this.crash, b = o => [r2(o.s), r2(o.d), r2(o.h), r2(o.rx), r2(o.ry), r2(o.rz)]; st.crash = { r: b(c.r), b: b(c.b), ph: c.phase, sl: !!c.sliding }; }
       if (this.cop) st.siren = this.siren;
+      if (this.blazeT > 0) st.bl = 1;
+      if (this.frenzyT > 0) { st.fz = 1; if (this.gunTgt) st.gt = this.gunTgt.id; }
       return st;
     }
 
@@ -477,13 +528,18 @@
         }
       }
       if (m.red) { const on = this.siren && Math.floor(this.anim * 8) % 2; m.red.visible = this.siren ? !!on : false; m.blue.visible = this.siren ? !on : false; }
-      m.setWeapon(this.weapon);
+      m.setWeapon(this.frenzyT > 0 && !this.crash ? 'smg' : this.weapon);
     }
     ridePose() {
       const T = window.THREE, D = this.model.D, a = this.atk;
       const P = { mode: 'ride', tuck: clamp(this.v / (this.bike.top || 60), 0, 1), twist: 0, roll: this.lean * 0.35, look: 0 };
       if (this.hitT > 0) P.roll += this.hitSide * this.hitT * 1.0;
-      if (this.weapon && !a) P.armR = new T.Vector3(0.36, D.seat + 0.42, 0.12);
+      if (this.weapon && !a) P.armR = this.weapon === 'shotgun' ? new T.Vector3(0.3, D.seat + 0.5, -0.25) : new T.Vector3(0.36, D.seat + 0.42, 0.12);
+      if (this.frenzyT > 0) {
+        const g = this.gunTgt, side = g ? clamp((g.d - this.d) / Math.max(2, Math.abs(g.s - this.s)), -1, 1) : 0, back = g && g.s < this.s;
+        P.armR = new T.Vector3(0.22 + side * 0.45, D.seat + 0.32, back ? 0.5 : -0.95); P.twist = -side * 0.5; P.look = -side * 0.5;
+        return P;
+      }
       if (this.finished && this.place === 1 && this.human) { P.armR = new T.Vector3(0.3, D.seat + 1.1 + Math.sin(this.anim * 9) * 0.1, 0.15); P.tuck = 0; }
       if (a) {
         const D2 = a.def, t = a.t, side = a.side;
@@ -497,6 +553,8 @@
           const S = side < 0 ? 'armL' : 'armR';
           P[S] = windup ? new T.Vector3(side * 0.25, D.seat + 0.55, 0.1) : new T.Vector3(side * (0.35 + 0.65 * w), D.seat + 0.45, -0.1 - 0.1 * w);
           P.twist = -side * 0.4 * w; P.roll -= side * 0.15 * w; P.look = -side * 0.6;
+        } else if (D2.ranged) {
+          P.armR = new T.Vector3(side * 0.75, D.seat + 0.55, -0.35); P.twist = -side * 0.6; P.look = -side * 0.6;
         } else {
           P.armR = windup ? new T.Vector3(0.3 * side, D.seat + 0.95, 0.3) : new T.Vector3(side * (0.3 + 0.8 * w), D.seat + 0.4 - 0.2 * w, -0.2);
           P.twist = -side * 0.5 * w; P.roll -= side * 0.2 * w; P.look = -side * 0.6;

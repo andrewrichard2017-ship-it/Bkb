@@ -171,6 +171,17 @@
   .tag.cop { color: #9cc3ff; }
   .tag.hum { font-size: 16px; }
   .view.half .bl { width: min(220px, 30%); }
+  .specials { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: calc(clamp(130px, 22vh, 200px) * 0.62 + 18px); width: min(220px, 30%); }
+  .view.half .specials { bottom: calc(clamp(100px, 18vh, 150px) * 0.62 + 14px); }
+  .sm { display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 6px; margin-top: 5px; font: 700 13px var(--ui); letter-spacing: .1em; text-shadow: 0 1px 3px #000; }
+  .sm div { height: 10px; background: rgba(0,0,0,.5); border: 1px solid rgba(255,255,255,.3); border-radius: 2px; overflow: hidden; transform: skewX(-12deg); }
+  .sm i { display: block; height: 100%; width: 0; transition: width .15s; }
+  .sm.turbo i { background: linear-gradient(90deg, #ff5a00, #ffd000); }
+  .sm.frenzy i { background: linear-gradient(90deg, #b00020, #ff4d6d); }
+  .sm em { font-style: normal; font: 400 15px var(--hd); letter-spacing: .04em; min-width: 0; }
+  .sm.ready label, .sm.ready em { color: #fff; animation: blink .45s steps(2) infinite; }
+  .sm.turbo.ready div { box-shadow: 0 0 12px #ff8a00; } .sm.frenzy.ready div { box-shadow: 0 0 12px #ff1744; }
+  .sm.on em { color: #ffd54f; }
   .view.half .speedo { width: clamp(100px, 18vh, 150px); }
 
   /* ---------------- touch ---------------- */
@@ -181,6 +192,7 @@
   #touch .btns { position: absolute; right: max(10px, env(safe-area-inset-right)); bottom: max(130px, 24vh); display: grid; grid-template-columns: repeat(3, 72px); gap: 8px; pointer-events: auto; }
   #touch button { width: 72px; height: 62px; border-radius: 12px; border: 2px solid rgba(255,255,255,.35); background: rgba(0,0,0,.35); color: #fff; font: 700 15px var(--ui); letter-spacing: .06em; touch-action: none; }
   #touch button.on { background: var(--acc); color: #111; }
+  #touch button.sp.t { border-color: #ff8a00; } #touch button.sp.f { border-color: #ff1744; }
   #rotate { position: fixed; inset: 0; display: none; place-items: center; text-align: center; padding: 24px; background: var(--bg); z-index: 60; font: 600 22px var(--ui); }
   #rotate b { display: block; font: 400 44px var(--hd); color: var(--acc); }
   @media (orientation: portrait) and (max-width: 700px) { #rotate { display: grid; } }
@@ -193,26 +205,28 @@
   <div class="steer"></div>
   <div class="btns">
     <button data-k="l">◀ HIT</button><button data-k="kick">KICK</button><button data-k="r">HIT ▶</button>
-    <button data-k="brake">BRAKE</button><button data-k="nitro">NITRO</button>
+    <button data-k="brake">BRAKE</button><button data-k="nitro">NITRO</button><button data-k="turbo" class="sp t">TURBO</button>
+    <button data-k="frenzy" class="sp f">FRENZY</button>
   </div>
 </div>
 <div id="menu"></div>
 <div id="loading">LOADING…</div>
 <div id="rotate"><div><b>TURN YOUR PHONE</b>Road Rumble plays in landscape.</div></div>
 <script type="module">import * as THREE from './lib/three.module.min.js?v=170'; window.THREE = THREE;</script>
-<script defer src="js/core.js?v=1"></script>
-<script defer src="js/data.js?v=1"></script>
-<script defer src="js/audio.js?v=1"></script>
-<script defer src="js/track.js?v=1"></script>
-<script defer src="js/models.js?v=1"></script>
-<script defer src="js/world.js?v=1"></script>
-<script defer src="js/fx.js?v=1"></script>
-<script defer src="js/rider.js?v=1"></script>
-<script defer src="js/race.js?v=1"></script>
-<script defer src="js/input.js?v=1"></script>
-<script defer src="js/hud.js?v=1"></script>
-<script defer src="js/menu.js?v=1"></script>
-<script defer src="js/net.js?v=1"></script>
-<script defer src="js/main.js?v=1"></script>
+<script defer src="js/core.js?v=2"></script>
+<script defer src="js/data.js?v=2"></script>
+<script defer src="js/audio.js?v=2"></script>
+<script defer src="js/track.js?v=2"></script>
+<script defer src="js/models.js?v=2"></script>
+<script defer src="js/scenery.js?v=2"></script>
+<script defer src="js/world.js?v=2"></script>
+<script defer src="js/fx.js?v=2"></script>
+<script defer src="js/rider.js?v=2"></script>
+<script defer src="js/race.js?v=2"></script>
+<script defer src="js/input.js?v=2"></script>
+<script defer src="js/hud.js?v=2"></script>
+<script defer src="js/menu.js?v=2"></script>
+<script defer src="js/net.js?v=2"></script>
+<script defer src="js/main.js?v=2"></script>
 </body>
 </html>
