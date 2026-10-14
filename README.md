@@ -3,6 +3,8 @@
 A bare knuckle boxing game for Android phones and tablets. It's an HTML5 canvas game, so it runs in Chrome with no install and no build step.
 
 > Also in this repo: **[Bus Driver](bus/)**, a separate game for young kids (`bus/index.html`). It shares nothing with the boxing game.
+>
+> And **[Road Rumble](road/)**, a 3D motorbike combat racer inspired by Road Rash (`road/index.html`): PS5 controller, two players on one screen, or invite a mate online.
 
 > **Content warning:** this game contains fictional violence: bare knuckle boxing, knockdowns, cuts, cartoon-style animated blood and strong language. All characters and events are fictional.
 

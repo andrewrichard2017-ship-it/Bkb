@@ -1,0 +1,10 @@
+{
+  "name": "Road Rumble",
+  "short_name": "Road Rumble",
+  "start_url": ".",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0f0f12",
+  "theme_color": "#0f0f12",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
