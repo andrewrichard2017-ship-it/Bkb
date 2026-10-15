@@ -12,7 +12,8 @@
       this.cfg = cfg; this.mode = cfg.mode; this.role = cfg.role || 'solo';
       this.def = RR.TRACKS[cfg.trackIndex];
       this.level = cfg.level;
-      this.track = new RR.Track(this.def, cfg.level, { length: cfg.mode === 'attract' ? 14000 : undefined });
+      const shoot = cfg.mode === 'shootout';
+      this.track = new RR.Track(this.def, cfg.level, { length: cfg.mode === 'attract' ? 14000 : undefined, noTraffic: shoot, noCrates: shoot });
       this.world = new RR.World(this.track, renderer, quality);
       this.time = cfg.mode === 'attract' ? 0 : -4.2; this.state = cfg.mode === 'attract' ? 'race' : 'countdown';
       this.events = []; this.riders = []; this.humans = []; this.finishCount = 0; this.endT = 0; this.over = false;
@@ -27,7 +28,7 @@
     buildPack(cfg) {
       const tr = this.track, rng = RR.rng((cfg.seed || 1) * 977 + cfg.trackIndex * 13 + cfg.level), lv = RR.LEVELS[this.level];
       const humans = cfg.humans || [];
-      const total = cfg.mode === 'attract' ? 10 : clamp(cfg.packSize || 10, humans.length + 1, 12);
+      const total = cfg.mode === 'attract' ? 10 : clamp(cfg.packSize || 10, humans.length + 1, cfg.mode === 'shootout' ? 18 : 12);
       const rivals = RR.RIVALS.slice(); for (let i = rivals.length - 1; i > 0; i--) { const j = Math.floor(rng() * (i + 1)); [rivals[i], rivals[j]] = [rivals[j], rivals[i]]; }
       // grid: rows of three on our side of the road; humans start near the back
       const slots = []; for (let i = 0; i < total; i++) slots.push({ s: tr.startS - 4 - Math.floor(i / 3) * 6, d: [1.6, 3.8, 6.0][i % 3] });
@@ -57,6 +58,8 @@
         }
       }
       this.byId = new Map(this.riders.map(r => [r.id, r]));
+      // shootout: the pack are targets, so they pick fewer fights
+      if (cfg.mode === 'shootout') for (const r of this.riders) if (r.ai && !r.cop) r.ai.aggro *= 0.35;
     }
 
     emit(type, data = {}) { data.type = type; this.events.push(data); }
@@ -73,6 +76,8 @@
       const racing = this.state !== 'countdown';
       const lv = RR.LEVELS[this.level];
       const lead = this.leadHuman();
+      // shootout: endless shotgun shells and a Frenzy that is always ready
+      if (this.mode === 'shootout') for (const h of this.humans) { if (!h.crash) { h.weapon = 'shotgun'; h.ammo = 99; } if (h.frenzyT <= 0) h.frenzy = 100; }
       for (const r of this.riders) {
         if (!r.human && !r.cop && !r.remote) r.pace = this.mode === 'attract' ? 0.9 * (r.ai ? r.ai.skill : 1) : lv.pace * (r.ai ? r.ai.skill : 1) * this.rubber(r, lead);
         else if (r.cop) r.pace = r.copState === 'done' ? 0.5 : 1;
@@ -205,6 +210,7 @@
     }
 
     copsCheck() {
+      if (this.mode === 'shootout') return; // nobody gets nicked in the shootout
       for (const c of this.riders) {
         if (!c.cop || c.remote || c.crash || c.copState !== 'chase') continue;
         const p = c.ai.prey;

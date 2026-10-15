@@ -9,6 +9,7 @@ Play it at `/Bkb/road/` on the GitHub Pages site, or open `road/index.html` thro
 ## Modes
 
 - **Career.** Five levels, five roads each. Finish in the top 3 on every road to move up a level; roads get longer and the pack gets faster. Places 1–6 pay prize money, plus a bonus for every rider you knock off. Spend it in the **Garage** on faster bikes. Get **busted** by the police (fine) or **wreck** your bike (repair bill) and your race is over.
+- **Shootout · easy.** No traffic, just a pack of 17 riders and the police. You have a shotgun that never runs out and Frenzy is always ready (D-pad ↓, refills the moment it ends). Knock off as many riders as you can before the finish line; riders get back on their bikes, so you can knock them off again. Nobody can knock you off, bust you or wreck your bike. Your best score on each road is saved.
 - **2 Players · same screen.** Split screen (top/bottom), both of you against the pack. Pick track, level and each player's bike.
 - **Play online · invite a mate.** One of you hosts and gets a link (and a 5-letter code); the other opens the link on their own device and joins the lobby. Both pick bikes, the host picks the road and starts.
 

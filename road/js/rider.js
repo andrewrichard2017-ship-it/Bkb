@@ -183,7 +183,7 @@
       if (!a) return;
       a.t += dt;
       const D = a.def;
-      if (D.ranged && !a.done && a.t >= D.wind) { a.done = true; this.race.shoot(this, a.side); if (--this.ammo <= 0) { this.weapon = null; this.ammo = 0; } }
+      if (D.ranged && !a.done && a.t >= D.wind) { a.done = true; this.race.shoot(this, a.side); if (!(this.race.mode === 'shootout' && this.human) && --this.ammo <= 0) { this.weapon = null; this.ammo = 0; } }
       if (!a.done && a.t >= D.wind && a.t <= D.wind + D.hit) {
         const tgt = this.race.findTarget(this, a.side, D.reach);
         if (tgt) { a.done = true; this.race.hit(this, tgt, a); }
@@ -208,7 +208,9 @@
       const ratio = clamp((from ? from.bike.weight : 1) / this.bike.weight, 0.6, 1.6);
       const dmg = info.dmg * (this.cop ? 0.8 : 1) * (this.frenzyT > 0 ? 0.5 : 1);
       this.hp -= dmg; this.meter('frenzy', dmg * 0.8);
-      if (info.knock) { this.hp = 0; this.startCrash(info.kind === 'shot' ? 'shot' : 'knock', { side: info.side, by: from }); return; }
+      const easy = this.race.mode === 'shootout' && this.human; // shootout: the player can't be knocked off
+      if (easy) this.hp = Math.max(20, this.hp);
+      if (info.knock && !easy) { this.hp = 0; this.startCrash(info.kind === 'shot' ? 'shot' : 'knock', { side: info.side, by: from }); return; }
       this.pushV += info.side * info.push * ratio;
       this.v *= 0.985; this.hitT = 0.35; this.hitSide = info.side; this.wobble = Math.max(this.wobble, 0.25);
       if (info.bike) this.dmg += info.bike;
@@ -232,7 +234,7 @@
       };
       this.dmg += (knock ? 3 + v * 0.08 : 10 + v * 0.38) * this.bike.armor;
       if (!knock) this.hp = Math.max(0, this.hp - (car ? 22 : 14));
-      if (this.dmg >= 100) { this.dmg = 100; this.out = 'wrecked'; }
+      if (this.dmg >= 100) { if (this.race.mode === 'shootout' && this.human) this.dmg = 90; else { this.dmg = 100; this.out = 'wrecked'; } }
       // an empty-handed attacker picks up the weapon of the rider he knocked off
       if (knock && o.by) { o.by.knockoffs++; o.by.meter('frenzy', 12); }
       this.turbo *= 0.5; this.cleanT = 0; this.blazeT = 0; this.frenzyT = 0; this.meter('frenzy', 8);

@@ -41,8 +41,9 @@
       const flashL = el('div', 'flash l', p), flashR = el('div', 'flash r', p);
       const tags = [];
       for (let i = 0; i < 7; i++) tags.push(el('div', 'tag', p));
+      const score = race.mode === 'shootout' ? el('div', 'score', p, '<b>0</b><span>KNOCKED OFF</span>') : null;
       if (v.rider.human && race.humans.length > 1) el('div', 'who', p, v.rider.name).style.color = hex(v.rider.look.tag || 0xffffff);
-      panels.push({ v, p, pos, time, dots, hp: hp.querySelector('i'), bk: bk.querySelector('i'), wpn, nitro, sp, spB: sp.querySelector('b'), spE: sp.querySelector('em'), rpm: sp.querySelector('.rpm'), rival, rivalL: rival.querySelector('label'), rivalB: rival.querySelector('i'), cop, msgs, taunt, count, hint, flashL, flashR, tags, rivalHold: 0, last: {},
+      panels.push({ v, p, pos, time, dots, hp: hp.querySelector('i'), bk: bk.querySelector('i'), wpn, nitro, sp, spB: sp.querySelector('b'), spE: sp.querySelector('em'), rpm: sp.querySelector('.rpm'), rival, rivalL: rival.querySelector('label'), rivalB: rival.querySelector('i'), cop, msgs, taunt, count, hint, flashL, flashR, tags, rivalHold: 0, last: {}, score: score && score.querySelector('b'),
         tb: spx.querySelector('.turbo'), fz: spx.querySelector('.frenzy'), tbI: spx.querySelector('.turbo i'), fzI: spx.querySelector('.frenzy i'), tbE: spx.querySelector('.turbo em'), fzE: spx.querySelector('.frenzy em') });
     }
     H.layout(views);
@@ -80,6 +81,7 @@
         P.pos.querySelector('b').textContent = r.pos; P.pos.querySelector('i').textContent = RR.ordinal(r.pos).slice(-2).toUpperCase(); P.pos.querySelector('span').textContent = '/' + race.order.length;
       });
       set(P, 'time', race.time > 0 ? RR.fmtTime(r.finished ? r.finishTime : race.time) : '0:00.00', x => { P.time.textContent = x; });
+      if (P.score) set(P, 'score', r.knockoffs, x => { P.score.textContent = x; P.score.parentNode.classList.remove('bump'); void P.score.offsetWidth; P.score.parentNode.classList.add('bump'); });
       // progress strip
       race.riders.forEach((o, k) => {
         const f = clamp((o.progress - tr.startS) / L, 0, 1), d = P.dots[k];

@@ -45,6 +45,8 @@
       this.placeProps(RR.rng(this.seed + 99));
       this.obstacles.sort((a, b) => a.s - b.s);
       this.buildTraffic(RR.rng(this.seed + 7), lv.traffic * (opts.trafficScale || 1));
+      if (opts.noTraffic) this.cars = [];
+      if (opts.noCrates) { this.pickups = []; this.props = this.props.filter(p => p.kind !== 'crate'); }
     }
 
     // ---- shape ----

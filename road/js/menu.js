@@ -91,6 +91,7 @@
         <p class="tag">Ride fast. Hit harder. Don't get nicked.</p>
         <div class="col">
           ${btn('CAREER', 'career')}
+          ${btn('SHOOTOUT · EASY', 'shootout')}
           ${btn('2 PLAYERS · SAME SCREEN', 'versus')}
           ${btn('PLAY ONLINE · INVITE A MATE', 'online')}
           ${btn('HOW TO PLAY', 'howto')}
@@ -152,6 +153,20 @@
         onWho: (a, who) => { if (who === 1 && (a === 'left' || a === 'right' || a === 'l1' || a === 'r1')) { cycle(D.bikes, 1, a === 'left' || a === 'l1' ? -1 : 1); M.show('versus', D); return true; } return false; } });
     },
 
+    shootout() {
+      const D = M.data, best = RR.career.shoot || {};
+      D.track = D.track ?? 0; D.bike = D.bike || 'banshee';
+      const b = RR.bike(D.bike), t = RR.TRACKS[D.track];
+      render(`<div class="panel">
+        <div class="hdr"><h2>SHOOTOUT</h2><div class="chips"><span>BEST: ${best[t.id] || 0}</span></div></div>
+        <p class="sub">Easy mode. No traffic, just the pack. Endless shotgun shells (□ / ○) and Frenzy is always ready (D-pad ↓). Knock off as many riders as you can before the finish line. Nobody can knock you off or nick you.</p>
+        <div class="col">
+          <button class="mi selector" data-act="shTrack" data-sel><span>◀</span><b>${esc(t.name)}</b><span>▶</span></button>
+          <button class="mi selector" data-act="shBike" data-sel><span>◀</span><b>${esc(b.name)}</b><span>▶</span></button>
+          ${btn('▶ START', 'shStart', 'id="go"')}
+          ${btn('BACK', 'title')}
+        </div></div>`, { back: () => M.show('title'), focus: '#go', start: () => M.acts.shStart() });
+    },
     online() {
       render(`<div class="panel">
         <div class="hdr"><h2>PLAY ONLINE</h2></div>
@@ -267,6 +282,12 @@
     M.hide();
     G.startRace({ trackIndex: M.data.track, level: lv - 1, mode: 'career', humans: [{ name: myName(), bikeId: C.bike, look: RR.PLAYER_LOOKS[0], view: 0, slot: 0 }], seed: C.races + 1, packSize: 10 });
   }
+  function startShootout() {
+    const D = M.data;
+    M.last = { mode: 'shootout', data: D };
+    M.hide();
+    G.startRace({ trackIndex: D.track, level: 0, mode: 'shootout', humans: [{ name: myName(), bikeId: D.bike, look: RR.PLAYER_LOOKS[0], view: 0, slot: 0 }], seed: Date.now() % 997, packSize: 18 });
+  }
   function startVersus() {
     const D = M.data;
     M.last = { mode: 'versus', data: D };
@@ -283,7 +304,15 @@
     const lines = [];
     let headline = 'RESULTS';
     const humans = results.filter(r => r.human);
-    if (race.mode === 'career') {
+    if (race.mode === 'shootout') {
+      const me = humans[0], id = RR.TRACKS[race.cfg.trackIndex].id, best = RR.career.shoot = RR.career.shoot || {};
+      const prev = best[id] || 0, n = me.knockoffs;
+      headline = `${n} KNOCKED OFF`;
+      lines.push(['Riders knocked off', String(n), 'total']);
+      lines.push(['Finished', RR.ordinal(me.place)]);
+      if (n > prev) { best[id] = n; RR.saveCareer(); lines.push([prev ? `NEW BEST (was ${prev})` : 'NEW BEST!', '★', 'gold']); RR.audio.sfx('finish'); }
+      else lines.push(['Best on this road', String(prev)]);
+    } else if (race.mode === 'career') {
       const C = RR.career, me = humans[0], lv = Math.min(C.level, 5), L = RR.LEVELS[lv - 1], bike = RR.bike(C.bike);
       let total = 0;
       if (!me.out && me.place <= RR.PRIZE_SHARE.length) { const p = Math.round(L.prize * RR.PRIZE_SHARE[me.place - 1]); total += p; lines.push([RR.ordinal(me.place) + ' place prize', '+' + money(p)]); }
@@ -335,6 +364,10 @@
     vsTrack: (e, how) => { const n = RR.TRACKS.length; M.data.track = (M.data.track + (how === 'left' ? -1 : 1) + n) % n; M.show('versus', M.data); focus(root.querySelector('[data-act=vsTrack]')); },
     vsLevel: (e, how) => { M.data.level = clamp(M.data.level + (how === 'left' ? -1 : 1), 1, 5); M.show('versus', M.data); focus(root.querySelector('[data-act=vsLevel]')); },
     vsStart: () => startVersus(),
+    shootout: () => M.show('shootout', M.last && M.last.mode === 'shootout' ? M.last.data : {}),
+    shTrack: (e, how) => { const n = RR.TRACKS.length; M.data.track = (M.data.track + (how === 'left' ? -1 : 1) + n) % n; M.show('shootout', M.data); focus(root.querySelector('[data-act=shTrack]')); },
+    shBike: (e, how) => { const a = [M.data.bike]; cycle(a, 0, how === 'left' ? -1 : 1); M.data.bike = a[0]; M.show('shootout', M.data); focus(root.querySelector('[data-act=shBike]')); },
+    shStart: () => startShootout(),
     host: async () => {
       M.show('hosting', { status: 'Connecting…' });
       try { await RR.net.host(myName()); M.show('hosting', {}); } catch (err) { M.show('hosting', { status: 'Could not start hosting: ' + (err.message || err) }); }
@@ -364,14 +397,14 @@
     restart: () => {
       const L = M.last; M.hide(); G.togglePause(false);
       if (!L) return;
-      if (L.mode === 'career') { M.data.track = L.track; startCareer(); } else if (L.mode === 'versus') { M.data = L.data; startVersus(); }
+      if (L.mode === 'career') { M.data.track = L.track; startCareer(); } else if (L.mode === 'versus') { M.data = L.data; startVersus(); } else if (L.mode === 'shootout') { M.data = L.data; startShootout(); }
     },
     quit: () => { G.togglePause(false); if (RR.net.active) RR.net.leave(); G.clearRace(); G.startAttract().then(() => M.show('title')); },
     afterResults: () => {
       const L = M.last;
       G.clearRace();
       if (L && L.mode === 'online' && RR.net.active) { G.startAttract().then(() => M.show('lobby')); return; }
-      G.startAttract().then(() => M.show(L && L.mode === 'career' ? 'career' : L && L.mode === 'versus' ? 'versus' : 'title', L && L.mode === 'versus' ? L.data : {}));
+      G.startAttract().then(() => M.show(L && ['career', 'versus', 'shootout'].includes(L.mode) ? L.mode : 'title', L && L.mode !== 'career' ? L.data || {} : {}));
     },
   };
   RR.menu = M;

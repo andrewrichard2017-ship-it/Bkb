@@ -171,6 +171,11 @@
   .tag.cop { color: #9cc3ff; }
   .tag.hum { font-size: 16px; }
   .view.half .bl { width: min(220px, 30%); }
+  .score { position: absolute; right: max(16px, env(safe-area-inset-right)); top: 34px; text-align: right; text-shadow: 0 3px 0 #000; }
+  .score b { display: block; font: 400 clamp(44px, 9vh, 80px)/.9 var(--hd); color: var(--acc); }
+  .score span { font: 700 13px var(--ui); letter-spacing: .14em; }
+  .score.bump b { animation: pop2 .35s ease-out; }
+  @keyframes pop2 { 0% { transform: scale(1.6); color: #fff; } 100% { transform: scale(1); } }
   .specials { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: calc(clamp(130px, 22vh, 200px) * 0.62 + 18px); width: min(220px, 30%); }
   .view.half .specials { bottom: calc(clamp(100px, 18vh, 150px) * 0.62 + 14px); }
   .sm { display: grid; grid-template-columns: 58px 1fr auto; align-items: center; gap: 6px; margin-top: 5px; font: 700 13px var(--ui); letter-spacing: .1em; text-shadow: 0 1px 3px #000; }
@@ -213,20 +218,20 @@
 <div id="loading">LOADING…</div>
 <div id="rotate"><div><b>TURN YOUR PHONE</b>Road Rumble plays in landscape.</div></div>
 <script type="module">import * as THREE from './lib/three.module.min.js?v=170'; window.THREE = THREE;</script>
-<script defer src="js/core.js?v=2"></script>
-<script defer src="js/data.js?v=2"></script>
-<script defer src="js/audio.js?v=2"></script>
-<script defer src="js/track.js?v=2"></script>
-<script defer src="js/models.js?v=2"></script>
-<script defer src="js/scenery.js?v=2"></script>
-<script defer src="js/world.js?v=2"></script>
-<script defer src="js/fx.js?v=2"></script>
-<script defer src="js/rider.js?v=2"></script>
-<script defer src="js/race.js?v=2"></script>
-<script defer src="js/input.js?v=2"></script>
-<script defer src="js/hud.js?v=2"></script>
-<script defer src="js/menu.js?v=2"></script>
-<script defer src="js/net.js?v=2"></script>
-<script defer src="js/main.js?v=2"></script>
+<script defer src="js/core.js?v=3"></script>
+<script defer src="js/data.js?v=3"></script>
+<script defer src="js/audio.js?v=3"></script>
+<script defer src="js/track.js?v=3"></script>
+<script defer src="js/models.js?v=3"></script>
+<script defer src="js/scenery.js?v=3"></script>
+<script defer src="js/world.js?v=3"></script>
+<script defer src="js/fx.js?v=3"></script>
+<script defer src="js/rider.js?v=3"></script>
+<script defer src="js/race.js?v=3"></script>
+<script defer src="js/input.js?v=3"></script>
+<script defer src="js/hud.js?v=3"></script>
+<script defer src="js/menu.js?v=3"></script>
+<script defer src="js/net.js?v=3"></script>
+<script defer src="js/main.js?v=3"></script>
 </body>
 </html>
