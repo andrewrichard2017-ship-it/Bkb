@@ -162,7 +162,8 @@
         <p class="sub">Easy mode. No traffic, just the pack. Endless shotgun shells (□ / ○) and Frenzy is always ready (D-pad ↓). Knock off as many riders as you can before the finish line. Nobody can knock you off or nick you.</p>
         <div class="col">
           <button class="mi selector" data-act="shTrack" data-sel><span>◀</span><b>${esc(t.name)}</b><span>▶</span></button>
-          <button class="mi selector" data-act="shBike" data-sel><span>◀</span><b>${esc(b.name)}</b><span>▶</span></button>
+          <button class="mi selector" data-act="shCop" data-sel><span>◀</span><b>RIDE AS: ${D.cop ? 'POLICE' : 'RASHER'}</b><span>▶</span></button>
+          ${D.cop ? '<div class="selector ro"><b>POLICE 1200 · SIREN ON</b></div>' : `<button class="mi selector" data-act="shBike" data-sel><span>◀</span><b>${esc(b.name)}</b><span>▶</span></button>`}
           ${btn('▶ START', 'shStart', 'id="go"')}
           ${btn('BACK', 'title')}
         </div></div>`, { back: () => M.show('title'), focus: '#go', start: () => M.acts.shStart() });
@@ -286,7 +287,8 @@
     const D = M.data;
     M.last = { mode: 'shootout', data: D };
     M.hide();
-    G.startRace({ trackIndex: D.track, level: 0, mode: 'shootout', humans: [{ name: myName(), bikeId: D.bike, look: RR.PLAYER_LOOKS[0], view: 0, slot: 0 }], seed: Date.now() % 997, packSize: 18 });
+    const look = D.cop ? { jacket: 0x14213d, helmet: 0xf5f5f5, legs: 0x101828, tag: 0x64b5f6 } : RR.PLAYER_LOOKS[0];
+    G.startRace({ trackIndex: D.track, level: 0, mode: 'shootout', humans: [{ name: D.cop ? 'Officer ' + myName() : myName(), bikeId: D.cop ? 'cop' : D.bike, look, view: 0, slot: 0 }], seed: Date.now() % 997, packSize: 18 });
   }
   function startVersus() {
     const D = M.data;
@@ -367,6 +369,7 @@
     shootout: () => M.show('shootout', M.last && M.last.mode === 'shootout' ? M.last.data : {}),
     shTrack: (e, how) => { const n = RR.TRACKS.length; M.data.track = (M.data.track + (how === 'left' ? -1 : 1) + n) % n; M.show('shootout', M.data); focus(root.querySelector('[data-act=shTrack]')); },
     shBike: (e, how) => { const a = [M.data.bike]; cycle(a, 0, how === 'left' ? -1 : 1); M.data.bike = a[0]; M.show('shootout', M.data); focus(root.querySelector('[data-act=shBike]')); },
+    shCop: () => { M.data.cop = !M.data.cop; M.show('shootout', M.data); focus(root.querySelector('[data-act=shCop]')); },
     shStart: () => startShootout(),
     host: async () => {
       M.show('hosting', { status: 'Connecting…' });

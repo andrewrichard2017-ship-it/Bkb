@@ -22,7 +22,8 @@
       this.pace = 1; this.inp = { throttle: 0, brake: 0, steer: 0, atkL: false, atkR: false, kick: false, nitro: false, mash: false };
       this.ai = this.human ? null : { pref: rand(0.8, 6.2), targetD: o.d, laneT: Math.random() * 0.3, prey: null, preyT: 0, cd: 0, skill: this.rival ? this.rival.skill : 1, aggro: this.rival ? this.rival.aggro : (this.cop ? 1 : 0.5) };
       if (this.cop) { this.copState = 'parked'; this.siren = false; }
-      this.model = new RR.models.RacerModel(this.bike, this.look, { cop: this.cop });
+      this.copSkin = !!o.copSkin; if (this.copSkin) this.siren = true; // a player riding as the police
+      this.model = new RR.models.RacerModel(this.bike, this.look, { cop: this.cop || this.copSkin });
       this.model.setWeapon(this.weapon);
       this.wheelA = 0; this.runPh = 0; this.anim = 0;
       this.net = null; // remote interpolation buffer

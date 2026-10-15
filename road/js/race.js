@@ -38,18 +38,18 @@
         const hi = humanSlots.indexOf(i);
         if (hi >= 0) {
           const h = humans[hi];
-          const r = new RR.Rider(this, { id: id++, name: h.name, bike: RR.bike(h.bikeId), look: h.look, human: true, view: h.view, remote: h.remote, slot: h.slot, s: slots[i].s, d: slots[i].d });
+          const r = new RR.Rider(this, { id: id++, name: h.name, bike: h.bikeId === 'cop' ? RR.COP_BIKE : RR.bike(h.bikeId), look: h.look, copSkin: h.bikeId === 'cop', human: true, view: h.view, remote: h.remote, slot: h.slot, s: slots[i].s, d: slots[i].d });
           this.riders.push(r); this.humans.push(r);
         } else {
           const rv = rivals[ai++ % rivals.length];
-          const bikeId = rng.pick(RR.PACK_BIKES[this.level]);
+          const bikeId = rng.pick(RR.PACK_BIKES[cfg.mode === 'shootout' ? 3 : this.level]);
           const weapon = rv.weapon && rng() < 0.65 ? rv.weapon : null;
           const r = new RR.Rider(this, { id: id++, name: rv.name, bike: RR.bike(bikeId), look: { jacket: rv.jacket, helmet: rv.helmet, legs: rv.legs }, rival: rv, weapon, s: slots[i].s, d: slots[i].d, remote: this.role === 'guest' });
           this.riders.push(r);
         }
       }
       // parked police along the route
-      if (cfg.mode !== 'attract') {
+      if (cfg.mode !== 'attract' && !humans.some(h => h.bikeId === 'cop')) {
         const cops = lv.cops + (this.def.theme === 'city' ? 1 : 0);
         for (let c = 0; c < cops; c++) {
           const s = tr.startS + 700 + (tr.length - 1100) * (c + 0.3 + rng() * 0.4) / cops;
@@ -100,6 +100,11 @@
     rubber(r, lead) {
       if (!lead) return 1;
       const ds = r.s - lead.progress;
+      if (this.mode === 'shootout') { // keep the targets coming: stragglers race back up to you
+        if (ds < -30) return 1 + Math.min(0.5, (-ds - 30) / 200);
+        if (ds > 60) return 1 - Math.min(0.3, (ds - 60) / 400);
+        return 1;
+      }
       if (ds > 120) return 1 - Math.min(0.14, (ds - 120) / 1800);
       if (ds < -150) return 1 + Math.min(0.1, (-ds - 150) / 1500);
       return 1;

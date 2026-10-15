@@ -292,6 +292,7 @@
       for (const o of race.riders) { if (o === r || o.crash || (o.cop && o.copState === 'parked')) continue; const d = Math.hypot(o.s - r.s, o.d - r.d); if (d < bd) { bd = d; best = o; } }
       RR.audio.pack(i, best ? { dist: bd, speed: best.v, closing: (best.s > r.s ? r.v - best.v : best.v - r.v), pan: clamp((best.d - r.d) / 8, -1, 1) } : null);
       RR.audio.scrape(i, r.crash && r.crash.sliding ? 0.8 : r.wallT > 0 ? 0.6 : 0);
+      if (r.copSkin && !r.crash) { siren = Math.max(siren, 0.45); }
       for (const o of race.riders) if (o.cop && o.siren) { const d = Math.abs(o.s - r.s); const x = clamp(1 - d / 260, 0, 1); if (x > siren) { siren = x; sirenPan = clamp((o.d - r.d) / 10, -1, 1); } }
     }
     RR.audio.siren(G.paused ? 0 : siren, sirenPan);
