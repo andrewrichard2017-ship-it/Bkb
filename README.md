@@ -7,6 +7,8 @@ A bare knuckle boxing game for Android phones and tablets. It's an HTML5 canvas 
 > And **[Road Rumble](road/)**, a 3D motorbike combat racer inspired by Road Rash (`road/index.html`): PS5 controller, two players on one screen, or invite a mate online.
 >
 > And **[Tractor Tippin'](tip/)**, a 3D cartoon farm game inspired by *Cars* (`tip/index.html`): sneak up on sleeping tractors, honk to tip them over, and escape Thrasher the combine harvester. Five farms plus a Halloween special, PS5 controller, two players on one screen, or online.
+>
+> And **[Bubble Odyssey](bubble/)**, a bubble shooter (`bubble/index.html`): 50 levels across five worlds with bosses, special bubbles and power-ups, plus co-op on one screen, online co-op and endless.
 
 > **Content warning:** this game contains fictional violence: bare knuckle boxing, knockdowns, cuts, cartoon-style animated blood and strong language. All characters and events are fictional.
 
