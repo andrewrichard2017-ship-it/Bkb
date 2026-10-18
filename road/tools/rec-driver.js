@@ -1,10 +1,10 @@
 // Plays Road Rumble for tools/record.js: a race on autopilot (the rival-rider AI steers the player's bike,
 // set aggressive so it fights), with the full HUD and the chase camera. A 'versus' race with one rider, so
-// the career save isn't touched. Options in the URL: ?track=0&bike=phantom&level=2
+// the career save isn't touched. Options in the URL: ?track=0&bike=phantom&level=2&warm=14
 (() => {
   const RR = window.RR, G = RR.game, R = window.__rec, q = new URLSearchParams(location.search);
 
-  R.warm = 4.6;                                       // the countdown
+  R.warm = +(q.get('warm') || 4.6);                   // the countdown (4.6 s); more to start mid-race
   R.setup = async () => {
     await document.fonts.ready;
     while (!G.ready) { window.__step(1000 / 30); await window.__sleep(20); }
