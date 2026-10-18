@@ -1,6 +1,6 @@
 # Road Rumble
 
-A 3D motorbike combat racer heavily inspired by **Road Rash** (EA, 1991–2000; PS1 1995). Race a pack of rival bikers down long public roads at 200+ km/h, punch, kick and club them off their bikes, dodge the traffic, and stay ahead of the police. Plain HTML/JS with no build step; the 3D is [three.js](https://threejs.org) (vendored in `lib/`).
+A 3D motorbike combat racer. Race a pack of rival bikers down long public roads at 200+ km/h, punch, kick and club them off their bikes, dodge the traffic, and stay ahead of the police. Plain HTML/JS with no build step; the 3D is [three.js](https://threejs.org) (vendored in `lib/`).
 
 Play it at `/Bkb/road/` on the GitHub Pages site, or open `road/index.html` through a local web server (`python3 -m http.server` in the repo root, then `http://localhost:8000/road/`). It won't run from `file://` because it loads a JavaScript module.
 
@@ -38,7 +38,7 @@ Every road is generated from a seed: the bends, hills, jumps, roadside props and
 
 ## Controls
 
-**PS5 DualSense / PS4 DualShock / any standard controller**
+**Any standard controller**
 
 | Button | Action |
 |---|---|

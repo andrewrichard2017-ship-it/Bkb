@@ -90,6 +90,7 @@
     if (!G.race || G.attract) return;
     G.paused = on === undefined ? !G.paused : on;
     RR.audio.setPaused(G.paused);
+    RR.ads.gameplay(!G.paused);
   };
 
   // ---- views and cameras ----
@@ -209,7 +210,7 @@
       const vol = clamp(1 - near.d / 70, 0, 1);
       switch (e.type) {
         case 'count': RR.audio.sfx('beep'); RR.hud.countdown(e.n); break;
-        case 'go': RR.audio.sfx('go'); RR.hud.countdown(0); for (const v of G.views) RR.input.rumble(v.index, 0.3, 0.6, 200); break;
+        case 'go': if (!G.attract) RR.ads.gameplay(true); RR.audio.sfx('go'); RR.hud.countdown(0); for (const v of G.views) RR.input.rumble(v.index, 0.3, 0.6, 200); break;
         case 'swing': break;
         case 'whiff': if (vol > 0.05) RR.audio.sfx('whiff', { vol: vol * 0.6 }); break;
         case 'hit': {

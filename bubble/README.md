@@ -93,8 +93,8 @@ Run a PeerJS server (`npx peer --port 9000`) and open the game with `?peerhost=1
 
 The GitHub Pages copy has no ads. `js/ads.js` only switches on in a portal build:
 
-1. Run `python3 bubble/tools/package.py`.
-2. Upload `bubble/dist/bubble-odyssey-crazygames.zip` to the CrazyGames developer portal (ads on), or `bubble-odyssey-web.zip` to itch.io (no ads).
+1. Run `python3 tools/package.py bubble` (from the repo root).
+2. Upload `dist/bubble-crazygames.zip` to the CrazyGames developer portal (ads on), or `dist/bubble-web.zip` to itch.io (no ads).
 
 In the CrazyGames build:
 - A break ad may show between games (next level, retry, back to the map), at most every 3 minutes and never in the first two games.
@@ -104,4 +104,4 @@ In the CrazyGames build:
 
 To try it locally, add `?portal=crazygames` to the URL; the SDK shows demo ads on localhost.
 
-Store covers (CrazyGames needs 1920×1080, 800×1200 and 800×800) are in `promo/`. They're drawn from the game's own art by `tools/cover.html`; to redo them, serve the repo (`python3 -m http.server 8123` from the root) and run `node bubble/tools/covers.js` (`--world=reef` etc. for another backdrop).
+Store covers (CrazyGames needs 1920×1080, 800×1200 and 800×800) and preview videos are in `promo/`. The covers are drawn from the game's own art by `tools/cover.html`. To redo them, serve the repo (`python3 -m http.server 8123` from the root) and run `node tools/covers.js --game=bubble` (`--world=reef` etc. for another backdrop). The videos come from `node tools/record.js --url=bubble/ --driver=bubble/tools/rec-driver.js --w=1920 --h=1080 --secs=20 --out=bubble/promo/preview-landscape-1920x1080.mp4` (a bot plays level 21 then the Candy boss).

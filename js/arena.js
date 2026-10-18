@@ -153,7 +153,7 @@
     ctx.fillStyle = ap; ctx.fillRect(R.frontL - 34, R.frontY, R.frontR - R.frontL + 68, H - R.frontY + 40);
     ctx.fillStyle = BK.PAL.blood; ctx.fillRect(R.frontL - 34, R.frontY + 4, R.frontR - R.frontL + 68, 6);
     D.text('BARE  KNUCKLE', W / 2, R.frontY + 58, BK.FONT.display(46), 'rgba(239,230,210,0.88)');
-    D.text('CHAMPIONSHIP  FIGHTING', W / 2, R.frontY + 94, BK.FONT.ui(20), 'rgba(217,164,65,0.8)');
+    D.text('FIGHT  NIGHT', W / 2, R.frontY + 94, BK.FONT.ui(20), 'rgba(217,164,65,0.8)');
     // ring side (visible thickness under the back edge)
     ctx.fillStyle = '#1d0d0b';
     D.poly([[R.backL - 14, R.backY - 4], [R.backR + 14, R.backY - 4], [R.backR + 14, R.backY + 12], [R.backL - 14, R.backY + 12]]); ctx.fill();
@@ -174,7 +174,7 @@
     ctx.strokeStyle = 'rgba(179,32,42,0.4)'; ctx.lineWidth = 6;
     ctx.beginPath(); ctx.ellipse(W / 2, 620, 150, 44, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.save(); ctx.translate(W / 2, 620); ctx.scale(1, 0.32);
-    D.text('BKB', 0, 0, BK.FONT.display(80), 'rgba(179,32,42,0.4)');
+    D.text('KO', 0, 0, BK.FONT.display(80), 'rgba(179,32,42,0.4)');
     ctx.restore();
     // ring edge highlight
     ctx.strokeStyle = 'rgba(255,255,255,0.12)'; ctx.lineWidth = 3;

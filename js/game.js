@@ -39,7 +39,7 @@
 
   // ---------- transitions ----------
   g.toTitle = () => {
-    g.paused = false; BK.getup.stop(); BK.audio.hush(); g.tour = null; g.twoPlayer = BK.settings.players === 2;
+    g.paused = false; BK.getup.stop(); BK.audio.hush(); BK.ads.gameplay(false); g.tour = null; g.twoPlayer = BK.settings.players === 2;
     g.setupFighters(); g.p1.resetFight(); g.p2.resetFight(); g.ref.reset(); BK.fx.clear();
     setState('title');
   };
@@ -62,6 +62,8 @@
       setState('champion'); g.p1.celebrate = true; BK.audio.roar(1); BK.audio.bell(3);
     } else setState('ladder');
   };
+  // lost a tournament fight: one rematch with the same man for watching an ad (ads.js), on 60 health
+  g.tourRetry = () => { const t = g.tour; if (!t || t.continued) return; t.continued = true; t.hp = 60; g.toTape(); };
   g.startFight = () => {
     g.totalRounds = BK.settings.rounds; g.round = 1; g.roundLog = []; g.result = null; g.recorded = false; g.aftermathDone = false;
     g.p1.resetFight(); g.p2.resetFight(); g.ai.reset(); BK.fx.clear();
@@ -70,6 +72,7 @@
     g.ref.reset();
     setState('walkout');
     BK.walkout.start(g);
+    BK.ads.gameplay(true);
   };
   g.beginRound = () => beginRound();
   function beginRound() {
@@ -105,8 +108,8 @@
     g.round++;
     beginRound();
   };
-  g.pause = () => { if (['fight', 'knockdown', 'roundIntro'].includes(g.state) && !BK.replay.active) { g.paused = true; BK.input.releaseAll(); } };
-  g.resume = () => { g.paused = false; g.showControls = false; BK.ui.focusPt = null; };
+  g.pause = () => { if (['fight', 'knockdown', 'roundIntro'].includes(g.state) && !BK.replay.active) { g.paused = true; BK.input.releaseAll(); BK.ads.gameplay(false); } };
+  g.resume = () => { g.paused = false; BK.ads.gameplay(true); g.showControls = false; BK.ui.focusPt = null; };
   g.togglePause = () => { if (g.paused) g.resume(); else { g.pause(); BK.ui.focusPt = null; } };
   document.addEventListener('visibilitychange', () => { if (document.hidden) g.pause(); });
 
@@ -331,6 +334,8 @@
 
   function finish(result) {
     g.result = result;
+    BK.ads.gameplay(false);
+    if (result.winner === g.p1 && !g.twoPlayer && !result.method.includes('DECISION')) BK.ads.happy();
     if (g.recorded || g.twoPlayer) return;
     g.recorded = true;
     const r = BK.record;
@@ -495,7 +500,7 @@
     if (g.state === 'title') g.toTape();
     else if (g.state === 'tape') g.startFight();
     else if (g.state === 'corner') g.workCorner();
-    else if (g.state === 'result') { if (g.tour) (g.result.winner === g.p1 ? g.tourNext() : g.toTitle()); else g.toTape(); }
+    else if (g.state === 'result') BK.ads.midgame(() => { if (g.tour) (g.result.winner === g.p1 ? g.tourNext() : g.toTitle()); else g.toTape(); });
     else if (g.state === 'ladder') g.toTape();
     else if (g.state === 'champion') g.toTitle();
   };

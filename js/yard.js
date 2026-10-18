@@ -429,7 +429,7 @@
     ctx.strokeStyle = 'rgba(179,32,42,0.5)'; ctx.lineWidth = 7;
     ctx.beginPath(); ctx.ellipse(W / 2, 620, 150, 44, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.save(); ctx.translate(W / 2, 620); ctx.scale(1, 0.32);
-    D.text('BKB', 0, 0, BK.FONT.display(80), 'rgba(179,32,42,0.5)');
+    D.text('KO', 0, 0, BK.FONT.display(80), 'rgba(179,32,42,0.5)');
     ctx.restore();
     for (const [u, col] of [[0.1, 'rgba(210,50,58,0.6)'], [0.9, 'rgba(77,116,214,0.6)']]) {
       const x = BK.toScreenX(u, 0.12), y = BK.toScreenY(0.12), k = BK.depthScale(0.12) * 22;

@@ -7,7 +7,7 @@
   // alt: colours used when both corners pick the same fighter.
   BK.FIGHTERS = {
     michael: {
-      name: 'PADDY QUINN', short: 'QUINN', voice: { pitch: 125, formant: 1.0, breath: 0.25 },
+      name: 'PADDY FLYNN', short: 'FLYNN', voice: { pitch: 125, formant: 1.0, breath: 0.25 },
       skin: '#e3b08a', skinShade: '#c48b66', hair: '#3a2718',
       top: 'tank', topColor: '#f1ede2', topShade: '#cfc8b6',
       // vest stains, in torso space (waist at y=0, shoulders near y=-80)
@@ -116,7 +116,7 @@
   // Walks the ring card round between rounds.
   BK.CARD_LOOK = {
     skin: '#d9a07c', skinShade: '#b47f5d', hair: '#2a1d14',
-    top: 'shirt', topColor: '#1b1b1f', topShade: '#121215', stains: [], bowtie: false, print: 'BKB',
+    top: 'shirt', topColor: '#1b1b1f', topShade: '#121215', stains: [], bowtie: false, print: 'KO',
     pants: '#1c1c20', pantsShade: '#131316', pantsStripe: null,
     boots: '#e8e4dc', bootSole: '#b8b2a6',
     sleeves: 'short', legs: 'trousers', shoes: 'shoe', fist: 'bare', head: 'hair',
@@ -135,7 +135,7 @@
     ko:       { label: 'HAYMAKER',       hand: 'rear', dur: 0.98, hitAt: 0.56, dmg: 40, reach: 190, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0, power: true, super: true, aim: 0.84, aimY: 10 },
     overhand: { label: 'SLEDGEHAMMER',   hand: 'rear', dur: 1.0,  hitAt: 0.58, dmg: 40, reach: 190, cost: 16, stun: 0.6,  snap: 0.95, through: 1.0, power: true, super: true, aim: 0.9,  aimY: -6 },
     wrecker:  { label: 'WRECKING BALL',  hand: 'rear', dur: 1.05, hitAt: 0.6,  dmg: 42, reach: 170, cost: 16, stun: 0.65, snap: 1.0,  through: 1.0, power: true, super: true, aim: 0.74, aimY: 0 },
-    superman: { label: 'SUPERMAN PUNCH', hand: 'rear', dur: 0.9,  hitAt: 0.5,  dmg: 38, reach: 230, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0, power: true, super: true, aim: 0.93, aimY: 0 },
+    superman: { label: 'FLYING PUNCH', hand: 'rear', dur: 0.9,  hitAt: 0.5,  dmg: 38, reach: 230, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0, power: true, super: true, aim: 0.93, aimY: 0 },
     // Gerry's: a kettle of scalding water, once a round. Lands like a big power shot and burns the right hand off him.
     kettle:   { label: 'SCALDING KETTLE', hand: 'rear', dur: 1.1,  hitAt: 0.6,  dmg: 34, reach: 210, cost: 16, stun: 0.9,  snap: 0.8,  through: 1.0, power: true, super: true, aim: 0.8,  aimY: -4, scald: true },
     // Spade's: a big knuckle-duster cross, once a round

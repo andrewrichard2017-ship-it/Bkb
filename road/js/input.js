@@ -1,4 +1,4 @@
-// Road Rumble: controls. PS5 DualSense / PS4 / any standard pad, keyboard (one or two players) and touch.
+// Road Rumble: controls. any standard pad, keyboard (one or two players) and touch.
 //
 //   PS5 pad:  R2 / ✕  throttle        L2  brake               left stick / D-pad  steer
 //             □  hit left             ○  hit right            △  kick (towards the nearest rider)

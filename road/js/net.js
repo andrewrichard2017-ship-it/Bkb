@@ -28,7 +28,7 @@
     return o;
   }
   const makeCode = () => Array.from({ length: 5 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
-  N.inviteLink = () => { const u = new URL(location.href); u.search = ''; const q = new URLSearchParams(location.search); for (const k of ['peerhost', 'peerport', 'peerpath', 'peersecure']) if (q.get(k)) u.searchParams.set(k, q.get(k)); u.searchParams.set('join', N.code); return u.toString(); };
+  N.inviteLink = () => { const portal = RR.ads.invite(N.code); if (portal) return portal; const u = new URL(location.href); u.search = ''; const q = new URLSearchParams(location.search); for (const k of ['peerhost', 'peerport', 'peerpath', 'peersecure']) if (q.get(k)) u.searchParams.set(k, q.get(k)); u.searchParams.set('join', N.code); return u.toString(); };
 
   function status(text) { if (RR.menu.screen === 'hosting') RR.menu.show('hosting', { status: text }); else if (RR.menu.screen === 'join') RR.menu.show('join', { code: N.code, status: text, auto: false }); else RR.hud.message(0, text, { color: '#64b5f6' }); }
 

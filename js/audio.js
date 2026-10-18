@@ -6,7 +6,7 @@
   const A = BK.audio = { ctx: null, master: null, crowd: null, excitement: 0 };
 
   A.init = () => {
-    if (A.ctx) { if (A.ctx.state === 'suspended') A.ctx.resume(); return; }
+    if (A.ctx) { if (A.ctx.state === 'suspended' && !A.muted) A.ctx.resume(); return; }
     try { A.ctx = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) { A.ctx = null; return; }
     const c = A.ctx;
     A.master = c.createGain(); A.master.gain.value = BK.settings.sound ? 0.9 : 0;
@@ -31,6 +31,8 @@
     A.loadClips();
   };
 
+  // silent while an ad plays (ads.js): freezes everything, including sounds already scheduled
+  A.mute = on => { A.muted = on; if (on) A.hush(); if (A.ctx) (on ? A.ctx.suspend() : A.ctx.resume()).catch(() => {}); };
   A.setEnabled = on => { if (A.master) { A.master.gain.setTargetAtTime(on ? 0.9 : 0, A.ctx.currentTime, 0.05); A.dry.gain.setTargetAtTime(on ? 0.9 : 0, A.ctx.currentTime, 0.05); } if (!on) A.hush(); };
   // k 0..1: how rocked. Closes the low-pass from open (18 kHz) down to about 450 Hz.
   let muffleK = 0;
@@ -268,7 +270,7 @@
   }
   try { window.speechSynthesis && window.speechSynthesis.addEventListener('voiceschanged', () => { bestVoice = null; }); } catch (e) { /* optional */ }
   function speak(text, rate, pitch, interrupt) {
-    if (!BK.settings.sound) return;
+    if (!BK.settings.sound || A.muted) return;
     try {
       const ss = window.speechSynthesis;
       if (!ss) return;
@@ -298,7 +300,7 @@
   };
   // Plays a clip and returns its length in seconds (0 if unavailable).
   A.clip = name => {
-    if (!BK.settings.sound) return 0;
+    if (!BK.settings.sound || A.muted) return 0;
     const buf = clipBuf[name];
     if (A.ctx && buf) {
       const s = A.ctx.createBufferSource(); s.buffer = buf;

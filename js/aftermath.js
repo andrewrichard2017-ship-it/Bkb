@@ -1,5 +1,5 @@
 // After a knockout: a 10-second cut scene. The winner stands over the man on the floor shouting
-// "FIGHT FUCKING NOW!" and keeps putting the boot in (stamps, kicks and punches on the ground) before
+// "GET UP AND FIGHT!" and keeps putting the boot in (stamps, kicks and punches on the ground) before
 // the result screen. Only when the loser is actually down; letterboxed; tap / any button to skip.
 (() => {
   'use strict';
@@ -90,7 +90,7 @@
     const pop = Math.min(1, SHOUTS.reduce((m, [a]) => (AM.t >= a ? AM.t - a : m), 0) * 8);
     let x = (w.headX + w.dir * 60 * w.fs - c.x) * z + W / 2, y = (w.headY - 90 * w.fs - c.y) * z + H / 2;
     ctx.font = F.display(40);
-    const text = 'FIGHT FUCKING NOW!', tw = ctx.measureText(text).width + 44;
+    const text = 'GET UP AND FIGHT!', tw = ctx.measureText(text).width + 44;
     x = clamp(x, tw / 2 + 20, W - tw / 2 - 20); y = clamp(y, 150, H - 220);
     const hx = (w.headX - c.x) * z + W / 2, hy = (w.headY - c.y) * z + H / 2; // the tail points at his mouth
     ctx.save(); ctx.translate(x, y); ctx.scale(pop, pop);

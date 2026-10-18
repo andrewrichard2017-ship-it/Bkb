@@ -81,7 +81,7 @@
   def('wreckerA', { rX: -52, rY: -96, rB: -1, rZ: 1.15, rsh: -18, lean: -10, px: -16, py: 12, head: -2, fX: 50, fY: -108, ffX: 34, rfX: -44 });
   def('wreckerM', { rTop: 1, rX: 8, rY: -108, rB: -1, rZ: 1.75, rsh: 6, lean: 8, px: 0, py: 10, head: 4, fX: 44, fY: -104, ffX: 40, rfX: -42 });
   def('wreckerX', { rTop: 1, rX: 80, rY: -112, rB: -0.95, rZ: 1.4, rsh: 22, lean: 20, px: 18, py: 10, head: 8, fX: 30, fY: -96, fB: 1, ffX: 46, rfX: -38 });
-  // Superman punch (Leo): knee up, spring off the back foot and fly in behind the cross.
+  // Flying punch (Leo): knee up, spring off the back foot and fly in behind the cross.
   def('supermanA', { rX: 22, rY: -98, rB: 0.8, rsh: -8, lean: -4, px: -6, py: 30, head: 0, fX: 48, fY: -110, ffX: 30, rfX: -12, rfY: -34 });
   def('supermanM', { rX: 30, rY: -118, rB: 0.6, rsh: 4, lean: 10, px: 10, py: -34, head: 2, fX: 40, fY: -104, ffX: 44, ffY: -26, rfX: -72, rfY: -44 });
   def('supermanX', { rX: 110, rY: -116, rB: 0.05, rZ: 1.25, rsh: 24, lean: 20, px: 30, py: -8, head: 6, fX: 18, fY: -96, fB: 1, ffX: 58, ffY: -6, rfX: -80, rfY: -30 });

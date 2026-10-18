@@ -13,7 +13,7 @@
     { id: 'rust', name: 'Rustbucket 350', cls: 'RAT', price: 0, top: 47, accel: 9.5, handling: 0.88, weight: 0.9, armor: 1.0, nitro: 0,
       style: 'rat', paint: 0x8a5a32, trim: 0x2b2b2b, blurb: 'Held together with tape and prayer. Gets you to the next race. Usually.' },
     { id: 'viper', name: 'Viper 600', cls: 'SPORT', price: 3500, top: 56, accel: 11, handling: 1.0, weight: 0.9, armor: 1.0, nitro: 0,
-      style: 'sport', paint: 0xc62828, trim: 0xf2f2f2, blurb: 'Light, quick and twitchy. The starter sport bike every rasher owns once.' },
+      style: 'sport', paint: 0xc62828, trim: 0xf2f2f2, blurb: 'Light, quick and twitchy. The starter sport bike every biker owns once.' },
     { id: 'banshee', name: 'Banshee 750', cls: 'SPORT', price: 7000, top: 61, accel: 12.5, handling: 1.06, weight: 1.0, armor: 0.95, nitro: 0,
       style: 'sport', paint: 0x1565c0, trim: 0xffd54f, blurb: 'Screams like its name. Sharp in the bends, strong to the redline.' },
     { id: 'kodiak', name: 'Kodiak 1100', cls: 'MUSCLE', price: 9500, top: 60, accel: 11.5, handling: 0.86, weight: 1.45, armor: 0.7, nitro: 0,

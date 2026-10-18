@@ -10,7 +10,7 @@
 
   let ctx = null, sfxBus = null, loopBus = null, musicBus = null, noiseBuf = null, hasPan = false;
   let engCurve, fuzzCurve, softCurve;
-  let paused = false, lastVol = -1, lastMus = -1, lastPaused = null, live = 0;
+  let paused = false, muted = false, lastVol = -1, lastMus = -1, lastPaused = null, live = 0;
   const sims = [], packSims = [], engines = [], packs = [], scrapes = [], viewGain = [];
   let sirenV = null;
 
@@ -146,8 +146,8 @@
   // Settings are read live; this only touches the gains when something changed.
   function levels(force) {
     const st = RR.settings || {};
-    const vol = clamp(num(st.volume, 0.8), 0, 1);
-    const mus = st.music === false ? 0 : clamp(num(st.musicVolume, 0.6), 0, 1);
+    const vol = muted ? 0 : clamp(num(st.volume, 0.8), 0, 1);
+    const mus = muted || st.music === false ? 0 : clamp(num(st.musicVolume, 0.6), 0, 1);
     if (!force && vol === lastVol && mus === lastMus && paused === lastPaused) return;
     lastVol = vol; lastMus = mus; lastPaused = paused;
     glide(sfxBus.gain, vol, 0.03);
@@ -317,6 +317,8 @@
   }
 
   function setPaused(b) { paused = !!b; if (ctx) levels(); }
+  // silent while an ad plays (ads.js)
+  function setMuted(b) { muted = !!b; if (ctx) levels(true); }
   function stopEngines() {
     sims.length = 0; packSims.length = 0;
     if (!ctx) return;
@@ -622,6 +624,7 @@
     init: safe('init', init),
     applySettings: safe('applySettings', () => { if (ctx) levels(true); }),
     setPaused: safe('setPaused', setPaused),
+    setMuted: safe('setMuted', setMuted),
     engine: safe('engine', engine),
     engineInfo,
     stopEngines: safe('stopEngines', stopEngines),

@@ -346,11 +346,15 @@
     if (g.tour) {
       const t = g.tour;
       D.text(`TOURNAMENT  ·  FIGHT ${t.index + 1} OF ${t.order.length}`, 1130, 650, F.ui(26), PAL.brass);
-      if (won) UI.button(W / 2, 765, 520, 88, t.index + 1 >= t.order.length ? 'CLAIM THE TITLE' : 'CONTINUE  ·  +10 HEALTH', () => g.tourNext(), 'primary');
-      else UI.button(W / 2, 765, 520, 88, 'KNOCKED OUT OF THE TOURNAMENT', () => g.toTitle());
+      if (won) UI.button(W / 2, 765, 520, 88, t.index + 1 >= t.order.length ? 'CLAIM THE TITLE' : 'CONTINUE  ·  +10 HEALTH', () => BK.ads.midgame(() => g.tourNext()), 'primary');
+      else if (BK.ads.canReward() && !t.continued) {
+        // a second chance for watching an ad, once per tournament
+        UI.button(W / 2 - 280, 765, 520, 88, 'WATCH AN AD  ·  FIGHT HIM AGAIN', () => BK.ads.rewarded(() => g.tourRetry()), 'primary', 'ON 60 HEALTH');
+        UI.button(W / 2 + 280, 765, 480, 88, 'OUT OF THE TOURNAMENT', () => BK.ads.midgame(() => g.toTitle()));
+      } else UI.button(W / 2, 765, 520, 88, 'KNOCKED OUT OF THE TOURNAMENT', () => BK.ads.midgame(() => g.toTitle()));
     } else {
-      UI.button(W / 2 - 220, 765, 380, 88, 'REMATCH', () => g.toTape(), 'primary');
-      UI.button(W / 2 + 220, 765, 380, 88, 'MAIN MENU', () => g.toTitle());
+      UI.button(W / 2 - 220, 765, 380, 88, 'REMATCH', () => BK.ads.midgame(() => g.toTape()), 'primary');
+      UI.button(W / 2 + 220, 765, 380, 88, 'MAIN MENU', () => BK.ads.midgame(() => g.toTitle()));
     }
   };
 

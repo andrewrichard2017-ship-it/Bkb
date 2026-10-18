@@ -74,7 +74,7 @@
   M.hide = () => { root.className = ''; root.innerHTML = ''; M.active = false; cur = null; G.hideGarage(); };
   const padStatus = () => {
     const n = RR.input.padCount;
-    return n ? `<span class="pad on">🎮 ${n} controller${n > 1 ? 's' : ''} connected</span>` : `<span class="pad">🎮 Pair a PS5 controller over Bluetooth, then press any button</span>`;
+    return n ? `<span class="pad on">🎮 ${n} controller${n > 1 ? 's' : ''} connected</span>` : `<span class="pad">🎮 Pair a controller over Bluetooth, then press any button</span>`;
   };
   const btn = (label, act, extra = '') => `<button class="mi" data-act="${act}" ${extra}>${label}</button>`;
   const stat = (label, v) => `<div class="stat"><label>${label}</label><div><i style="width:${clamp(v, 0, 1) * 100}%"></i></div></div>`;
@@ -162,7 +162,7 @@
         <p class="sub">Easy mode. No traffic, just the pack. Endless shotgun shells (□ / ○) and Frenzy is always ready (D-pad ↓). Knock off as many riders as you can before the finish line. Nobody can knock you off or nick you.</p>
         <div class="col">
           <button class="mi selector" data-act="shTrack" data-sel><span>◀</span><b>${esc(t.name)}</b><span>▶</span></button>
-          <button class="mi selector" data-act="shCop" data-sel><span>◀</span><b>RIDE AS: ${D.cop ? 'POLICE' : 'RASHER'}</b><span>▶</span></button>
+          <button class="mi selector" data-act="shCop" data-sel><span>◀</span><b>RIDE AS: ${D.cop ? 'POLICE' : 'BIKER'}</b><span>▶</span></button>
           ${D.cop ? '<div class="selector ro"><b>POLICE 1200 · SIREN ON</b></div>' : `<button class="mi selector" data-act="shBike" data-sel><span>◀</span><b>${esc(b.name)}</b><span>▶</span></button>`}
           ${btn('▶ START', 'shStart', 'id="go"')}
           ${btn('BACK', 'title')}
@@ -215,7 +215,7 @@
       render(`<div class="panel wide howto">
         <div class="hdr"><h2>HOW TO PLAY</h2></div>
         <div class="two">
-          <div><h3>PS5 CONTROLLER</h3><table>
+          <div><h3>CONTROLLER</h3><table>
             <tr><td>R2 or ✕</td><td>Throttle</td></tr><tr><td>L2</td><td>Brake</td></tr><tr><td>Left stick / D-pad</td><td>Steer</td></tr>
             <tr><td>□ / ○</td><td>Punch or swing left / right</td></tr><tr><td>△</td><td>Kick (towards whoever's beside you)</td></tr>
             <tr><td>R1</td><td>Nitro (super bikes)</td></tr><tr><td>L1</td><td>Look behind</td></tr><tr><td>R3 / touchpad</td><td>Change camera</td></tr><tr><td>Options</td><td>Pause</td></tr></table></div>
@@ -266,14 +266,14 @@
         <div class="hdr"><h2>${esc(d.headline)}</h2></div>
         <div class="two res"><table class="standings">${rows}</table>
         <div class="pay">${d.lines.map(l => `<div class="${l[2] || ''}"><span>${esc(l[0])}</span><b>${esc(l[1])}</b></div>`).join('')}</div></div>
-        <div class="row">${btn('CONTINUE', 'afterResults', 'id="go"')}${d.retry ? btn('RACE AGAIN', 'restart') : ''}</div></div>`,
+        <div class="row">${btn('CONTINUE', 'afterResults', 'id="go"')}${d.retry ? btn('RACE AGAIN', 'restart') : ''}${d.reward && RR.ads.canReward() ? btn(esc(d.reward.label), 'adReward') : ''}</div></div>`,
       { back: () => M.acts.afterResults(), focus: '#go', start: () => M.acts.afterResults() });
     },
   };
 
   // ---------------------------------------------------------------- helpers
   function cycle(arr, i, dir) { const ids = RR.BIKES.map(b => b.id); arr[i] = ids[(ids.indexOf(arr[i]) + dir + ids.length) % ids.length]; }
-  function myName() { return RR.settings.name || 'Rasher'; }
+  function myName() { return RR.settings.name || 'Rider'; }
   M.myName = myName;
 
   // ---------------------------------------------------------------- races from the menus
@@ -304,7 +304,7 @@
     if (M.screen === 'results' && M.active) return;
     G.togglePause(false); RR.audio.setPaused(false); RR.hud.hide();
     const lines = [];
-    let headline = 'RESULTS';
+    let headline = 'RESULTS', reward = null;
     const humans = results.filter(r => r.human);
     if (race.mode === 'shootout') {
       const me = humans[0], id = RR.TRACKS[race.cfg.trackIndex].id, best = RR.career.shoot = RR.career.shoot || {};
@@ -316,12 +316,12 @@
       else lines.push(['Best on this road', String(prev)]);
     } else if (race.mode === 'career') {
       const C = RR.career, me = humans[0], lv = Math.min(C.level, 5), L = RR.LEVELS[lv - 1], bike = RR.bike(C.bike);
-      let total = 0;
+      let total = 0, fee = 0;
       if (!me.out && me.place <= RR.PRIZE_SHARE.length) { const p = Math.round(L.prize * RR.PRIZE_SHARE[me.place - 1]); total += p; lines.push([RR.ordinal(me.place) + ' place prize', '+' + money(p)]); }
       else if (!me.out) lines.push([RR.ordinal(me.place) + ' place', 'no prize']);
       if (me.knockoffs) { const k = me.knockoffs * 100 * lv; total += k; lines.push([me.knockoffs + ' knocked off', '+' + money(k)]); }
-      if (me.out === 'busted') { const f = 400 + 350 * lv; total -= f; lines.push(['Police fine', '-' + money(f), 'bad']); C.busted++; }
-      if (me.out === 'wrecked') { const f = Math.max(350, Math.round(bike.price * 0.22)); total -= f; lines.push(['Repairs', '-' + money(f), 'bad']); }
+      if (me.out === 'busted') { const f = 400 + 350 * lv; total -= f; fee = f; lines.push(['Police fine', '-' + money(f), 'bad']); C.busted++; }
+      if (me.out === 'wrecked') { const f = Math.max(350, Math.round(bike.price * 0.22)); total -= f; fee = f; lines.push(['Repairs', '-' + money(f), 'bad']); }
       C.money = Math.max(0, C.money + total); C.races++; C.knockoffs += me.knockoffs;
       if (me.place === 1 && !me.out) C.wins++;
       const track = RR.TRACKS[race.cfg.trackIndex];
@@ -338,13 +338,18 @@
       }
       if (total > 0) setTimeout(() => RR.audio.sfx('cash'), 300);
       RR.saveCareer();
+      // watch an ad (ads.js): double what you won, or the bill is paid for you
+      if (total > 0) reward = { amount: total, label: `WATCH AN AD · DOUBLE IT (+${money(total)})`, line: 'Ad bonus' };
+      else if (fee) reward = { amount: fee, label: `WATCH AN AD · ${me.out === 'busted' ? 'FINE' : 'REPAIRS'} PAID (+${money(fee)})`, line: me.out === 'busted' ? 'Fine paid back' : 'Repairs paid' };
+      if (me.place === 1 && !me.out) RR.ads.happy();
     } else {
       for (const h of humans) lines.push([h.name, h.out ? h.out.toUpperCase() : RR.ordinal(h.place) + (h.knockoffs ? ` · ${h.knockoffs} KO` : '')]);
       const best = humans.filter(h => !h.out).sort((a, b) => a.place - b.place)[0];
       headline = best ? `${best.name} WINS THE BRAWL` : 'NOBODY FINISHED';
       if (humans.length === 2 && humans.every(h => !h.out) && humans[0].place !== humans[1].place) { /* headline already says who */ }
     }
-    M.show('results', { results, lines, headline, retry: race.mode !== 'online' });
+    RR.ads.gameplay(false);
+    M.show('results', { results, lines, headline, retry: race.mode !== 'online', reward });
     RR.audio.music('menu');
   };
 
@@ -397,18 +402,30 @@
     setName: () => { const n = prompt('Your name (shown to online mates):', myName()); if (n !== null) { RR.settings.name = n.trim().slice(0, 14); RR.saveSettings(); } M.show('settings'); },
     resetCareer: () => { if (confirm('Start your career again from nothing?')) { RR.resetCareer(); } M.show('settings'); },
     resume: () => { M.hide(); G.togglePause(false); },
-    restart: () => {
-      const L = M.last; M.hide(); G.togglePause(false);
-      if (!L) return;
-      if (L.mode === 'career') { M.data.track = L.track; startCareer(); } else if (L.mode === 'versus') { M.data = L.data; startVersus(); } else if (L.mode === 'shootout') { M.data = L.data; startShootout(); }
+    adReward: () => {
+      const d = M.data, r = d.reward; if (!r) return;
+      RR.ads.rewarded(() => {
+        if (d.reward !== r) return;
+        const C = RR.career; C.money += r.amount; RR.saveCareer(); RR.audio.sfx('cash');
+        const lines = d.lines.filter(l => l[0] !== 'Bank').concat([[r.line, '+' + money(r.amount), 'gold'], ['Bank', money(C.money)]]);
+        M.show('results', Object.assign({}, d, { lines, reward: null }));
+      });
     },
-    quit: () => { G.togglePause(false); if (RR.net.active) RR.net.leave(); G.clearRace(); G.startAttract().then(() => M.show('title')); },
-    afterResults: () => {
+    restart: () => {
+      const L = M.last, fromResults = M.screen === 'results'; M.hide(); G.togglePause(false);
+      if (!L) return;
+      if (fromResults) RR.ads.midgame(() => go(L)); else go(L);   // no break ad from the pause menu
+    },
+    quit: () => { G.togglePause(false); RR.ads.gameplay(false); if (RR.net.active) RR.net.leave(); G.clearRace(); G.startAttract().then(() => M.show('title')); },
+    afterResults: () => RR.ads.midgame(() => {
       const L = M.last;
       G.clearRace();
       if (L && L.mode === 'online' && RR.net.active) { G.startAttract().then(() => M.show('lobby')); return; }
       G.startAttract().then(() => M.show(L && ['career', 'versus', 'shootout'].includes(L.mode) ? L.mode : 'title', L && L.mode !== 'career' ? L.data || {} : {}));
-    },
+    }),
   };
+  function go(L) {
+    if (L.mode === 'career') { M.data.track = L.track; startCareer(); } else if (L.mode === 'versus') { M.data = L.data; startVersus(); } else if (L.mode === 'shootout') { M.data = L.data; startShootout(); }
+  }
   RR.menu = M;
 })();
