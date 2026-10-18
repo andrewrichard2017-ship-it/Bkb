@@ -14,33 +14,36 @@
   H.setup = (views, game) => {
     root.innerHTML = ''; root.style.display = 'block'; panels = [];
     mapBg = drawMapBg(game);
-    const story = game.mode === 'story';
+    const story = game.mode === 'story', hunt = game.mode === 'hunt';
     for (const v of views) {
-      const p = el('div', 'view', root);
+      const isTh = !!v.car.isThrasher, team = story || (hunt && !isTh);
+      const p = el('div', 'view' + (isTh ? ' th' : '') + (team && !story ? ' both' : ''), root);
       const tl = el('div', 'tl', p);
       const tips = el('div', 'tips', tl, '<b>0</b><i></i>');
-      el('label', '', tl, story ? (game.humans > 1 ? 'TIPPED · TEAM' : 'TIPPED') : 'YOUR TIPS');
+      el('label', '', tl, isTh ? 'CAUGHT' : team ? (game.humans > 1 || hunt ? 'TIPPED · TEAM' : 'TIPPED') : 'YOUR TIPS');
       const mine = el('div', 'mine', tl);
       const tc = el('div', 'thr', p, '<span></span><div><i></i></div><em></em>');
       const tr = el('div', 'tr', p);
-      const dents = story ? el('div', 'dents', tr) : null;
+      const dents = team ? el('div', 'dents', tr) : null;
       const clock = !story ? el('div', 'clock', tr) : null;
       const bl = el('div', 'bl', p);
-      const boost = el('div', 'boost', bl, '<label>BOOST</label><div><i></i></div>');
+      const boost = el('div', 'boost', bl, `<label>${isTh ? 'CHARGE' : 'BOOST'}</label><div><i></i></div>`);
       const prompt = el('div', 'prompt', p);
       const map = el('canvas', 'map', p);
-      const exit = el('div', 'exit', p, '<b>▲</b><span>EXIT</span>');
+      const exit = el('div', 'exit' + (isTh ? ' prey' : ''), p, '<b>▲</b><span>EXIT</span>');
       const msgs = el('div', 'msgs', p);
       const count = el('div', 'count', p);
-      const who = game.humans > 1 ? el('div', 'who', p, v.car.name) : null;
-      if (who) who.style.color = TT.PLAYER_COLORS[v.car.slot];
+      const who = game.humans > 1 ? el('div', 'who', p, isTh ? `${v.car.name} · THRASHER` : v.car.name) : null;
+      if (who) who.style.color = isTh ? '#ff6a4a' : TT.PLAYER_COLORS[v.car.slot];
       const flash = el('div', 'hitflash', p);
-      panels.push({ v, p, tips, tipsB: tips.querySelector('b'), tipsI: tips.querySelector('i'), mine, tc, tcI: tc.querySelector('i'), tcS: tc.querySelector('span'), tcE: tc.querySelector('em'), dents, clock, boost: boost.querySelector('i'), boostBox: boost, prompt, map, mctx: map.getContext('2d'), exit, exitB: exit.querySelector('b'), msgs, count, flash, last: {} });
+      panels.push({ v, isTh, team, p, tips, tipsB: tips.querySelector('b'), tipsI: tips.querySelector('i'), mine, tc, tcI: tc.querySelector('i'), tcS: tc.querySelector('span'), tcE: tc.querySelector('em'), dents, clock, boost: boost.querySelector('i'), boostBox: boost, prompt, map, mctx: map.getContext('2d'), exit, exitB: exit.querySelector('b'), exitS: exit.querySelector('span'), msgs, count, flash, last: {} });
     }
     H.layout(views);
     const touch = TT.isTouch && !TT.input.padCount && views.length === 1;
     TT.input.touch.enabled = touch;
     document.getElementById('touch').classList.toggle('show', touch);
+    const hb = document.querySelector('#touch [data-k=honk]');
+    if (hb) hb.textContent = views.length === 1 && views[0].car.isThrasher ? 'ROAR' : 'HONK';
   };
   H.layout = views => {
     panels.forEach(P => {
@@ -65,44 +68,77 @@
   H.countdown = n => panels.forEach(P => { const c = P.count; c.textContent = n ? n : 'GO!'; c.className = 'count'; void c.offsetWidth; c.className = 'count show' + (n ? '' : ' go'); });
   H.hit = i => { const P = panelOf(i); if (!P) return; P.flash.className = 'hitflash'; void P.flash.offsetWidth; P.flash.className = 'hitflash go'; };
 
-  function honkLabel() {
+  function honkLabel(word = 'HONK') {
     const t = performance.now() / 1000;
-    if (TT.input.padActive(t)) return '✕ HONK!';
-    if (TT.input.touch.enabled) return 'HONK!';
-    return 'SPACE · HONK!';
+    if (TT.input.padActive(t)) return `✕ ${word}!`;
+    if (TT.input.touch.enabled) return `${word}!`;
+    return `SPACE · ${word}!`;
+  }
+  const bump = P => { P.tips.classList.remove('bump'); void P.tips.offsetWidth; P.tips.classList.add('bump'); };
+  // pointing arrow: rotate the ▲ towards (x, z) from where this view's camera faces
+  const point = (P, from, x, z) => { const ang = Math.atan2(x - from.x, z - from.z) - P.v.camYaw; P.exitB.style.transform = `rotate(${(-ang * 180 / Math.PI).toFixed(1)}deg)`; };
+
+  // the HUD for whoever's driving Thrasher (Thrasher Hunt)
+  function thrasherPanel(P, game, th) {
+    const caught = game.players.filter(p => p.caught).length, loose = game.players.filter(p => p.active);
+    set(P, 'tips', caught, x => { P.tipsB.textContent = x; bump(P); });
+    set(P, 'goal', '/' + game.players.length, x => { P.tipsI.textContent = x; });
+    const got = game.players.filter(p => p.escaped).length;
+    set(P, 'mine', got ? `${got} got away!` : `${loose.length} still loose · tipped ${game.teamTips}/${game.goal}`, x => { P.mine.textContent = x; });
+    set(P, 'clock', TT.fmtTime(Math.ceil(game.timeLeft)), x => { P.clock.textContent = x; P.clock.classList.toggle('low', game.timeLeft < 15); });
+    const ready = th.state === 'chase' && th.roarCD <= 0, waking = th.state === 'sleep' || th.state === 'wake';
+    set(P, 'thr', waking ? 'WAKING UP…' : ready ? 'ROAR READY' : `ROAR IN ${Math.ceil(th.roarCD)}`, x => { P.tcE.textContent = x; P.tc.classList.toggle('awake', ready); });
+    set(P, 'thrIco', '😡', x => { P.tcS.textContent = x; });
+    set(P, 'thrK', waking ? 0 : Math.round((1 - clamp(th.roarCD / 6, 0, 1)) * 50), x => { P.tcI.style.width = (x * 2) + '%'; P.tcI.style.background = x >= 50 ? '#ff3b2f' : '#ffb13b'; });
+    set(P, 'boost', Math.round(th.boost / th.spec.boostTime * 40), x => { P.boost.style.width = (x * 2.5) + '%'; });
+    set(P, 'boosting', th.boosting, x => P.boostBox.classList.toggle('on', x));
+    let pr = '', cls = '';
+    if (waking) { pr = 'GET READY TO CHASE…'; cls = 'warn'; }
+    else if (game.state === 'play') {
+      const tipping = loose.some(p => game.tractors.some(t => t.state === 'sleep' && Math.hypot(t.x - p.x, t.z - p.z) < 14 && Math.hypot(t.x - th.x, t.z - th.z) < 24));
+      if (ready && tipping) { pr = honkLabel('ROAR'); cls = 'honk'; }
+      else if (game.gateOpen) { pr = 'THE GATE\'S OPEN! STOP THEM!'; cls = 'bad'; }
+    }
+    set(P, 'prompt', pr + '|' + cls, () => { P.prompt.textContent = pr; P.prompt.className = 'prompt ' + cls + (pr ? ' show' : ''); });
+    // arrow to the nearest runner
+    const prey = th.target && th.target.active ? th.target : null;
+    set(P, 'exitOn', !!prey && !waking, x => P.exit.classList.toggle('show', x));
+    if (prey) { set(P, 'prey', prey.name.toUpperCase() + ' · ' + Math.round(Math.hypot(prey.x - th.x, prey.z - th.z) / 5) * 5 + 'M', x => { P.exitS.textContent = x; }); point(P, th, prey.x, prey.z); }
   }
 
+
   H.update = (dt, views, game) => {
-    const th = game.thrasher, story = game.mode === 'story';
+    const th = game.thrasher, hunt = game.mode === 'hunt';
     mapT -= dt; const drawMap = mapT <= 0; if (drawMap) mapT = 0.08;
     for (const P of panels) {
       const v = P.v, car = v.car;
+      if (P.isTh) { thrasherPanel(P, game, th); if (drawMap) map(P, game); continue; }
       // tips
-      if (story) {
-        set(P, 'tips', game.teamTips, x => { P.tipsB.textContent = x; P.tips.classList.remove('bump'); void P.tips.offsetWidth; P.tips.classList.add('bump'); });
+      if (P.team) {
+        set(P, 'tips', game.teamTips, x => { P.tipsB.textContent = x; bump(P); });
         set(P, 'goal', game.gateOpen ? '✓' : '/' + game.goal, x => { P.tipsI.textContent = x; P.tips.classList.toggle('done', x === '✓'); });
-        set(P, 'mine', game.humans > 1 ? `you ${car.tips}` + (car.pumpkins ? ` · 🎃 ${car.pumpkins}` : '') : car.pumpkins ? `🎃 ${car.pumpkins} smashed` : '', x => { P.mine.textContent = x; });
+        set(P, 'mine', game.humans > 1 || hunt ? `you ${car.tips}` + (car.pumpkins ? ` · 🎃 ${car.pumpkins}` : '') : car.pumpkins ? `🎃 ${car.pumpkins} smashed` : '', x => { P.mine.textContent = x; });
       } else {
-        set(P, 'tips', car.tips, x => { P.tipsB.textContent = x; P.tips.classList.remove('bump'); void P.tips.offsetWidth; P.tips.classList.add('bump'); });
+        set(P, 'tips', car.tips, x => { P.tipsB.textContent = x; bump(P); });
         const other = game.players.find(p => p !== car);
         set(P, 'mine', other ? `${other.name}: ${other.tips}` : `best ${TT.save.best['tipoff-' + game.level.id] || 0}`, x => { P.mine.textContent = x; });
-        set(P, 'clock', TT.fmtTime(Math.ceil(game.timeLeft)), x => { P.clock.textContent = x; P.clock.classList.toggle('low', game.timeLeft < 15); });
       }
+      if (P.clock) set(P, 'clock', TT.fmtTime(Math.ceil(game.timeLeft)), x => { P.clock.textContent = x; P.clock.classList.toggle('low', game.timeLeft < 15); });
       // Thrasher's meter
       const k = clamp(game.alarm / game.threshold, 0, 1);
-      const label = th.state === 'sleep' ? (k > 0.66 ? 'STIRRING…' : k > 0.33 ? 'SNORING' : 'FAST ASLEEP') : th.state === 'wake' ? 'WAKING UP!' : th.state === 'chase' ? (th.target === car ? 'COMING FOR YOU!' : 'ON THE HUNT') : th.state === 'gloat' ? 'GOT ONE!' : th.state === 'search' ? 'LOOKING FOR YOU' : 'GOING BACK TO BED';
-      set(P, 'thr', label, x => { P.tcE.textContent = 'THRASHER · ' + x; P.tc.classList.toggle('awake', th.awake && th.state !== 'home'); });
+      const label = th.state === 'sleep' ? (hunt ? 'ABOUT TO WAKE…' : k > 0.66 ? 'STIRRING…' : k > 0.33 ? 'SNORING' : 'FAST ASLEEP') : th.state === 'wake' ? 'WAKING UP!' : th.state === 'chase' ? (th.target === car ? 'COMING FOR YOU!' : 'ON THE HUNT') : th.state === 'gloat' ? 'GOT ONE!' : th.state === 'search' ? 'LOOKING FOR YOU' : 'GOING BACK TO BED';
+      set(P, 'thr', label, x => { P.tcE.textContent = (th.human && game.humans > 1 ? th.name.toUpperCase() + ' (THRASHER)' : 'THRASHER') + ' · ' + x; P.tc.classList.toggle('awake', th.awake && th.state !== 'home'); });
       set(P, 'thrIco', th.awake ? (th.state === 'home' ? '😪' : '😡') : k > 0.66 ? '😠' : '😴', x => { P.tcS.textContent = x; });
       set(P, 'thrK', Math.round((th.awake && th.state !== 'home' ? 1 : k) * 50), x => { P.tcI.style.width = (x * 2) + '%'; P.tcI.style.background = x > 33 ? '#ff3b2f' : x > 22 ? '#ffb13b' : '#5fd35f'; });
       // dents
-      if (P.dents) set(P, 'dents', car.dents + (car.caught ? 'c' : ''), () => { let h = ''; for (let i = 0; i < TT.DENTS; i++) h += `<i class="${i < TT.DENTS - car.dents ? 'on' : ''}"></i>`; P.dents.innerHTML = h; });
+      if (P.dents) set(P, 'dents', car.dents + (car.caught ? 'c' : ''), () => { let h = ''; for (let i = 0; i < game.maxDents; i++) h += `<i class="${i < game.maxDents - car.dents ? 'on' : ''}"></i>`; P.dents.innerHTML = h; });
       // boost
       set(P, 'boost', Math.round(car.boost / car.spec.boostTime * 40), x => { P.boost.style.width = (x * 2.5) + '%'; });
       set(P, 'boosting', car.boosting, x => P.boostBox.classList.toggle('on', x));
       // prompt
       let pr = '', cls = '';
-      if (car.caught) { pr = 'CAUGHT! ' + (game.humans > 1 ? 'YOUR MATE CAN STILL ESCAPE' : ''); cls = 'bad'; }
-      else if (car.escaped) { pr = game.players.some(p => p.active) ? 'ESCAPED! WAITING FOR YOUR MATE…' : 'ESCAPED!'; cls = 'good'; }
+      if (car.caught) { pr = 'CAUGHT! ' + (game.players.some(p => p.active && p !== car) ? (hunt ? 'THE OTHERS CAN STILL ESCAPE' : 'YOUR MATE CAN STILL ESCAPE') : ''); cls = 'bad'; }
+      else if (car.escaped) { pr = game.players.some(p => p.active) ? (hunt ? 'ESCAPED! WAITING FOR THE OTHERS…' : 'ESCAPED! WAITING FOR YOUR MATE…') : 'ESCAPED!'; cls = 'good'; }
       else if (game.state === 'play') {
         let inRange = false, close = false;
         for (const t of game.tractors) {
@@ -113,16 +149,13 @@
         }
         if (inRange) { pr = honkLabel(); cls = 'honk'; }
         else if (close && Math.abs(car.vf) > TT.SNEAK) { pr = 'EASY… SNEAK UP SLOWLY'; cls = 'warn'; }
-        else if (game.gateOpen && story) { pr = 'GATE\'S OPEN · GET OUT!'; cls = 'good'; }
+        else if (game.gateOpen && P.team) { pr = 'GATE\'S OPEN · GET OUT!'; cls = 'good'; }
       }
       set(P, 'prompt', pr + '|' + cls, () => { P.prompt.textContent = pr; P.prompt.className = 'prompt ' + cls + (pr ? ' show' : ''); });
       // arrow to the gate
-      const showExit = story && game.gateOpen && car.active;
+      const showExit = P.team && game.gateOpen && car.active;
       set(P, 'exitOn', showExit, x => P.exit.classList.toggle('show', x));
-      if (showExit) {
-        const g = game.world.gate, ang = Math.atan2(g.x - car.x, -game.world.H - 6 - car.z) - v.camYaw;
-        P.exitB.style.transform = `rotate(${(-ang * 180 / Math.PI).toFixed(1)}deg)`;
-      }
+      if (showExit) point(P, car, game.world.gate.x, -game.world.H - 6);
       if (drawMap) map(P, game);
     }
   };
@@ -166,9 +199,9 @@
     }
     // Thrasher
     const th = game.thrasher;
-    tri(c, X(th.x), Z(th.z), th.a, 7 * f * (th.hunting ? 1 + 0.15 * Math.sin(t * 10) : 1), th.awake ? '#ff3b2f' : '#a33', f);
+    tri(c, X(th.x), Z(th.z), th.a, (P.isTh ? 8 : 7) * f * (th.hunting && !P.isTh ? 1 + 0.15 * Math.sin(t * 10) : 1), th.awake ? '#ff3b2f' : '#a33', f);
     // players
-    for (const p of game.players) if (!p.escaped || p.z > -w.H - 10) tri(c, X(p.x), Z(p.z), p.a, (p === P.v.car ? 6 : 5) * f, game.humans > 1 ? TT.PLAYER_COLORS[p.slot] : '#ffcf3a', f);
+    for (const p of game.players) if (!p.escaped || p.z > -w.H - 10) tri(c, X(p.x), Z(p.z), p.a, (p === P.v.car ? 6 : 5) * f, game.humans > 1 || game.mode === 'hunt' ? TT.PLAYER_COLORS[p.slot % TT.PLAYER_COLORS.length] : '#ffcf3a', f);
   }
   function tri(c, x, y, a, r, col, f) {
     c.save(); c.translate(x, y); c.rotate(a);

@@ -42,7 +42,7 @@
       const H = this.H, L = this.level;
       const gx = Math.round(R.range(-0.3, 0.3) * H);
       this.gate = { x: gx, z: -H, w: 10 };
-      this.spawn = [{ x: gx - 2.6, z: -H + 8, a: 0 }, { x: gx + 2.6, z: -H + 8, a: 0 }];
+      this.spawn = [{ x: gx - 2.6, z: -H + 8, a: 0 }, { x: gx + 2.6, z: -H + 8, a: 0 }, { x: gx - 2.6, z: -H + 14, a: 0 }, { x: gx + 2.6, z: -H + 14, a: 0 }];
       const bx = Math.round(R.range(-0.38, 0.38) * H);
       this.barn = { x: bx, z: H - 22, hw: 8.5, hd: 11.5 };
       this.home = { x: bx, z: H - 33.5 - 6, a: Math.PI };

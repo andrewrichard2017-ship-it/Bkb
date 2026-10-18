@@ -94,6 +94,7 @@
         <div class="col">
           ${TT.isOctober ? hw : ''}
           ${btn('PLAY', 'play1')}
+          ${btn('BE THRASHER · CHASE RUSTY', 'hunt1')}
           ${TT.isOctober ? '' : hw}
           ${btn('2 PLAYERS · SAME SCREEN', 'play2')}
           ${btn('PLAY ONLINE · INVITE A MATE', 'online')}
@@ -133,22 +134,23 @@
 
     // pick a farm and a mode
     levels() {
-      const C = M.ctx, story = C.mode === 'story';
+      const C = M.ctx, story = C.mode === 'story', hunt = C.mode === 'hunt';
       const levels = TT.ALL_LEVELS;
       if (!levels.find(l => l.id === C.level)) C.level = levels[0].id;
       const card = (l, i) => {
         const hw = l === TT.HALLOWEEN, lock = story && !hw && !unlocked(i);
-        const info = story ? (lock ? '🔒 Escape from the farm before' : `<span class="stars">${starStr(TT.save.stars[l.id] || 0)}</span> · tip ${l.goal} of ${l.tractors}`) : `BEST ${TT.save.best['tipoff-' + l.id] || 0} TIPS`;
+        const bestCatch = TT.save.best['hunt-' + l.id];
+        const info = story ? (lock ? '🔒 Escape from the farm before' : `<span class="stars">${starStr(TT.save.stars[l.id] || 0)}</span> · tip ${l.goal} of ${l.tractors}`) : hunt ? (bestCatch ? `BEST CATCH ${TT.fmtTime(bestCatch)}` : 'CATCH THEM ALL') : `BEST ${TT.save.best['tipoff-' + l.id] || 0} TIPS`;
         return `<button class="mi card th-${l.theme} ${l.id === C.level ? 'picked' : ''}" data-act="pickLevel" data-id="${l.id}" ${lock ? 'disabled' : ''}>
           <b>${hw ? '🎃 ' : ''}${esc(l.name)}</b><small>${esc(l.blurb)}</small><em>${info}</em></button>`;
       };
-      const modeLabel = story ? (C.players > 1 ? 'TEAM UP · TIP \'EM AND ESCAPE' : 'STORY · TIP \'EM AND ESCAPE') : C.players > 1 ? 'TIP-OFF · MOST TIPS WINS' : 'TIP-OFF · SCORE ATTACK';
-      const modeText = story ? `Tip enough tractors to open the gate, then get out before Thrasher catches you. He hits you ${TT.DENTS} times and you're caught.${C.players > 1 ? ' You\'re a team: tips count together, and only one of you has to get out.' : ''}` :
+      const modeLabel = story ? (C.players > 1 ? 'TEAM UP · TIP \'EM AND ESCAPE' : 'STORY · TIP \'EM AND ESCAPE') : hunt ? (C.players > 1 ? 'THRASHER HUNT · ONE OF YOU IS THRASHER' : 'THRASHER HUNT · YOU\'RE THRASHER') : C.players > 1 ? 'TIP-OFF · MOST TIPS WINS' : 'TIP-OFF · SCORE ATTACK';
+      const modeText = hunt ? huntText(C.players > 1) : story ? `Tip enough tractors to open the gate, then get out before Thrasher catches you. He hits you ${TT.DENTS} times and you're caught.${C.players > 1 ? ' You\'re a team: tips count together, and only one of you has to get out.' : ''}` :
         `${TT.fmtTime(TT.TIPOFF_TIME)} on the clock. Thrasher's awake and hunting the whole time, and every time he hits you you lose 2 tips. Tractors get back up after a while.${C.players > 1 ? ' Most tips wins.' : ''}`;
       const L = TT.level(C.level);
       render(`<div class="panel wide">
         <div class="hdr"><h2>PICK A FARM</h2><div class="chips"><span>★ ${totalStars()} / ${levels.length * 3}</span></div></div>
-        <div class="row tight">${sel('pickMode', modeLabel)}</div>
+        <div class="row tight">${sel('pickMode', modeLabel)}${hunt && C.players > 1 ? sel('pickHunter', `THRASHER: PLAYER ${(C.thrasher || 0) + 1}`) : ''}</div>
         <p class="sub">${modeText}</p>
         <div class="tracks">${levels.map(card).join('')}</div>
         <div class="row">${btn('▶ PLAY ' + esc(L.name.toUpperCase()), 'levelGo', 'id="go"')}${btn('BACK', 'pickBack')}</div></div>`,
@@ -158,7 +160,7 @@
     online() {
       render(`<div class="panel">
         <div class="hdr"><h2>PLAY ONLINE</h2></div>
-        <p class="sub">Host a game and send your mate the link (or the code). Each of you plays on your own device and controller. Team up to tip the farm and escape, or go head to head in a Tip-Off.</p>
+        <p class="sub">Host a game and send your mate the link (or the code). Each of you plays on your own device and controller. Team up to tip the farm and escape, go head to head in a Tip-Off, or one of you drives Thrasher and hunts the other down.</p>
         <div class="col">${btn('HOST A GAME', 'host')}${btn('JOIN WITH A CODE', 'joinScreen')}${btn('BACK', 'title')}</div>
         <p class="sub small">Your name: <b>${esc(myName())}</b> · change it in Settings.</p></div>`, { back: () => M.show('title') });
     },
@@ -185,13 +187,18 @@
     },
     lobby() {
       const L = TT.net.lobby, host = TT.net.role === 'host', me = host ? 0 : 1, lv = TT.level(L.level);
-      const pc = i => { const c = TT.CARS[L.cars[i]]; return `<div class="pcard p${i + 1}"><h3>${esc(L.names[i] || '…')}${i === me ? ' (YOU)' : ''}</h3><small>${i === 0 ? 'HOST' : 'GUEST'}</small>
-        ${i === me ? sel('lobbyCar', esc(c.name).toUpperCase()) : `<div class="selector ro"><b>${esc(c.name).toUpperCase()}</b></div>`}<p class="kind">${esc(c.kind)}</p></div>`; };
-      const mode = L.mode === 'story' ? 'TEAM UP · TIP \'EM AND ESCAPE' : 'TIP-OFF · MOST TIPS WINS';
+      const hunt = L.mode === 'hunt', ts = L.thrasher || 0;
+      const pc = i => {
+        const c = TT.CARS[L.cars[i]], head = `<div class="pcard p${i + 1}"><h3>${esc(L.names[i] || '…')}${i === me ? ' (YOU)' : ''}</h3><small>${i === 0 ? 'HOST' : 'GUEST'}</small>`;
+        if (hunt && i === ts) return head + `<div class="selector ro"><b>DRIVES THRASHER</b></div><p class="kind">The combine harvester</p></div>`;
+        return head + (i === me ? sel('lobbyCar', esc(c.name).toUpperCase()) : `<div class="selector ro"><b>${esc(c.name).toUpperCase()}</b></div>`) + `<p class="kind">${esc(c.kind)}</p></div>`;
+      };
+      const mode = L.mode === 'story' ? 'TEAM UP · TIP \'EM AND ESCAPE' : hunt ? 'THRASHER HUNT' : 'TIP-OFF · MOST TIPS WINS';
       render(`<div class="panel wide low">
         <div class="hdr"><h2>ONLINE LOBBY</h2><div class="chips"><span>${TT.net.connected ? '● CONNECTED' : '○ WAITING'}</span><span>${esc(TT.net.code || '')}</span></div></div>
         <div class="two">${pc(0)}${pc(1)}</div>
-        <div class="row">${host ? sel('lobbyMode', mode) + sel('lobbyLevel', (lv.halloween ? '🎃 ' : '') + esc(lv.name.toUpperCase())) : `<div class="selector ro"><b>${mode} · ${esc(lv.name.toUpperCase())}</b></div>`}</div>
+        <div class="row">${host ? sel('lobbyMode', mode) + (hunt ? sel('lobbyHunter', `THRASHER: ${esc((L.names[ts] || (ts ? 'GUEST' : 'HOST')).toUpperCase())}`) : '') + sel('lobbyLevel', (lv.halloween ? '🎃 ' : '') + esc(lv.name.toUpperCase())) : `<div class="selector ro"><b>${mode} · ${esc(lv.name.toUpperCase())}</b></div>`}</div>
+        ${hunt ? `<p class="sub small">${esc(L.names[ts] || 'Thrasher')} drives Thrasher and hunts; the other drives their car, and the computer drives the other car. The runners have ${TT.fmtTime(TT.HUNT_TIME)} to tip enough tractors and escape through the gate.</p>` : ''}
         <div class="row">${host ? btn('▶ START', 'lobbyStart', `id="go" ${TT.net.connected ? '' : 'disabled'}`) : '<p class="status">Waiting for the host to start…</p>'}${btn('LEAVE', 'leave')}</div></div>`,
       { back: () => M.acts.leave(), focus: host ? '#go' : null, start: host ? () => M.acts.lobbyStart() : null, room: L.cars.slice(0, 2), cls: 'room2' });
     },
@@ -205,6 +212,7 @@
           <li>Every honk, tip and boost makes noise. Fill <b>Thrasher's meter</b> and he wakes up and comes for you. Hide in the corn and keep still, or just outrun him; he can't turn tight.</li>
           <li>Tip enough to open the <b>gate</b>, then drive out through it. Thrasher hits you ${TT.DENTS} times and you're caught.</li>
           <li>Stars: ★ escape · ★ tip the bonus number · ★ don't get hit at all.</li>
+          <li><b>Thrasher Hunt</b>: you drive Thrasher and chase Rusty and Dash before they escape. Hold ○ / R1 (Shift) to charge, press ✕ (Space) to roar and wake the herd round you. Online or two on one screen, one of you is Thrasher.</li>
         </ul>
         <div class="two">
           <div><h3>PS5 CONTROLLER</h3><table>
@@ -268,8 +276,19 @@
     if (C.players === 1) return [{ slot: 0, car: C.cars[0], name: myName(), view: 0 }];
     return [{ slot: 0, car: C.cars[0], name: 'Player 1', view: 0 }, { slot: 1, car: C.cars[1], name: 'Player 2', view: 1 }];
   }
+  // Thrasher Hunt: one player drives Thrasher, the other (if any) a car, the computer fills in Rusty/Dash
+  function huntCfg() {
+    const C = M.ctx;
+    if (C.players === 1) return { humans: [], thrasher: { slot: 0, name: myName(), view: 0 }, ai: ['rusty', 'dash'] };
+    const t = C.thrasher || 0, r = 1 - t, car = C.cars[r];
+    return { humans: [{ slot: r, car, name: `Player ${r + 1}`, view: r }], thrasher: { slot: t, name: `Player ${t + 1}`, view: t }, ai: [car === 'rusty' ? 'dash' : 'rusty'] };
+  }
+  function huntText(two) {
+    return (two ? 'One of you drives Thrasher; the other drives your car and the computer drives the other one. ' : 'You drive Thrasher! The computer drives Rusty and Dash. ')
+      + `They sneak about tipping tractors, and once they've tipped enough the gate opens. Catch every runner (${TT.HUNT_DENTS} hits each) before they get out or the ${TT.fmtTime(TT.HUNT_TIME)} clock runs out. Hold ○/R1 (Shift) to charge, press ✕ (Space) to roar: it wakes the herd near you so they can't be tipped.`;
+  }
   function start(mode, levelId) {
-    const cfg = { mode, level: TT.level(levelId), humans: humans(), role: 'solo' };
+    const cfg = Object.assign({ mode, level: TT.level(levelId), humans: humans(), role: 'solo' }, mode === 'hunt' ? huntCfg() : {});
     M.last = { mode, levelId, ctx: JSON.parse(JSON.stringify(M.ctx)) };
     M.hide();
     return G.start(cfg);
@@ -303,6 +322,22 @@
       const idx = TT.LEVELS.findIndex(l => l.id === L.id), next = TT.LEVELS[idx + 1];
       if (online) buttons = [['BACK TO LOBBY', 'toLobby', 'id="go"'], ['LEAVE', 'leaveGame']];
       else buttons = [...(r.win && next ? [['▶ NEXT FARM', 'nextLevel', 'id="go"']] : []), [r.win ? 'PLAY AGAIN' : 'TRY AGAIN', 'restart', r.win && next ? '' : 'id="go"'], ['PICK A FARM', 'toLevels'], ['MENU', 'quit']];
+    } else if (r.mode === 'hunt') {
+      const h = r.hunt, thWon = r.winner === 'thrasher', two = !online && M.last && M.last.ctx && M.last.ctx.players > 1;
+      const side = online ? (me === h.thrasher.slot ? 'thrasher' : 'runner') : two ? '' : 'thrasher';
+      headline = side === 'thrasher' ? (thWon ? (h.caught === h.total ? 'CAUGHT THE LOT!' : 'TIME\'S UP! NOBODY GOT OUT') : (h.escaped > 1 ? 'THEY GOT AWAY!' : 'ONE GOT AWAY!'))
+        : side === 'runner' ? (thWon ? 'THRASHER GOT YOU!' : 'YOU GOT AWAY!') : (thWon ? 'THRASHER WINS!' : 'THE RUNNERS GOT AWAY!');
+      lines.push(['Runners caught', `${h.caught} of ${h.total}`, 'total']);
+      for (const p of r.players) lines.push([p.name, p.escaped ? 'got away' : p.caught ? 'caught' : 'still loose']);
+      lines.push(['Tractors tipped', `${r.tips} (gate at ${r.goal})`]);
+      lines.push(['Time', TT.fmtTime(r.time)]);
+      if (side === 'thrasher' && !online && thWon && h.caught === h.total) {
+        const key = 'hunt-' + L.id, prev = TT.save.best[key];
+        if (!prev || r.time < prev) { TT.save.best[key] = Math.round(r.time); TT.saveProgress(); lines.push([prev ? `FASTEST CATCH (was ${TT.fmtTime(prev)})` : 'FASTEST CATCH!', '★', 'gold']); }
+      }
+      const good = side === 'runner' ? !thWon : thWon;
+      setTimeout(() => TT.audio.sfx(side && !good ? 'lose' : 'win', { vol: 0.7 }), 200);
+      buttons = online ? [['BACK TO LOBBY', 'toLobby', 'id="go"'], ['LEAVE', 'leaveGame']] : [['PLAY AGAIN', 'restart', 'id="go"'], ['PICK A FARM', 'toLevels'], ['MENU', 'quit']];
     } else {
       if (r.players.length > 1) {
         headline = r.winner < 0 ? 'IT\'S A DRAW!' : `${r.players[r.winner].name.toUpperCase()} WINS!`;
@@ -329,6 +364,7 @@
     title: () => M.show('title'),
     play1: () => { M.ctx = { players: 1, cars: [TT.settings.car || 'rusty'], mode: 'story', level: M.ctx.level || 'pasture' }; M.show('pick'); },
     play2: () => { M.ctx = { players: 2, cars: [TT.settings.car || 'rusty', TT.settings.car2 || 'dash'], mode: 'story', level: M.ctx.level || 'pasture' }; M.show('pick'); },
+    hunt1: () => { M.ctx = { players: 1, cars: [TT.settings.car || 'rusty'], mode: 'hunt', level: M.ctx.level || 'pasture', thrasher: 0, skipPick: true }; M.show('levels'); },
     halloween: () => { M.ctx = { players: 1, cars: [TT.settings.car || 'rusty'], mode: 'story', level: 'haunted', halloween: true }; M.show('pick'); },
     online: () => M.show('online'),
     howto: () => M.show('howto', {}),
@@ -340,8 +376,9 @@
       TT.saveSettings(); M.show('pick'); refocus(`[data-act=pickCar][data-p="${i}"]`);
     },
     pickDone: () => { TT.saveSettings(); if (M.ctx.halloween) start('story', 'haunted'); else M.show('levels'); },
-    pickBack: () => M.show('pick'),
-    pickMode: () => { M.ctx.mode = M.ctx.mode === 'story' ? 'tipoff' : 'story'; M.show('levels'); refocus('[data-act=pickMode]'); },
+    pickBack: () => M.ctx.skipPick ? M.show('title') : M.show('pick'),
+    pickMode: (e, how) => { const o = ['story', 'tipoff', 'hunt'], i = o.indexOf(M.ctx.mode); M.ctx.mode = o[(i + (how === 'left' ? 2 : 1)) % 3]; M.show('levels'); refocus('[data-act=pickMode]'); },
+    pickHunter: () => { M.ctx.thrasher = M.ctx.thrasher ? 0 : 1; M.show('levels'); refocus('[data-act=pickHunter]'); },
     pickLevel: e => { M.ctx.level = e.dataset.id; M.show('levels'); refocus(`[data-act=pickLevel][data-id="${e.dataset.id}"]`); },
     levelGo: () => start(M.ctx.mode, M.ctx.level),
     // online
@@ -360,7 +397,8 @@
     copy: () => { const l = TT.net.inviteLink(); (navigator.clipboard ? navigator.clipboard.writeText(l) : Promise.reject()).then(() => M.show('hosting', { status: 'Link copied. Waiting for your mate…' }), () => { const i = root.querySelector('.link'); i.select(); document.execCommand('copy'); }); },
     leave: () => { TT.net.leave(); M.show('online'); },
     lobbyCar: (e, how) => { const L = TT.net.lobby, me = TT.net.role === 'host' ? 0 : 1; L.cars[me] = nextCar(L.cars[me], how === 'left' ? -1 : 1); TT.settings.car = L.cars[me]; TT.saveSettings(); TT.net.updateLobby(); M.show('lobby'); refocus('[data-act=lobbyCar]'); },
-    lobbyMode: () => { const L = TT.net.lobby; L.mode = L.mode === 'story' ? 'tipoff' : 'story'; TT.net.updateLobby(); M.show('lobby'); refocus('[data-act=lobbyMode]'); },
+    lobbyMode: (e, how) => { const L = TT.net.lobby, o = ['story', 'tipoff', 'hunt'], i = o.indexOf(L.mode); L.mode = o[(i + (how === 'left' ? 2 : 1)) % 3]; TT.net.updateLobby(); M.show('lobby'); refocus('[data-act=lobbyMode]'); },
+    lobbyHunter: () => { const L = TT.net.lobby; L.thrasher = L.thrasher ? 0 : 1; TT.net.updateLobby(); M.show('lobby'); refocus('[data-act=lobbyHunter]'); },
     lobbyLevel: (e, how) => { const L = TT.net.lobby, ids = TT.ALL_LEVELS.map(l => l.id); L.level = ids[(ids.indexOf(L.level) + (how === 'left' ? -1 : 1) + ids.length) % ids.length]; TT.net.updateLobby(); M.show('lobby'); refocus('[data-act=lobbyLevel]'); },
     lobbyStart: () => TT.net.startGame(),
     // settings

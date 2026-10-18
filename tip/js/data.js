@@ -20,7 +20,7 @@
     },
   };
   TT.CAR_IDS = Object.keys(TT.CARS);
-  TT.PLAYER_COLORS = ['#ffcf3a', '#3ae0ff'];
+  TT.PLAYER_COLORS = ['#ffcf3a', '#3ae0ff', '#ff7ad9', '#9dff6a']; // by slot (2 and 3 are computer drivers in the hunt)
 
   // How a sleeping tractor reacts: drive faster than SNEAK within WAKE_R and it wakes up grumpy (no tip).
   TT.SNEAK = 7.5;
@@ -57,6 +57,8 @@
 
   TT.TIPOFF_TIME = 150;  // seconds in a Tip-Off
   TT.DENTS = 3;          // hits from Thrasher before you're caught (story)
+  TT.HUNT_TIME = 180;    // seconds the runners have to escape in Thrasher Hunt
+  TT.HUNT_DENTS = 2;     // hits before a runner is caught in Thrasher Hunt
 
   TT.LINES = {
     tip: ['TIPPED!', 'OVER SHE GOES!', 'TIMBER!', 'GOTCHA!', 'BOOM!'],

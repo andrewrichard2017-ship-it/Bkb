@@ -151,6 +151,7 @@
   .map { position: absolute; right: max(12px, env(safe-area-inset-right)); bottom: 12px; border-radius: 14px; border: 2px solid rgba(255,255,255,.3); box-shadow: 0 4px 20px rgba(0,0,0,.5); }
   .exit { position: absolute; left: 50%; top: 62px; transform: translateX(-50%); text-align: center; display: none; color: var(--grn); font: 900 13px var(--ui); letter-spacing: .14em; text-shadow: 0 2px 3px #000; }
   .exit.show { display: block; }
+  .exit.prey { color: #ff6a4a; }
   .exit b { display: block; font: 400 34px/1 var(--hd); transition: transform .1s; }
   .msgs { position: absolute; left: 0; right: 0; top: 28%; display: flex; flex-direction: column; align-items: center; gap: 4px; }
   .msg { font: 400 clamp(22px, 4.4vh, 36px) var(--hd); letter-spacing: .03em; text-shadow: 0 3px 0 #000, 0 0 20px rgba(0,0,0,.6); animation: pop 1.8s ease-out forwards; text-align: center; padding: 0 10px; }
@@ -161,6 +162,7 @@
   .count.go { color: var(--acc); }
   @keyframes count { 0% { transform: scale(1.8); opacity: 0; } 15% { transform: scale(1); opacity: 1; } 75% { opacity: 1; } 100% { opacity: 0; } }
   .who { position: absolute; top: 74px; right: max(14px, env(safe-area-inset-right)); font: 400 clamp(18px, 3.2vh, 26px) var(--hd); text-shadow: 0 2px 4px #000; }
+  .view.both .who { top: 124px; }
   .hitflash { position: absolute; inset: 0; background: radial-gradient(ellipse at center, rgba(255,60,30,0) 40%, rgba(255,60,30,.55)); opacity: 0; }
   .hitflash.go { animation: hf .5s ease-out; }
   @keyframes hf { 0% { opacity: 1; } 100% { opacity: 0; } }
@@ -199,18 +201,18 @@
 <div id="loading">LOADING…</div>
 <div id="rotate"><div><b>TURN YOUR PHONE</b>Tractor Tippin' plays in landscape.</div></div>
 <script type="module">import * as THREE from '../road/lib/three.module.min.js?v=170'; window.THREE = THREE;</script>
-<script defer src="js/core.js?v=1"></script>
-<script defer src="js/data.js?v=1"></script>
-<script defer src="js/audio.js?v=1"></script>
-<script defer src="js/input.js?v=1"></script>
-<script defer src="js/models.js?v=1"></script>
-<script defer src="js/farm.js?v=1"></script>
-<script defer src="js/vehicles.js?v=1"></script>
-<script defer src="js/game.js?v=1"></script>
-<script defer src="js/fx.js?v=1"></script>
-<script defer src="js/hud.js?v=1"></script>
-<script defer src="js/menu.js?v=1"></script>
-<script defer src="js/net.js?v=1"></script>
-<script defer src="js/main.js?v=1"></script>
+<script defer src="js/core.js?v=2"></script>
+<script defer src="js/data.js?v=2"></script>
+<script defer src="js/audio.js?v=2"></script>
+<script defer src="js/input.js?v=2"></script>
+<script defer src="js/models.js?v=2"></script>
+<script defer src="js/farm.js?v=2"></script>
+<script defer src="js/vehicles.js?v=2"></script>
+<script defer src="js/game.js?v=2"></script>
+<script defer src="js/fx.js?v=2"></script>
+<script defer src="js/hud.js?v=2"></script>
+<script defer src="js/menu.js?v=2"></script>
+<script defer src="js/net.js?v=2"></script>
+<script defer src="js/main.js?v=2"></script>
 </body>
 </html>

@@ -4,23 +4,34 @@
 //
 // Modes:  story   tip enough tractors to open the gate, then escape through it (1 or 2 players as a team)
 //         tipoff  2½ minutes, Thrasher hunts from the start, most tips wins (1 player = score attack)
+//         hunt    a player drives Thrasher; the runners (a player and/or computer drivers) tip enough to
+//                 open the gate and escape before he catches them all or the clock runs out
 //         attract the title screen: nobody driving, the odd tractor falls over
 (() => {
   'use strict';
   const TT = window.TT, { clamp } = TT.math;
 
   class Game {
-    // cfg: { mode, level, humans: [{ slot, car, name, remote, view }], role: 'solo'|'host'|'guest' }
+    // cfg: { mode, level, humans: [{ slot, car, name, remote, view }], role: 'solo'|'host'|'guest',
+    //        thrasher: { slot, name, remote, view } (hunt: a player drives him), ai: ['dash', ...] (computer-driven cars) }
     constructor(cfg, renderer, quality) {
       this.cfg = cfg; this.mode = cfg.mode; this.level = cfg.level; this.quality = quality;
       this.role = cfg.role || 'solo'; this.authority = this.role !== 'guest';
-      this.humans = cfg.humans.length;
+      this.humans = cfg.humans.length + (cfg.thrasher ? 1 : 0);
       this.events = [];
       this.world = new TT.World(cfg.level, renderer, quality);
       this.players = cfg.humans.map(h => new TT.Car(this, h));
+      (cfg.ai || []).forEach((car, i) => {
+        const c = new TT.Car(this, { slot: 2 + i, car, name: TT.CARS[car].name, ai: true, remote: !this.authority });
+        if (this.authority) c.ai = new TT.CarAI(c);
+        this.players.push(c);
+      });
       this.tractors = this.world.tractorSpots.map((s, i) => new TT.Tractor(this, s, i));
       this.thrasher = new TT.Thrasher(this);
-      this.threshold = cfg.level.wake; this.alarm = 0; this.teamTips = 0; this.goal = cfg.level.goal;
+      if (cfg.thrasher) this.thrasher.pilotBy(cfg.thrasher);
+      const hunt = this.mode === 'hunt';
+      this.maxDents = hunt ? TT.HUNT_DENTS : TT.DENTS;
+      this.threshold = cfg.level.wake; this.alarm = 0; this.teamTips = 0; this.goal = hunt ? Math.ceil(cfg.level.tractors * 0.8) : cfg.level.goal; // hunt: most of the herd, so Thrasher has a chance
       this.recoverTime = this.mode === 'tipoff' ? 9 : this.mode === 'attract' ? 7 : cfg.level.recover;
       this.state = this.mode === 'attract' ? 'play' : 'countdown';
       this.time = this.mode === 'attract' ? 0 : -3.6; this.clock = 0; this.lastCount = 9;
@@ -28,7 +39,7 @@
       this.net = null;
     }
     emit(type, e = {}) { e.type = type; this.events.push(e); return e; }
-    get timeLeft() { return Math.max(0, TT.TIPOFF_TIME - this.clock); }
+    get timeLeft() { return Math.max(0, (this.mode === 'hunt' ? TT.HUNT_TIME : TT.TIPOFF_TIME) - this.clock); }
 
     update(dt) {
       this.time += dt;
@@ -40,7 +51,7 @@
       } else if (this.state === 'countdown') this.time = Math.min(this.time, -3.0);
       const canDrive = this.state === 'play';
       if (this.state === 'play' && this.mode !== 'attract') this.clock += dt;
-      for (const p of this.players) p.remote ? p.netStep(dt) : p.step(dt, canDrive);
+      for (const p of this.players) { if (p.ai) p.ai.think(dt); p.remote ? p.netStep(dt) : p.step(dt, canDrive); }
       this.collisions(dt);
       if (this.authority) {
         for (const t of this.tractors) t.update(dt);
@@ -48,14 +59,14 @@
         this.thrasher.update(dt);
       } else {
         for (const t of this.tractors) t.t += dt;
-        this.thrasher.netStep(dt);
+        if (this.thrasher.controller === 'local') this.thrasher.pilot(dt); else this.thrasher.netStep(dt);
       }
       if (this.world.gateOpen !== this.gateOpen) this.world.setGateOpen(this.gateOpen);
     }
 
     // ---------------------------------------------------------------- the rules (host / single machine)
     rules(dt) {
-      const th = this.thrasher, story = this.mode === 'story';
+      const th = this.thrasher, story = this.mode === 'story', hunt = this.mode === 'hunt';
       for (const p of this.players) {
         if (!p.active) continue;
         const sp = Math.abs(p.vf);
@@ -94,12 +105,13 @@
           if (th.contact(p.x, p.z, p.spec.radius + 0.35)) this.hitPlayer(p); // reaches past the solid push-out in collisions()
         }
       }
-      if (story && !this.gateOpen && this.teamTips >= this.goal) { this.gateOpen = true; this.emit('gateOpen'); }
-      if (story && this.players.length && this.players.every(p => !p.active)) this.finish();
+      if ((story || hunt) && !this.gateOpen && this.teamTips >= this.goal) { this.gateOpen = true; this.emit('gateOpen'); }
+      if ((story || hunt) && this.players.length && this.players.every(p => !p.active)) this.finish();
+      if (hunt && this.clock >= TT.HUNT_TIME) this.finish();
       if (this.mode === 'tipoff' && this.clock >= TT.TIPOFF_TIME) this.finish();
     }
     hitPlayer(p) {
-      const th = this.thrasher, story = this.mode === 'story';
+      const th = this.thrasher, story = this.mode === 'story' || this.mode === 'hunt';
       const dx = p.x - th.x, dz = p.z - th.z, d = Math.hypot(dx, dz) || 1;
       let nx = dx / d + Math.sin(th.a) * 0.7, nz = dz / d + Math.cos(th.a) * 0.7;
       const n = Math.hypot(nx, nz) || 1; nx /= n; nz /= n;
@@ -107,13 +119,22 @@
       if (p.remote) { p.invuln = 2.5; if (this.net) this.net.sendHit(p, nx, nz, power); } else p.knock(nx, nz, power);
       if (story) {
         p.dents++;
-        if (p.dents >= TT.DENTS) { p.caught = true; this.emit('caught', { p }); if (th.target === p) th.target = null; }
+        if (p.dents >= this.maxDents) { p.caught = true; this.emit('caught', { p }); if (th.target === p) th.target = null; }
         else this.emit('hit', { p });
       } else {
         const lost = Math.min(2, p.tips); p.tips -= lost; p.invuln = 3;
         this.emit('hit', { p, lost });
       }
-      th.set('gloat'); th.chargeT = 0;
+      if (!th.human) { th.set('gloat'); th.chargeT = 0; }
+    }
+    // Thrasher's roar (a player driving him presses the horn button): everything asleep nearby wakes up
+    // grumpy, so it can't be tipped for a while, and anyone close gets a fright
+    roar(th) {
+      if (!this.authority) { if (this.net) this.net.sendRoar(); return; }
+      let n = 0;
+      for (const t of this.tractors) if (t.state === 'sleep' && Math.hypot(t.x - th.x, t.z - th.z) < 24) { t.set('wary', null); n++; }
+      for (const p of this.players) if (p.active && !p.remote && Math.hypot(p.x - th.x, p.z - th.z) < 13) p.stunT = Math.max(p.stunT, 0.6);
+      this.emit('bigRoar', { n });
     }
     // a horn: every sleeping tractor in range jumps and falls over
     // at: where the guest's car was when it honked (online), so lag doesn't move the horn
@@ -158,7 +179,12 @@
       const stars = story && win ? 1 + (this.teamTips >= L.bonus ? 1 : 0) + (dents === 0 ? 1 : 0) : 0;
       let winner = -1;
       if (this.mode === 'tipoff' && pl.length > 1) winner = pl[0].tips > pl[1].tips ? 0 : pl[1].tips > pl[0].tips ? 1 : -1;
-      const results = { mode: this.mode, level: L.id, win, stars, tips: this.teamTips, goal: this.goal, bonus: L.bonus, players: pl, winner, time: this.clock, pumpkins: this.players.reduce((s, p) => s + p.pumpkins, 0), online: this.role !== 'solo' };
+      if (this.mode === 'hunt') {
+        const th = this.thrasher, escaped = this.players.filter(p => p.escaped).length;
+        winner = escaped ? 'runners' : 'thrasher';
+        this.huntInfo = { thrasher: { slot: th.slot, name: th.name }, caught: this.players.filter(p => p.caught).length, escaped, total: this.players.length };
+      }
+      const results = { hunt: this.huntInfo || null, mode: this.mode, level: L.id, win, stars, tips: this.teamTips, goal: this.goal, bonus: L.bonus, players: pl, winner, time: this.clock, pumpkins: this.players.reduce((s, p) => s + p.pumpkins, 0), online: this.role !== 'solo' };
       this.results = results;
       this.emit('over', { results });
     }
@@ -231,7 +257,8 @@
       if (s.st === 'play' && this.state === 'countdown') { this.state = 'play'; this.emit('go'); }
       this.clock = s.clock; this.alarm = s.alarm; this.teamTips = s.tips;
       if (s.gate && !this.gateOpen) { this.gateOpen = true; this.emit('gateOpen'); }
-      const th = this.thrasher; th.net = th.net || { cur: null, age: 0 }; th.net.cur = s.th; th.net.age = 0;
+      const th = this.thrasher;
+      if (th.controller !== 'local') { th.net = th.net || { cur: null, age: 0 }; th.net.cur = s.th; th.net.age = 0; }
       s.tr.forEach((x, i) => { const t = this.tractors[i]; if (t) t.netSet(x[0], x[1]); });
       for (const [slot, tips, dents, esc, caught, pumpkins, st] of s.pl) {
         const p = this.players.find(q => q.slot === slot); if (!p) continue;
@@ -247,6 +274,8 @@
       this.players.splice(i, 1); this.world.scene.remove(p.rig.root); p.dispose();
       if (this.thrasher.target === p) this.thrasher.target = null;
     }
+    // online: the player driving Thrasher left, so he drives himself
+    thrasherToAI() { const th = this.thrasher; th.controller = 'ai'; th.top = this.level.tSpeed; th.net = null; th.view = null; if (th.state === 'sleep') th.set('wake'); }
     dispose() { for (const p of this.players) p.dispose(); this.world.dispose(); }
   }
 

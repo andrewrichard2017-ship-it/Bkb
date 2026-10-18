@@ -33,7 +33,7 @@
   N.host = async (name) => {
     await loadLib();
     N.leave();
-    N.role = 'host'; N.active = true; N.lobby = { mode: 'story', level: 'pasture', cars: [TT.settings.car || 'rusty', 'dash'], names: [name, ''] };
+    N.role = 'host'; N.active = true; N.lobby = { mode: 'story', level: 'pasture', cars: [TT.settings.car || 'rusty', 'dash'], names: [name, ''], thrasher: 0 };
     for (let attempt = 0; attempt < 4; attempt++) {
       N.code = makeCode();
       try {
@@ -96,6 +96,7 @@
       if (game && !game.over) {
         const p = game.players.find(x => x.remote);
         if (p) game.removePlayer(p);
+        if (game.thrasher.controller === 'remote') game.thrasherToAI(); // nobody driving Thrasher now: he drives himself
         TT.hud.all('YOUR MATE DISCONNECTED', { big: true, color: '#64b5f6', hold: 3 });
       } else { N.lobby.names[1] = ''; if (TT.menu.screen === 'lobby') TT.menu.show('hosting', { status: 'Your mate left. Waiting for someone to join…' }); }
       N.conn = null;
@@ -119,17 +120,19 @@
   N.startGame = () => {
     if (N.role !== 'host' || !N.connected) return;
     const L = N.lobby;
-    send({ t: 'start', mode: L.mode, level: L.level, cars: L.cars, names: L.names });
-    begin(L.mode, L.level, L.cars, L.names);
+    send({ t: 'start', mode: L.mode, level: L.level, cars: L.cars, names: L.names, thrasher: L.thrasher || 0 });
+    begin(L.mode, L.level, L.cars, L.names, L.thrasher || 0);
   };
-  function begin(mode, level, cars, names) {
-    const host = N.role === 'host';
-    const humans = [
-      { slot: 0, car: cars[0], name: names[0] || 'Host', view: host ? 0 : null, remote: !host },
-      { slot: 1, car: cars[1], name: names[1] || 'Guest', view: host ? null : 0, remote: host },
-    ];
+  function begin(mode, level, cars, names, thrasher) {
+    const host = N.role === 'host', mine = host ? 0 : 1;
+    const who = i => ({ name: names[i] || (i ? 'Guest' : 'Host'), view: i === mine ? 0 : null, remote: i !== mine });
+    let cfg;
+    if (mode === 'hunt') { // one of us drives Thrasher, the other a car; the computer (on the host) drives the other car
+      const r = 1 - thrasher, car = cars[r];
+      cfg = { humans: [Object.assign({ slot: r, car }, who(r))], thrasher: Object.assign({ slot: thrasher }, who(thrasher)), ai: [car === 'rusty' ? 'dash' : 'rusty'] };
+    } else cfg = { humans: [Object.assign({ slot: 0, car: cars[0] }, who(0)), Object.assign({ slot: 1, car: cars[1] }, who(1))] };
     N.guestReady = false; N.pendingGo = false;
-    TT.menu.startOnline({ mode, level: TT.level(level), humans, role: N.role }).then(game => {
+    TT.menu.startOnline(Object.assign({ mode, level: TT.level(level), role: N.role }, cfg)).then(game => {
       N.game = game; game.net = N; game.hold = true; N.holdT = 0;
       if (host) { if (N.guestReady) go(); } else { send({ t: 'ready' }); if (N.pendingGo) { game.hold = false; N.pendingGo = false; } }
     });
@@ -145,7 +148,7 @@
       case 'full': N.leave(); TT.menu.show('join', { code: N.code, status: 'That game already has two players.', auto: false }); break;
       case 'lobby': N.lobby = m.lobby; if (TT.menu.screen === 'lobby' || TT.menu.screen === 'join' || (TT.menu.screen === 'results' && !game)) TT.menu.show('lobby'); break;
       case 'pick': if (TT.CARS[m.car]) N.lobby.cars[1] = m.car; send({ t: 'lobby', lobby: N.lobby }); if (TT.menu.screen === 'lobby') TT.menu.show('lobby'); break;
-      case 'start': if (TT.game.game && !TT.game.attract) TT.game.clear(); begin(m.mode, m.level, m.cars, m.names); break;
+      case 'start': if (TT.game.game && !TT.game.attract) TT.game.clear(); begin(m.mode, m.level, m.cars, m.names, m.thrasher || 0); break;
       case 'ready': N.guestReady = true; go(); break;
       case 'go': if (game) game.hold = false; else N.pendingGo = true; break;
       case 'snap': if (game) game.applySnapshot(m.s); break;
@@ -153,6 +156,8 @@
       case 'honk': if (game) { const p = game.players.find(x => x.remote); if (p && p.active) { game.emit('horn', { p, net: true }); game.honk(p, typeof m.x === 'number' ? { x: m.x, z: m.z } : null); } } break;
       case 'smash': if (game) { const pk = game.world.pumpkins[m.i], p = game.players.find(x => x.remote); if (pk && pk.alive) { game.world.smashPumpkin(pk); if (p) p.pumpkins++; game.emit('pumpkin', { pk, p, net: true }); } else if (p) p.pumpkins++; } break;
       case 'esc': if (game) { const p = game.players.find(x => x.remote); if (p && game.gateOpen) game.escape(p); } break;
+      case 'thr': if (game && game.thrasher.controller === 'remote') { const th = game.thrasher; th.net = th.net || { cur: null, age: 0 }; th.net.cur = m.st; th.net.age = 0; } break;
+      case 'roar': if (game && game.thrasher.controller === 'remote') game.roar(game.thrasher); break;
       case 'knock': if (game) { const p = game.players.find(x => !x.remote); if (p) p.knock(m.nx, m.nz, m.pw); } break;
       case 'ev': if (game) relayed(game, m); break;
       case 'results': if (game) { game.over = true; game.state = 'over'; TT.menu.gameOver(m.r, game); } break;
@@ -166,14 +171,20 @@
     N.sendT -= dt;
     if (N.sendT > 0 || !N.connected) return;
     if (N.role === 'host') { N.sendT = 1 / SNAP_HZ; send({ t: 'snap', s: game.snapshot() }); }
-    else { N.sendT = 1 / ME_HZ; const me = game.players.find(x => !x.remote); if (me) send({ t: 'me', st: me.netState() }); }
+    else {
+      N.sendT = 1 / ME_HZ;
+      const me = game.players.find(x => !x.remote);
+      if (me) send({ t: 'me', st: me.netState() });
+      if (game.thrasher.controller === 'local') send({ t: 'thr', st: game.thrasher.netState() }); // the guest is driving Thrasher
+    }
   };
   N.sendHonk = p => send({ t: 'honk', x: Math.round(p.x * 100) / 100, z: Math.round(p.z * 100) / 100 });
   N.sendSmash = i => send({ t: 'smash', i });
   N.sendEscape = () => send({ t: 'esc' });
+  N.sendRoar = () => send({ t: 'roar' });
   N.sendHit = (p, nx, nz, pw) => send({ t: 'knock', nx, nz, pw });
   // host -> guest: things the guest should hear and see that the host decided
-  const RELAY = new Set(['tip', 'honkResult', 'hit', 'caught', 'escape', 'bale', 'pumpkin', 'wary', 'horn', 'boost', 'over']);
+  const RELAY = new Set(['tip', 'honkResult', 'hit', 'caught', 'escape', 'bale', 'pumpkin', 'wary', 'horn', 'boost', 'over', 'bigRoar']);
   const GUEST_OWN = new Set(['horn', 'boost', 'pumpkin', 'escape']);
   N.relayEvent = e => {
     if (!N.connected || N.role !== 'host' || !RELAY.has(e.type)) return;

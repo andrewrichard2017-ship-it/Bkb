@@ -24,6 +24,7 @@ All three have their eyes in the windshield and a mouth on the front bumper.
 
 - **Story** (1 player) or **Team up** (2 players, same screen or online): tip enough to open the gate and escape. Tips count for the team, and only one of you has to get out.
 - **Tip-Off**: 2½ minutes with Thrasher awake the whole time. Every hit costs you 2 tips, and the tractors get back up after a while. With 2 players, most tips wins. With 1 player it's a score attack and your best on each farm is saved.
+- **Thrasher Hunt**: someone drives **Thrasher** and hunts the cars down. On your own (**BE THRASHER · CHASE RUSTY** on the title screen) you're Thrasher and the computer drives Rusty and Dash: they sneak about tipping tractors, and once they've tipped 80% of the herd the gate opens. Catch every runner (2 hits each) before they get out or the 3:00 clock runs out. With 2 players (same screen or online) one of you is Thrasher (pick who), the other drives a car and the computer drives the other one. Thrasher is heavy and turns wide but can **charge** (○ / R1 / Shift) and **roar** (✕ / Space): the roar wakes every sleeping tractor near him so the runners can't tip them for a while, and gives anyone close a fright. An arrow at the top of his screen points to the nearest runner.
 - **🎃 Halloween special**: *Haunted Harvest*. Ghost tractors that fade away when tipped, a pumpkin patch to smash (squash pumpkins for treats), jack-o'-lanterns, a graveyard, scarecrows, bats round a big orange moon, spooky music, Rusty in a witch's hat, Dash with devil horns, and **Pumpkin Thrasher**.
 
 ## Farms
@@ -51,7 +52,7 @@ Each farm is generated from a fixed seed (`TT.LEVELS` in `js/data.js`), so it's 
 
 ## Online (2 players)
 
-**PLAY ONLINE → HOST A GAME** gives a 5-letter code and an invite link; your mate opens the link (or types the code under **JOIN WITH A CODE**). In the lobby each of you picks a vehicle and the host picks Team up or Tip-Off and the farm. The host's machine runs the farm (tractors, Thrasher, the score); the guest drives their own car and sends its position, honks and squashed pumpkins. Connections go through PeerJS's free public server. To test locally, run a PeerServer and add `?peerhost=127.0.0.1&peerport=9000` to the URL.
+**PLAY ONLINE → HOST A GAME** gives a 5-letter code and an invite link; your mate opens the link (or types the code under **JOIN WITH A CODE**). In the lobby each of you picks a vehicle and the host picks Team up, Tip-Off or Thrasher Hunt (and who drives Thrasher) and the farm. In the hunt the computer drives the spare car on the host's machine; if the player driving Thrasher drops out, Thrasher drives himself. The host's machine runs the farm (tractors, Thrasher, the score); the guest drives their own car and sends its position, honks and squashed pumpkins. Connections go through PeerJS's free public server. To test locally, run a PeerServer and add `?peerhost=127.0.0.1&peerport=9000` to the URL.
 
 ## Code
 
@@ -63,7 +64,7 @@ Each farm is generated from a fixed seed (`TT.LEVELS` in `js/data.js`), so it's 
 | `js/input.js` | Gamepad (PS5 mapping and rumble), keyboard (one or two players) and touch |
 | `js/models.js` | The characters, built from primitives, with canvas-drawn windshield eyes and bumper mouths |
 | `js/farm.js` | The farm: terrain, fence and gate, barn, house, silo, windmill, corn (Thrasher mows it), bales, mud, pond, trees, sky, Halloween dressing |
-| `js/vehicles.js` | Car handling, the tractors' sleep/tip cycle, Thrasher's chase AI |
+| `js/vehicles.js` | Car handling, the tractors' sleep/tip cycle, Thrasher's chase AI and his player controls, the computer drivers for Rusty and Dash (Thrasher Hunt) |
 | `js/game.js` | The rules: sneaking, honking, the noise meter, hits, the gate, escaping, scores, online snapshots |
 | `js/fx.js` | Particles (dust, smoke, backfires, hay, pumpkin splats, sparkles) and floating Zs |
 | `js/hud.js` | In-game HUD and minimap |

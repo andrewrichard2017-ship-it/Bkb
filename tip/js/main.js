@@ -50,6 +50,8 @@
       G.views = [];
       if (G.attract) G.views.push(makeView(null, 0));
       else for (const p of game.players) if (!p.remote && p.view !== null && p.view !== undefined) G.views.push(makeView(p, p.view));
+      const th = game.thrasher;
+      if (!G.attract && th.controller === 'local' && th.view !== null && th.view !== undefined) G.views.push(makeView(th, th.view));
       G.views.sort((a, b) => a.index - b.index);
       renderer.toneMappingExposure = game.world.theme.exposure;
       layoutViews();
@@ -96,9 +98,9 @@
   function updateCam(v, dt, snap) {
     const game = G.game, w = game.world, cam = v.cam;
     if (G.attract) return attractCam(v, dt);
-    const car = v.car, size = car.carId === 'rusty' ? 1.15 : 1;
+    const car = v.car, size = car.isThrasher ? 1.9 : car.carId === 'rusty' ? 1.15 : 1;
     const M = MODES[v.mode % 3];
-    let back = M.back * size, up = M.up * size, fov = M.fov;
+    let back = M.back * size, up = M.up * size * (car.isThrasher ? 1.3 : 1), fov = M.fov;
     // which way the camera faces: the way you're driving (stays behind you when reversing)
     let yaw = car.a;
     if (car.escaped) v.frozen = v.frozen || car.z < -w.H - 10;
@@ -162,6 +164,7 @@
   const panAt = (x, z) => { const n = nearest(x, z); if (!n.v || G.views.length > 1) return 0; const c = n.v.cam, dx = x - c.position.x, dz = z - c.position.z, yaw = n.v.camYaw; return clamp((dx * -Math.cos(yaw) + dz * Math.sin(yaw)) / (Math.hypot(dx, dz) || 1), -1, 1) * 0.8; };
   function events() {
     const game = G.game, msg = TT.hud.message, A = TT.audio, w = game.world, hw = !!game.level.halloween;
+    const tv = G.views.find(v => v.car && v.car.isThrasher); // a player driving Thrasher (hunt)
     for (const e of game.events) {
       const pv = viewOf(e.p);
       switch (e.type) {
@@ -187,7 +190,8 @@
           if (fx && e.tr) fx.sparkle(tmp.v.set(e.tr.x, e.tr.y + 2, e.tr.z), 22);
           if (G.views.length && !G.attract) {
             const left = game.goal - game.teamTips;
-            if (game.mode === 'story' && left > 0 && left <= 2 && game.authority) TT.hud.all(left === 1 ? 'ONE MORE TO OPEN THE GATE!' : 'TWO MORE TO OPEN THE GATE!', { color: '#9fe0ff' });
+            if ((game.mode === 'story' || game.mode === 'hunt') && left > 0 && left <= 2) for (const v of G.views) if (v !== tv) msg(v.index, left === 1 ? 'ONE MORE TO OPEN THE GATE!' : 'TWO MORE TO OPEN THE GATE!', { color: '#9fe0ff' });
+            if (tv) msg(tv.index, left > 0 ? `THEY TIPPED ONE! ${left} TO GO` : 'THEY\'VE OPENED THE GATE!', { color: '#ffb13b' });
           }
           break;
         }
@@ -201,7 +205,7 @@
         case 'righting': { const t = e.tr, vol = volAt(t.x, t.z, 50); if (vol > 0.05) A.sfx('grumble', { vol: vol * 0.5 }); if (fx) fx.dust(tmp.v.set(t.x, t.y, t.z), 8); break; }
         case 'roar': {
           A.sfx('roar', { vol: 1 });
-          if (!G.attract) for (const v of G.views) { msg(v.index, pick(TT.LINES.wake), { big: true, color: '#ff5a3a', hold: 1 }); TT.input.rumble(v.index, 1, 0.6, 700); v.shake = 0.5; }
+          if (!G.attract) for (const v of G.views) { msg(v.index, v === tv ? 'GO GET \'EM!' : pick(TT.LINES.wake), { big: true, color: '#ff5a3a', hold: 1 }); TT.input.rumble(v.index, 1, 0.6, 700); v.shake = 0.5; }
           if (fx) { const th = game.thrasher; th.rig.world(th.rig.exhaust, tmp.v2); fx.smoke(tmp.v2, 20, 0.08, 1.4); }
           break;
         }
@@ -210,13 +214,23 @@
           A.sfx('snort', { vol: 0.4 + vol * 0.6 }); A.sfx('roar', { vol: vol * 0.55, delay: 0.3 });
           if (fx) for (const n of th.rig.nostrils) { th.rig.world(n, tmp.v2); fx.smoke(tmp.v2, 8, 0.75, 0.6); }
           for (const v of G.views) if (v.car && th.target === v.car && !G.attract) msg(v.index, 'HE\'S CHARGING!', { color: '#ff5a3a' });
+          if (tv) { TT.input.rumble(tv.index, 0.7, 0.5, 400); tv.shake = Math.max(tv.shake, 0.3); }
+          break;
+        }
+        case 'bigRoar': { // a player-driven Thrasher roared
+          const th = game.thrasher;
+          A.sfx('roar', { vol: Math.max(0.5, volAt(th.x, th.z, 120)) });
+          if (fx) for (const n of th.rig.nostrils) { th.rig.world(n, tmp.v2); fx.smoke(tmp.v2, 14, 0.75, 0.9); }
+          if (tv) { msg(tv.index, e.n ? `ROAAAR! WOKE ${e.n} UP` : 'ROAAAR!', { big: true, color: '#ff5a3a' }); TT.input.rumble(tv.index, 1, 0.8, 600); tv.shake = 0.6; }
+          for (const v of G.views) if (v !== tv && v.car && Math.hypot(v.car.x - th.x, v.car.z - th.z) < 40) { msg(v.index, 'THRASHER ROARED! THE HERD\'S AWAKE', { color: '#ff7a5a' }); TT.input.rumble(v.index, 0.6, 0.3, 300); v.shake = Math.max(v.shake, 0.3); }
           break;
         }
         case 'giveup': if (!G.attract && game.mode === 'story') for (const v of G.views) msg(v.index, e.home ? 'THRASHER\'S GIVEN UP… FOR NOW' : 'HE LOST YOU! KEEP QUIET', { color: '#9fe0ff' }); break;
         case 'hit': {
           const p = e.p;
           A.sfx('hit', { vol: pv ? 1 : 0.4 + volAt(p.x, p.z) * 0.6 });
-          if (pv) { pv.shake = 1; TT.input.rumble(pv.index, 1, 1, 450); TT.hud.hit(pv.index); msg(pv.index, game.mode === 'story' ? `${pick(TT.LINES.hit)} ${TT.DENTS - p.dents} LEFT` : e.lost ? `OUCH! −${e.lost} TIPS` : 'OUCH!', { big: true, color: '#ff5a3a' }); }
+          if (pv) { pv.shake = 1; TT.input.rumble(pv.index, 1, 1, 450); TT.hud.hit(pv.index); msg(pv.index, game.mode !== 'tipoff' ? `${pick(TT.LINES.hit)} ${game.maxDents - p.dents} LEFT` : e.lost ? `OUCH! −${e.lost} TIPS` : 'OUCH!', { big: true, color: '#ff5a3a' }); }
+          if (tv) { msg(tv.index, `WHAM! GOT ${p.name.toUpperCase()}`, { big: true, color: '#ffd23a' }); TT.input.rumble(tv.index, 0.9, 0.6, 300); tv.shake = Math.max(tv.shake, 0.4); }
           if (fx) { fx.dust(tmp.v.set(p.x, p.y, p.z), 14, [0.5, 0.45, 0.4], 1, 2, 5); fx.sparkle(tmp.v.set(p.x, p.y + 1, p.z), 14, [1, 0.95, 0.7]); }
           break;
         }
@@ -224,7 +238,8 @@
           const p = e.p;
           A.sfx('caught', { vol: pv ? 1 : 0.6 });
           if (pv) { pv.shake = 1; TT.input.rumble(pv.index, 1, 1, 800); TT.hud.hit(pv.index); msg(pv.index, 'CAUGHT!', { big: true, color: '#ff3b2f', hold: 2 }); }
-          for (const v of G.views) if (v !== pv) msg(v.index, `THRASHER GOT ${p.name.toUpperCase()}!`, { color: '#ff5a3a' });
+          for (const v of G.views) if (v !== pv) msg(v.index, v === tv ? `CAUGHT ${p.name.toUpperCase()}!` : `THRASHER GOT ${p.name.toUpperCase()}!`, v === tv ? { big: true, color: '#ffd23a', hold: 1 } : { color: '#ff5a3a' });
+          if (tv) TT.input.rumble(tv.index, 1, 0.8, 500);
           break;
         }
         case 'land': if (pv) TT.input.rumble(pv.index, 0.5, 0.3, 150); if (fx) fx.dust(tmp.v.set(e.p.x, e.p.y, e.p.z), 8); break;
@@ -240,8 +255,8 @@
           break;
         }
         case 'mow': if (fx && Math.random() < 0.7) fx.burst(tmp.v.set(e.x, w.height(e.x, e.z) + 1.2, e.z), 5, game.level.halloween ? [0.6, 0.48, 0.25] : [0.4, 0.62, 0.2], 6, 0.2, 9, 1); break;
-        case 'gateOpen': A.sfx('gate'); if (!G.attract) for (const v of G.views) msg(v.index, 'GATE\'S OPEN! GET OUT!', { big: true, color: '#4dff7a', hold: 1 }); break;
-        case 'escape': { const p = e.p; A.sfx('escape', { vol: pv ? 1 : 0.5 }); if (pv) { msg(pv.index, 'ESCAPED!', { big: true, color: '#4dff7a', hold: 2 }); TT.input.rumble(pv.index, 0.3, 0.8, 300); } for (const v of G.views) if (v !== pv) msg(v.index, `${p.name.toUpperCase()} GOT OUT!`, { color: '#4dff7a' }); break; }
+        case 'gateOpen': A.sfx('gate'); if (!G.attract) for (const v of G.views) msg(v.index, v === tv ? 'THE GATE\'S OPEN! GUARD IT!' : 'GATE\'S OPEN! GET OUT!', { big: true, color: v === tv ? '#ff5a3a' : '#4dff7a', hold: 1 }); break;
+        case 'escape': { const p = e.p; A.sfx('escape', { vol: pv ? 1 : 0.5 }); if (pv) { msg(pv.index, 'ESCAPED!', { big: true, color: '#4dff7a', hold: 2 }); TT.input.rumble(pv.index, 0.3, 0.8, 300); } for (const v of G.views) if (v !== pv) msg(v.index, v === tv ? `${p.name.toUpperCase()} GOT AWAY!` : `${p.name.toUpperCase()} GOT OUT!`, { color: v === tv ? '#ff5a3a' : '#4dff7a' }); break; }
         case 'over': if (!G.attract) { const g = game; setTimeout(() => { if (G.game === g) TT.menu.gameOver(e.results, g); }, game.mode === 'story' ? 1600 : 900); } break;
       }
       if (TT.net.active && game.role === 'host' && !e.net) TT.net.relayEvent(e);
@@ -254,7 +269,7 @@
     const game = G.game, th = game.thrasher, A = TT.audio, w = game.world;
     const two = G.views.length > 1;
     if (!G.attract) for (const v of G.views) {
-      const c = v.car;
+      const c = v.car; if (c.isThrasher) continue; // his diesel is the Thrasher loop below
       A.engine(v.index, { kind: c.carId, speed: c.vf, top: c.spec.top, throttle: game.state === 'play' ? c.inp.throttle : 0.1, boost: c.boosting, gain: G.paused ? 0 : two ? 0.65 : 1 });
     }
     // Thrasher's diesel, by distance to the nearest camera

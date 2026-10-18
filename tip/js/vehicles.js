@@ -11,6 +11,7 @@
   class Car {
     constructor(game, h) {
       this.game = game; this.slot = h.slot; this.name = h.name || (h.slot ? 'Player 2' : 'Player 1');
+      this.isAI = !!h.ai; this.ai = null; // ai: the CarAI driving it (host / single machine only)
       this.carId = h.car; this.spec = TT.CARS[h.car]; this.remote = !!h.remote; this.view = h.view;
       const sp = game.world.spawn[h.slot] || game.world.spawn[0];
       Object.assign(this, { x: sp.x, z: sp.z, a: sp.a, y: game.world.height(sp.x, sp.z), vx: 0, vz: 0, vf: 0, turnRate: 0 });
@@ -19,8 +20,9 @@
       this.dents = 0; this.invuln = 0; this.hop = 0; this.hopV = 0; this.stunT = 0; this.spin = 0;
       this.escaped = false; this.caught = false; this.tips = 0; this.pumpkins = 0; this.happyT = 0;
       this.pitch = 0; this.roll = 0; this.accel = 0; this.steerVis = 0; this.surf = 0; this.splashT = 0; this.bumpT = 0;
-      const two = game.humans > 1;
-      this.rig = new TT.models.CarRig(h.car, { night: game.world.theme.night, halloween: !!game.level.halloween, tag: two ? TT.PLAYER_COLORS[h.slot] : null, shadows: !!game.quality.shadows, headlight: game.world.theme.night ? 1600 : 700 });
+      // a coloured marker over each car when there's more than one to tell apart (and always in the hunt)
+      const tag = game.humans > 1 || game.mode === 'hunt' ? TT.PLAYER_COLORS[h.slot % TT.PLAYER_COLORS.length] : null;
+      this.rig = new TT.models.CarRig(h.car, { night: game.world.theme.night, halloween: !!game.level.halloween, tag, shadows: !!game.quality.shadows, headlight: game.world.theme.night ? 1600 : 700 });
       game.world.scene.add(this.rig.root);
       this.net = null; this.mood = 'normal'; this.lookX = 0; this.lookY = 0;
     }
@@ -256,7 +258,21 @@
       this.rig = new TT.models.ThrasherRig({ halloween: !!game.level.halloween, shadows: !!game.quality.shadows, headlight: true });
       game.world.scene.add(this.rig.root);
       this.y = game.world.height(this.x, this.z); this.pitch = 0; this.roll = 0; this.reel = 0; this.mood = 'sleep'; this.lookX = 0; this.lookY = 0; this.net = null;
+      // who's driving: 'ai', 'local' (a player on this machine) or 'remote' (the other machine, online)
+      this.controller = 'ai'; this.isThrasher = true; this.carId = 'thrasher'; this.name = 'Thrasher'; this.slot = -1; this.view = null;
+      this.inp = { throttle: 0, brake: 0, steer: 0, honk: false, boost: false, drift: false, look: false };
+      this.spec = { top: 15, boostTime: 2.6, radius: 3 }; this.boost = this.spec.boostTime; this.boosting = false; this.roarCD = 0;
+      Object.assign(this, { escaped: false, caught: false, tips: 0, pumpkins: 0, dents: 0, hop: 0, stunT: 0, surf: 0, invuln: 0 });
     }
+    // a player takes the wheel (Thrasher Hunt)
+    pilotBy(t) {
+      this.controller = t.remote ? 'remote' : 'local';
+      this.name = t.name || 'Thrasher'; this.slot = t.slot; this.view = t.view; this.top = this.spec.top;
+      if (this.controller === 'remote') this.net = { cur: null, age: 0 };
+    }
+    get human() { return this.controller !== 'ai'; }
+    get active() { return true; }
+    get vf() { return this.v; }
     get awake() { return this.state !== 'sleep'; }
     get hunting() { return this.state === 'chase' || this.state === 'wake' || this.state === 'gloat'; }
     get code() { return TH_STATES.indexOf(this.state); }
@@ -277,6 +293,8 @@
       return true;
     }
     update(dt) {
+      if (this.controller === 'local') return this.pilot(dt);
+      if (this.controller === 'remote') return this.netStep(dt);
       const g = this.game, w = g.world;
       this.t += dt; this.chargeCD -= dt; this.chargeT -= dt;
       let tx = this.x, tz = this.z, want = 0, aim = null;
@@ -324,6 +342,42 @@
       if (this.state === 'chase' || this.state === 'search' || (this.state === 'home' && want >= 0)) this.drive(dt, tx, tz, want, aim);
       // move, then push out of buildings and trees; smash bales, pumpkins and corn on the way
       this.x += fwdX(this.a) * this.v * dt; this.z += fwdZ(this.a) * this.v * dt;
+      this.collideWorld(dt, true);
+      this.ground(dt);
+      this.reel = damp(this.reel, this.awake ? 3 + Math.abs(this.v) * 0.25 : 0, 2, dt);
+    }
+    // a player driving: heavy, slow to turn, a charge (boost) and a roar (the horn button) that wakes the herd
+    pilot(dt) {
+      const g = this.game, inp = this.inp;
+      this.t += dt; this.roarCD -= dt;
+      let thr = 0, brk = 0, st = 0;
+      if (this.state === 'sleep') { if (g.state === 'play' && g.clock > 1.5) this.set('wake'); }
+      else if (this.state === 'wake') { if (this.t > 2.3) this.set('chase'); }
+      else if (g.state === 'play') { thr = inp.throttle; brk = inp.brake; st = inp.steer; }
+      if (this.state === 'chase' && g.state === 'play' && inp.honk && this.roarCD <= 0) { this.roarCD = 6; g.roar(this); }
+      inp.honk = false;
+      // charge
+      const want = inp.boost && this.state === 'chase' && this.boost > 0.05 && g.state === 'play';
+      if (want && !this.boosting) g.emit('charge', {});
+      this.boosting = want;
+      if (want) { this.boost = Math.max(0, this.boost - dt); thr = 1; brk = 0; } else this.boost = Math.min(this.spec.boostTime, this.boost + dt * 0.28);
+      this.chargeT = want ? 0.2 : 0;
+      const surf = this.surf = g.world.surface(this.x, this.z);
+      const top = this.spec.top * (want ? 1.4 : 1) * (surf === 3 ? 0.6 : 1), rev = 5;
+      let v = this.v;
+      if (thr > 0) { if (v < -0.3) v += 12 * thr * dt; else if (v < top) v += (want ? 11 : 6.5) * thr * (1 - Math.pow(Math.max(0, v) / top, 2) * 0.8) * dt; }
+      if (brk > 0) { if (v > 0.3) v -= 12 * brk * dt; else if (v > -rev) v -= 4 * brk * dt; }
+      if (!thr && !brk) { v *= Math.exp(-0.6 * dt); v -= Math.sign(v) * Math.min(Math.abs(v), 2 * dt); }
+      if (v > top) v = damp(v, top, 2, dt);
+      this.v = v;
+      const turnMax = 1.35 - clamp(Math.abs(v) / 30, 0, 0.45);
+      this.a = wrapAngle(this.a - st * turnMax * clamp(Math.abs(v) / 3 + 0.2, 0, 1) * (v < -0.3 ? -1 : 1) * dt);
+      this.steer = damp(this.steer, -st, 8, dt);
+      this.x += fwdX(this.a) * v * dt; this.z += fwdZ(this.a) * v * dt;
+      // who he's looking at (face) and coming for (HUD)
+      let best = null, bd = 1e9;
+      for (const p of g.players) if (p.active) { const d = Math.hypot(p.x - this.x, p.z - this.z); if (d < bd) { bd = d; best = p; } }
+      this.target = best;
       this.collideWorld(dt, true);
       this.ground(dt);
       this.reel = damp(this.reel, this.awake ? 3 + Math.abs(this.v) * 0.25 : 0, 2, dt);
@@ -429,6 +483,7 @@
       const st = TH_STATES[s[4]] || 'sleep';
       if (st !== this.state) this.set(st);
       if (s[5] && this.chargeT <= 0) { this.chargeT = 2.2; this.game.emit('charge', {}); } else if (!s[5]) this.chargeT = 0;
+      this.boosting = !!s[5] && this.human;
       this.steer = s[6]; this.target = this.game.players.find(p => p.slot === s[7]) || null;
       this.t += dt;
       this.collideWorld(dt, false);
@@ -456,6 +511,82 @@
     }
   }
 
-  TT.Car = Car; TT.Tractor = Tractor; TT.Thrasher = Thrasher;
+  // ================================================================ a computer driver for a car (Thrasher Hunt)
+  // Sneaks up on the nearest sleeping tractor away from Thrasher, honks, runs when he gets close, and heads
+  // for the gate once it opens. It only writes the car's inputs; the car drives itself as usual.
+  class CarAI {
+    constructor(car) {
+      this.car = car; this.tr = null; this.pickT = 0; this.stuckT = 0; this.sx = car.x; this.sz = car.z; this.revT = 0; this.side = car.slot % 2 ? 1 : -1;
+      this.nerve = car.carId === 'dash' ? 22 : 18; // how close Thrasher gets before it runs
+    }
+    think(dt) {
+      const p = this.car, g = p.game, w = g.world, th = g.thrasher, inp = p.inp, H = w.H;
+      Object.assign(inp, { throttle: 0, brake: 0, steer: 0, boost: false, drift: false });
+      if (!p.active || g.state !== 'play' || p.stunT > 0) return;
+      const dTh = Math.hypot(th.x - p.x, th.z - p.z), danger = th.awake && th.state !== 'wake' && dTh < this.nerve;
+      let tx, tz, want = p.spec.top;
+      if (g.gateOpen) {
+        // line up with the gate, then straight out
+        const g2 = w.gate, lined = Math.abs(p.x - g2.x) < 2.5 && p.z < -H + 12;
+        tx = g2.x; tz = lined ? -H - 15 : -H + 7;
+        if (danger && dTh < 14) inp.boost = true;
+      } else if (danger) {
+        // run: away from him, swinging round towards the middle when the fence gets close
+        let ax = p.x - th.x, az = p.z - th.z; const n = Math.hypot(ax, az) || 1; ax /= n; az /= n;
+        const px = -az * this.side, pz = ax * this.side;
+        tx = p.x + ax * 26 + px * 12; tz = p.z + az * 26 + pz * 12;
+        const lim = H - 12;
+        if (Math.abs(tx) > lim || Math.abs(tz) > lim) { tx = clamp(tx, -lim, lim) * 0.6; tz = clamp(tz, -lim, lim) * 0.6; }
+        if (dTh < 13) inp.boost = true;
+        this.tr = null;
+      } else {
+        // pick a sleeping tractor: close to me, far from Thrasher
+        this.pickT -= dt;
+        if (!this.tr || this.tr.state !== 'sleep' || this.pickT <= 0) {
+          this.pickT = 1.5; let best = null, bc = 1e9;
+          for (const t of g.tractors) {
+            if (t.state !== 'sleep') continue;
+            const c = Math.hypot(t.x - p.x, t.z - p.z) + (th.awake ? Math.max(0, 40 - Math.hypot(t.x - th.x, t.z - th.z)) * 1.6 : 0);
+            if (c < bc) { bc = c; best = t; }
+          }
+          this.tr = best;
+        }
+        if (this.tr) {
+          const t = this.tr, d = Math.hypot(t.x - p.x, t.z - p.z);
+          tx = t.x; tz = t.z;
+          if (d < p.spec.hornR * 0.8 && Math.abs(p.vf) < TT.SNEAK) { inp.honk = true; this.pickT = 0; }
+          if (d < p.spec.hornR * 0.55) want = 0;
+        } else { tx = -th.x * 0.5; tz = -th.z * 0.5; want = 8; } // nothing left asleep: keep away from him
+      }
+      // creep near anything asleep, or it wakes up
+      if (!g.gateOpen && !danger) for (const t of g.tractors) if (t.state === 'sleep' && Math.hypot(t.x - p.x, t.z - p.z) < 14) { want = Math.min(want, TT.SNEAK - 2); break; }
+      // steer round trees, buildings, bales and tractors
+      const dx = tx - p.x, dz = tz - p.z;
+      let diff = wrapAngle(Math.atan2(dx, dz) - p.a);
+      const L = 6 + Math.abs(p.vf) * 0.55, fx = fwdX(p.a), fz = fwdZ(p.a), lx = Math.cos(p.a), lz = -Math.sin(p.a), r = p.spec.radius;
+      let bias = 0;
+      const avoid = (ox, oz, rad) => {
+        const rx = ox - p.x, rz = oz - p.z, f = rx * fx + rz * fz; if (f < 0 || f > L) return;
+        const sd = rx * lx + rz * lz, m = rad + r + 0.8; if (Math.abs(sd) > m) return;
+        bias += -(Math.abs(sd) < 0.4 ? this.side : Math.sign(sd)) * (1 - f / L) * (1 - Math.abs(sd) / m) * 2.2;
+      };
+      for (const c of w.circles) avoid(c.x, c.z, c.r);
+      for (const b of w.boxes) avoid(b.x, b.z, Math.max(b.hw, b.hd));
+      for (const b of w.bales) if (b.alive) avoid(b.x, b.z, b.r);
+      for (const t of g.tractors) if (t !== this.tr) avoid(t.x, t.z, TT.TRACTOR_R);
+      if (!g.gateOpen || p.z > -H + 14) { const ax = p.x + fx * L, az = p.z + fz * L; if (Math.abs(ax) > H - 4 || Math.abs(az) > H - 4) bias += Math.sign(wrapAngle(Math.atan2(-p.x, -p.z) - p.a)) * 1.5; }
+      diff = clamp(diff + bias, -Math.PI, Math.PI);
+      // stuck against something: reverse out
+      this.stuckT += dt;
+      if (this.stuckT > 1.4) { if (want > 3 && Math.hypot(p.x - this.sx, p.z - this.sz) < 2) { this.revT = 1; this.side = -this.side; } this.stuckT = 0; this.sx = p.x; this.sz = p.z; }
+      if (this.revT > 0) { this.revT -= dt; inp.brake = 1; inp.steer = Math.sign(diff || 1); inp.boost = false; return; }
+      inp.steer = clamp(-diff * 2.4, -1, 1);
+      if (Math.abs(diff) > 1.3 && p.vf > 9) { inp.brake = 0.4; inp.boost = false; }
+      else if (p.vf < want - 0.5) inp.throttle = want < 8 ? 0.5 : 1;
+      else if (p.vf > want + 1.5) inp.brake = 0.6;
+    }
+  }
+
+  TT.Car = Car; TT.Tractor = Tractor; TT.Thrasher = Thrasher; TT.CarAI = CarAI;
   TT.T_STATES = T_STATES; TT.TH_STATES = TH_STATES;
 })();
