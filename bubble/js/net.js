@@ -13,7 +13,7 @@
   function loadLib() {
     if (window.Peer) return Promise.resolve();
     return new Promise((res, rej) => {
-      const s = document.createElement('script'); s.src = '../road/lib/peerjs.min.js?v=1';
+      const s = document.createElement('script'); s.src = window.BB_PEERJS || '../road/lib/peerjs.min.js?v=1';
       s.onload = () => res(); s.onerror = () => rej(new Error('could not load the network library'));
       document.head.appendChild(s);
     });
@@ -25,7 +25,7 @@
     return o;
   }
   const makeCode = () => Array.from({ length: 5 }, () => ALPHA[Math.floor(Math.random() * ALPHA.length)]).join('');
-  N.inviteLink = () => { const u = new URL(location.href); u.search = ''; const q = new URLSearchParams(location.search); for (const k of ['peerhost', 'peerport', 'peerpath', 'peersecure']) if (q.get(k)) u.searchParams.set(k, q.get(k)); u.searchParams.set('join', N.code); return u.toString(); };
+  N.inviteLink = () => { const portal = BB.ads.invite(N.code); if (portal) return portal; const u = new URL(location.href); u.search = ''; const q = new URLSearchParams(location.search); for (const k of ['peerhost', 'peerport', 'peerpath', 'peersecure']) if (q.get(k)) u.searchParams.set(k, q.get(k)); u.searchParams.set('join', N.code); return u.toString(); };
 
   N.host = async name => {
     await loadLib();

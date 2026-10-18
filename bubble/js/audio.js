@@ -45,9 +45,12 @@
     const d = noiseBuf.getChannelData(0); for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
     const b = ctx.createBufferSource(); b.buffer = ctx.createBuffer(1, 1, ctx.sampleRate); b.connect(ctx.destination); b.start(0);
     document.addEventListener('visibilitychange', () => { if (ctx) (document.hidden ? ctx.suspend() : ctx.resume()).catch(() => {}); });
-    A.ready = true; A.levels();
+    A.ready = true; A.levels(); if (muted) A.mute(true);
     if (song) startSong();
   };
+  // silent while an ad plays (ads.js)
+  let muted = false;
+  A.mute = on => { muted = on; if (ctx) master.gain.setTargetAtTime(on ? 0 : 1, ctx.currentTime, 0.03); };
   A.levels = () => {
     if (!ctx) return;
     const S = BB.settings;

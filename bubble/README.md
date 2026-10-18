@@ -88,3 +88,18 @@ Shots and star scores per level come from `tools/sim.js`: a "casual" bot (often 
 ## Testing online locally
 
 Run a PeerJS server (`npx peer --port 9000`) and open the game with `?peerhost=127.0.0.1&peerport=9000` on both sides.
+
+## Publishing on game portals (ads)
+
+The GitHub Pages copy has no ads. `js/ads.js` only switches on in a portal build:
+
+1. Run `python3 bubble/tools/package.py`.
+2. Upload `bubble/dist/bubble-odyssey-crazygames.zip` to the CrazyGames developer portal (ads on), or `bubble-odyssey-web.zip` to itch.io (no ads).
+
+In the CrazyGames build:
+- A break ad may show between games (next level, retry, back to the map), at most every 3 minutes and never in the first two games.
+- Players can choose to watch an ad for one free continue per level, to double the coins they won, or for 40 coins in the shop.
+- Sound mutes while an ad plays.
+- There are no break ads in online co-op, so the other player is never left waiting.
+
+To try it locally, add `?portal=crazygames` to the URL; the SDK shows demo ads on localhost.

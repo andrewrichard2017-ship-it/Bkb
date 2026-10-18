@@ -177,7 +177,7 @@
         <div class="hdr"><h2>SHOP</h2><div class="chips"><span>${coins()}</span></div></div>
         <p class="sub">Power-ups are used during a level: tap one at the bottom of the screen (or press 1–6) and your next shot becomes it. Earn coins by winning levels; new stars earn extra.</p>
         <div class="shopgrid">${BB.POWER_KEYS.map(card).join('')}</div>
-        <div class="row">${btn(gift ? '🎁 FREE DAILY GIFT · 50 COINS' : '🎁 Gift collected · come back tomorrow', 'gift', gift ? '' : 'disabled', gift ? 'primary' : '')}${btn('BACK', 'shopBack')}</div></div>`,
+        <div class="row">${btn(gift ? '🎁 FREE DAILY GIFT · 50 COINS' : '🎁 Gift collected · come back tomorrow', 'gift', gift ? '' : 'disabled', gift ? 'primary' : '')}${BB.ads.canReward() ? btn('📺 WATCH AN AD · 40 COINS', 'adCoins') : ''}${btn('BACK', 'shopBack')}</div></div>`,
       { back: () => M.acts.shopBack(), cls: 'center' });
     },
 
@@ -308,10 +308,14 @@
       if (!r.won && career && !online && !r.coop) {
         const k = r.reason === 'shots' ? 'shots' : 'line', price = k === 'shots' ? 40 : 60;
         revive = btn(k === 'shots' ? `➕ 5 MORE SHOTS · 🪙 ${price}` : `💥 BLAST THE BOTTOM ROWS · 🪙 ${price}`, 'revive', `data-k="${k}" data-price="${price}" ${BB.save.coins < price ? 'disabled' : ''}`, 'primary');
+        // one free continue per game for watching an ad
+        if (BB.ads.canReward() && g && !g.adRevived) revive += btn(`📺 WATCH AN AD · ${k === 'shots' ? '5 MORE SHOTS' : 'BLAST THE ROWS'} FREE`, 'adRevive', `data-k="${k}"`, 'primary');
       }
+      const doubler = rec.coins && !online && BB.ads.canReward() ? btn(`📺 WATCH AN AD · DOUBLE YOUR COINS (+${rec.coins} 🪙)`, 'adDouble') : '';
       const buttons = host ? [
         next ? btn('▶ NEXT LEVEL', 'next', 'id="go"', 'primary') : '',
         revive,
+        doubler,
         btn(r.mode === 'endless' ? '↻ PLAY AGAIN' : '↻ RETRY', 'retry', r.won || !revive ? 'id="go2"' : ''),
         btn(online ? 'LOBBY' : career ? '🗺️ MAP' : 'MENU', 'resultsBack'),
       ].join('') : `<p class="status">Waiting for the host…</p>${btn('LEAVE', 'leave')}`;
@@ -375,6 +379,7 @@
       BB.save.coins -= p; BB.save.inv[k] = (BB.save.inv[k] || 0) + 1; BB.saveProgress(); BB.audio.sfx('coin');
       SCREENS.shop(); focus(root.querySelector(`[data-act="buy"][data-k="${k}"]`) || items()[0], false);
     },
+    adCoins: () => BB.ads.rewarded(() => { BB.save.coins += 40; BB.saveProgress(); BB.audio.sfx('coin'); if (M.screen === 'shop') SCREENS.shop(); }),
     gift: () => { BB.save.gift = new Date().toDateString(); BB.save.coins += 50; BB.saveProgress(); BB.audio.sfx('coin'); SCREENS.shop(); },
     howto: () => M.show('howto'),
     settings: () => { M.settingsFrom = 'title'; M.show('settings'); },
@@ -394,21 +399,35 @@
     next: () => {
       const r = M.data.result; if (!r) return;
       if (G().online()) return BB.net.next(r.level + 1);
-      startLevel(r.level + 1);
+      BB.ads.midgame(() => startLevel(r.level + 1));
     },
     retry: () => {
       if (G().online()) return BB.net.next(M.data.result.mode === 'endless' ? 0 : M.data.result.level);
-      G().start(Object.assign({}, G().cfg, G().cfg.mode === 'endless' ? { world: Math.floor(Math.random() * 5) } : {}));
+      const cfg = Object.assign({}, G().cfg, G().cfg.mode === 'endless' ? { world: Math.floor(Math.random() * 5) } : {});
+      BB.ads.midgame(() => G().start(cfg));
     },
     revive: e => {
       const price = +e.dataset.price, g = G().game; if (!g || BB.save.coins < price) return;
       BB.save.coins -= price; BB.saveProgress(); BB.audio.sfx('coin');
       M.hide(); g.revive(e.dataset.k);
     },
+    adRevive: e => {
+      const g = G().game, k = e.dataset.k; if (!g || g.adRevived) return;
+      BB.ads.rewarded(() => { if (G().game !== g || g.state !== 'lost') return; g.adRevived = true; M.hide(); g.revive(k); });
+    },
+    adDouble: e => {
+      const rec = M.data.rec; if (!rec || !rec.coins || rec.doubled) return;
+      BB.ads.rewarded(() => {
+        if (rec.doubled) return; rec.doubled = true;
+        BB.save.coins += rec.coins; BB.saveProgress(); BB.audio.sfx('coin');
+        BB.render.showToast(`+${rec.coins} 🪙 coins doubled!`, '#ffe14f');
+        e.disabled = true; e.textContent = '✔ COINS DOUBLED';
+      });
+    },
     resultsBack: () => {
       if (G().online()) { BB.net.toLobby(); return; }
       const r = M.data.result; G().quit();
-      if (r && r.mode === 'career') M.show('map', { focus: r.won ? Math.min(BB.LEVEL_COUNT, r.level + 1) : r.level }); else M.show(M.ctx.coop ? 'coop' : 'title');
+      BB.ads.midgame(() => { if (r && r.mode === 'career') M.show('map', { focus: r.won ? Math.min(BB.LEVEL_COUNT, r.level + 1) : r.level }); else M.show(M.ctx.coop ? 'coop' : 'title'); });
     },
     // ---- online ----
     online: () => M.show('online'),

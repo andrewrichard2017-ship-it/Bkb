@@ -80,15 +80,16 @@
     BB.view.dirty = true;
     BB.menu.hide();
     if (cfg.mode === 'career' && !cfg.role && game.spec.tip) game.introT = 3.4;
+    BB.ads.gameplay(true);
     return game;
   };
   G.quit = keepNet => {
     if (!keepNet && BB.net && BB.net.active) BB.net.leave();
-    G.game = null; G.attract = true; G.paused = false; G.fx.clear();
+    G.game = null; G.attract = true; G.paused = false; G.fx.clear(); BB.ads.gameplay(false);
     G.backdrop(BB.highestWorld()); BB.audio.music('title');
   };
-  G.pause = () => { if (!G.game || G.attract || G.game.state === 'won' || G.game.state === 'lost') return; G.paused = true; BB.menu.show('pause'); };
-  G.resume = () => { G.paused = false; BB.menu.hide(); };
+  G.pause = () => { if (!G.game || G.attract || G.game.state === 'won' || G.game.state === 'lost') return; G.paused = true; BB.ads.gameplay(false); BB.menu.show('pause'); };
+  G.resume = () => { G.paused = false; BB.ads.gameplay(true); BB.menu.hide(); };
 
   // ---- player actions (the controls and the HUD call these) ----
   const playable = () => G.game && !G.attract && !G.paused && !BB.menu.active;
@@ -190,8 +191,11 @@
         fx.banner(e.reason === 'shots' ? 'OUT OF SHOTS' : 'TOO LOW!', { col: '#ff6a85', life: 2, y: 12 });
         A.sfx('lose'); BB.input.rumble(0.7, 0.4, 260);
         break;
-      case 'revive': fx.banner('KEEP GOING!', { col: '#7dff9a', life: 1.2 }); A.sfx('confirm'); break;
-      case 'over': setTimeout(() => { if (G.game === game) BB.menu.gameOver(e.result, game); }, e.result.won ? 600 : 1300); break;
+      case 'revive': BB.ads.gameplay(true); fx.banner('KEEP GOING!', { col: '#7dff9a', life: 1.2 }); A.sfx('confirm'); break;
+      case 'over':
+        BB.ads.gameplay(false);
+        if (e.result.won && (e.result.stars === 3 || game.boss)) BB.ads.happy();
+        setTimeout(() => { if (G.game === game) BB.menu.gameOver(e.result, game); }, e.result.won ? 600 : 1300); break;
     }
   }
   function landFx(e, game) {
