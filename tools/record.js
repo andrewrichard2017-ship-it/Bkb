@@ -64,7 +64,8 @@ const CLOCK = `(() => {
   }
   await browser.close();
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(dir, '%05d.jpg'), ...(upscale ? ['-vf', `scale=${upscale.replace('x', ':')}:flags=lanczos`] : []), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', out]);
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(dir, '%05d.jpg'), ...(upscale ? ['-vf', `scale=${upscale.replace('x', ':')}:flags=lanczos`] : []), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', path.join(dir, 'out.mp4')]);
+  fs.copyFileSync(path.join(dir, 'out.mp4'), out);   // only a finished video lands in the repo
   fs.rmSync(dir, { recursive: true, force: true });
   console.log(`\r${path.relative(process.cwd(), out)}  ${(fs.statSync(out).size / 1e6).toFixed(1)} MB`);
 })();
