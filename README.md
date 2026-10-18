@@ -22,8 +22,8 @@ Pick any fighter for yourself and for the CPU on the main menu (tap the name to 
 | **Tommy Brennan** | Brown hoodie, jeans, black shoes | Counter puncher: heavy hands, good chin | Leans back | **Sledgehammer**: overhand right, over the top |
 | **Big Mossie** | White tank over a big belly, black trousers and boots, gold chain, white hair and handlebar moustache | Brawler: huge power, best chin, slow | Ducks and rolls | **Wrecking ball**: a huge looping swing |
 | **Lanky Leo** | Shirtless, shorts, white shoes, skinhead | Speed merchant: fast hands and feet, light punches, best stamina recovery | **COMBO**: automatic jab-cross-left hook for 40% of his stamina (needs at least 40%) | **Flying Punch**: leaps in behind a flying cross |
-| **Spade** | Grey tank, black jeans, desert boots, slicked-back hair, long beard, knuckle dusters | Knockout artist: the most power, low stamina, slow feet | **No sway** | **Duster cross**: a big knuckle-duster cross, once per round |
-| **Gerry Keane** | Stained white t-shirt, jeans, black boots, hair cropped right down, dark stubble, muck on his face | Dirty fighter: great stamina and chin, decent power, a heavy stumbling walk | **SPIT**: a gob in the eye and a rake across it, blinding him for a couple of seconds (he blocks worse and swings wild) | **Overhand right** (once a round): a looping right thrown over the top of the guard with everything behind it |
+| **Spade** | Grey tank, black jeans, desert boots, slicked-back hair, long beard | Knockout artist: the most power, low stamina, slow feet | **No sway** | **Big right hand**: a huge straight right with everything behind it, once per round |
+| **Gerry Keane** | Stained white t-shirt, jeans, black boots, hair cropped right down, dark stubble, muck on his face | Dirty fighter: great stamina and chin, decent power, a heavy stumbling walk | **Ducks and rolls** under, coming back with a hook | **Clubbing right** (once a round): a right swung up from the hip and brought down over the guard |
 
 ## Controls
 

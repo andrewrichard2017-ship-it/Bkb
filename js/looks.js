@@ -71,9 +71,9 @@
       pants: '#1b1b1f', pantsShade: '#121215', pantsStripe: null,
       boots: '#b99c70', bootSole: '#6d5a3e',
       wraps: null, wrapShade: null,
-      sleeves: 'none', legs: 'jeans', shoes: 'desert', fist: 'dusters', head: 'slick', beard: 'long',
-      // no sway at all; his super is a knuckle-duster cross, once a round; heavy on his feet
-      sway: 'none', super: 'duster', superOnce: true, move: 0.8, regen: 0.8,
+      sleeves: 'none', legs: 'jeans', shoes: 'desert', fist: 'bare', head: 'slick', beard: 'long',
+      // no sway at all; his super is a big straight right, once a round; heavy on his feet
+      sway: 'none', super: 'bigright', superOnce: true, move: 0.8, regen: 0.8,
       alt: { topColor: '#2c2c31', topShade: '#1d1d21', pants: '#3a2c22', pantsShade: '#2a2019' },
       tape: { AGE: '38', HEIGHT: '6\'1"', WEIGHT: '17st 0lb', REACH: '75"', RECORD: '22-3 (20 KO)', STYLE: 'Knockout artist' },
       attr: { POWER: 99, SPEED: 60, CHIN: 84, STAMINA: 58 },
@@ -89,9 +89,9 @@
       boots: '#1c1c1f', bootSole: '#050505',
       wraps: null, wrapShade: null,
       sleeves: 'short', legs: 'jeans', shoes: 'boots', fist: 'bare', head: 'crop', stubble: 'dark', dirty: true,
-      // SWAY is a spit in the eye and a rake across it (blinds him for a moment); super is a looping overhand
-      // right thrown with everything. Heavy stumbling gait.
-      sway: 'spit', super: 'overhand', superOnce: true, move: 0.9, stumble: true, regen: 1.15,
+      // SWAY is a duck and roll; super is a clubbing right swung from the hip with everything.
+      // Heavy stumbling gait.
+      sway: 'duck', super: 'clubber', superOnce: true, move: 0.9, stumble: true, regen: 1.15,
       alt: { topColor: '#4a4f5a', topShade: '#35393f', pants: '#2c2c30', pantsShade: '#1f1f22' },
       tape: { AGE: '31', HEIGHT: '5\'10"', WEIGHT: '13st 9lb', REACH: '71"', RECORD: '14-5 (6 KO)', STYLE: 'Dirty fighter' },
       attr: { POWER: 74, SPEED: 70, CHIN: 88, STAMINA: 90 },
@@ -136,10 +136,10 @@
     overhand: { label: 'SLEDGEHAMMER',   hand: 'rear', dur: 1.0,  hitAt: 0.58, dmg: 40, reach: 190, cost: 16, stun: 0.6,  snap: 0.95, through: 1.0, power: true, super: true, aim: 0.9,  aimY: -6 },
     wrecker:  { label: 'WRECKING BALL',  hand: 'rear', dur: 1.05, hitAt: 0.6,  dmg: 42, reach: 170, cost: 16, stun: 0.65, snap: 1.0,  through: 1.0, power: true, super: true, aim: 0.74, aimY: 0 },
     superman: { label: 'FLYING PUNCH', hand: 'rear', dur: 0.9,  hitAt: 0.5,  dmg: 38, reach: 230, cost: 16, stun: 0.6,  snap: 0.9,  through: 1.0, power: true, super: true, aim: 0.93, aimY: 0 },
-    // Gerry's: a looping overhand right, once a round. Comes over the top of the guard like a falling tree.
-    overhand: { label: 'OVERHAND RIGHT',  hand: 'rear', dur: 1.1,  hitAt: 0.6,  dmg: 34, reach: 210, cost: 16, stun: 0.9,  snap: 0.8,  through: 1.0, power: true, super: true, aim: 0.8,  aimY: -4 },
-    // Spade's: a big knuckle-duster cross, once a round
-    duster:   { label: 'DUSTER CROSS',   hand: 'rear', dur: 1.05, hitAt: 0.62, dmg: 45, reach: 200, cost: 16, stun: 0.7,  snap: 1.1,  through: 1.0, power: true, super: true, aim: 0.95, aimY: 2 },
+    // Gerry's: a clubbing right swung up from the hip, once a round. Comes over the guard like a falling tree.
+    clubber:  { label: 'CLUBBING RIGHT',  hand: 'rear', dur: 1.1,  hitAt: 0.6,  dmg: 34, reach: 210, cost: 16, stun: 0.9,  snap: 0.8,  through: 1.0, power: true, super: true, aim: 0.8,  aimY: -4 },
+    // Spade's: a big straight right with everything behind it, once a round
+    bigright: { label: 'BIG RIGHT HAND', hand: 'rear', dur: 1.05, hitAt: 0.62, dmg: 45, reach: 200, cost: 16, stun: 0.7,  snap: 1.1,  through: 1.0, power: true, super: true, aim: 0.95, aimY: 2 },
   };
   BK.superName = look => (BK.PUNCHES[look.super || 'ko'].label || 'SUPER PUNCH');
   BK.PUNCH_NAMES = { jab: 'JAB', cross: 'CROSS', hook: 'HOOK', upper: 'UPPERCUT' };

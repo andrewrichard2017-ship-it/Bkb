@@ -48,7 +48,7 @@
       this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false; this.clinchSaved = false;
       this.buffer = []; this.chainHits = 0;
       this.dazedStand = false; this.dazeW = 0; // taking a standing count; dazeW eases the wobble in and out
-      this.blind = 0; this.lurchT = 0; this.lurch = 0; // eye raked (blind), Gerry's stumble
+      this.lurchT = 0; this.lurch = 0; // Gerry's stumble
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make(); this.tmp2 = BK.rig.make();
@@ -132,16 +132,13 @@
 
       if (this.slip) {
         this.slip.t += dt;
-        if (this.slip.kind === 'spit' && !this.slip.spat && this.slip.t >= 0.16) { this.slip.spat = true; this.spit(opp); }
-        if (this.slip.kind === 'spit' && !this.slip.raked && this.slip.t >= 0.4) { this.slip.raked = true; this.rake(opp); }
         if (this.slip.t >= this.slip.dur) { // come back with a punch: a cross off the lean, a hook out of the roll
           const kind = this.slip.kind; this.slip = null;
-          if (kind !== 'spit' && !this.punch && this.stagger <= 0 && !this.clinch) this.throwPunch(kind === 'duck' ? 'hook' : 'cross', { auto: true });
+          if (!this.punch && this.stagger <= 0 && !this.clinch) this.throwPunch(kind === 'duck' ? 'hook' : 'cross', { auto: true });
         }
       }
       const staggered = this.stagger > 0;
       if (staggered) this.stagger -= dt;
-      this.blind = Math.max(0, this.blind - dt);
       if (this.look.stumble) { // Gerry: a heavy, uneven gait, every few steps a lurch to one side
         this.lurchT -= dt;
         if (this.lurchT <= 0 && this.moving > 0.3) { this.lurch = BK.pick([-1, 1]); this.lurchT = BK.rnd(0.9, 1.8); }
@@ -157,7 +154,6 @@
       spd *= (0.9 + 0.1 * this.speedMul) * (this.look.move || 1);
       let mx = input.mx || 0, my = input.my || 0;
       if (staggered) { mx += Math.sin(this.t * 5) * 0.5; my += Math.cos(this.t * 4) * 0.4; }
-      if (this.blind > 0) { mx *= 0.6; my += Math.sin(this.t * 6) * 0.3; } // can't see where he's going
       if (this.look.stumble) mx += this.lurch * 0.35;
       const mag = Math.min(1, Math.hypot(mx, my));
       const w = BK.ringR(this.z) - BK.ringL(this.z);
@@ -177,11 +173,6 @@
         BK.fx.popup('COMBO!', this.headX, this.headY - 60, BK.PAL.brass, 40);
       }
       if (this.combo.length && !staggered && this.canThrow(this.combo[0])) this.throwPunch(this.combo.shift(), { auto: true, fast: true });
-      if (input.slip && sway === 'spit' && !this.punch && !this.slip && !this.grab && !staggered && this.stamina >= 12) {
-        // Gerry: a gob in the eye and a rake across it. Blinds him for a couple of seconds if it lands.
-        this.stamina -= 12;
-        this.slip = { t: 0, dur: 0.55, kind: 'spit' };
-      }
       if (input.slip && (sway === 'lean' || sway === 'duck') && !this.punch && !this.slip && !staggered && this.stamina > 4) {
         const duck = sway === 'duck';
         this.slip = { t: 0, dur: duck ? 0.5 : 0.4, kind: duck ? 'duck' : 'lean' };
@@ -250,28 +241,6 @@
       this.tickPunch(dt, opp);
     }
 
-    // Gerry's sway: the spit flies, then the rake. Either lands only if he's in range and facing the right way.
-    spit(opp) {
-      const dx = (opp.sx - this.sx) * this.dir;
-      BK.fx.spit(this.headX + this.dir * 14 * this.fs, this.headY - 6 * this.fs, this.dir, opp, this.sy);
-      this.grunt('effortSmall', true);
-      if (opp.down || dx <= 0 || dx > 200 * this.fs || Math.abs(opp.z - this.z) > 0.14) return;
-      if (opp.slip && opp.slip.t < 0.35) { BK.fx.popup('MISSED', opp.headX, opp.headY - 40, BK.PAL.bone, 30); return; }
-      BK.fx.popup('SPAT ON!', opp.headX, opp.headY - 60, '#9ac54a', 40); BK.audio.crowdJeer();
-      opp.blind = Math.max(opp.blind, 1.2); opp.spitOn = 1;
-      BK.audio.roar(0.4); BK.audio.excite(0.3);
-    }
-    rake(opp) {
-      const dx = (opp.sx - this.sx) * this.dir;
-      if (opp.down || dx <= 0 || dx > 150 * this.fs || Math.abs(opp.z - this.z) > 0.14) { BK.audio.whoosh(); return; }
-      if (opp.blocking || (opp.slip && opp.slip.t < 0.35)) { BK.fx.popup('COVERED UP', opp.headX, opp.headY - 40, BK.PAL.bone, 30); return; }
-      BK.fx.popup('EYE RAKE!', opp.headX, opp.headY - 90, '#e2584f', 44);
-      opp.blind = Math.max(opp.blind, 2.4); opp.blocking = false; opp.punch = null; opp.buffer = []; opp.stun = Math.max(opp.stun, 0.35);
-      opp.hp = Math.max(0.5, opp.hp - 3 * this.powerMul * opp.chinMul); opp.damage = Math.min(1, opp.damage + 0.03);
-      BK.fx.impact(opp.headX, opp.headY, this.dir, opp.sy, 'hit', 0.8);
-      BK.audio.punch('jab'); opp.grunt('hurt', true); BK.audio.roar(0.6); BK.cam.shake = Math.max(BK.cam.shake, 6);
-      BK.vibrate(40, opp.side);
-    }
     resolveGrab(opp) {
       const dx = (opp.sx - this.sx) * this.dir;
       if (opp.down || opp.clinch || dx <= 0 || dx > 175 * this.fs || Math.abs(opp.z - this.z) > 0.14) { BK.audio.whoosh(); return; }
@@ -317,7 +286,7 @@
     resolve(opp, p) {
       if (p.clinch) { if (opp.clinch) opp.receive(p, this); else this.whiff(); return; }
       const dx = (opp.sx - this.sx) * this.dir;
-      const reach = this.blind > 0 ? p.reach * 0.6 : p.reach; // swinging blind: half of them find nothing
+      const reach = p.reach;
       const inRange = !opp.down && dx > 0 && dx < reach * this.fs && Math.abs(opp.z - this.z) < 0.12;
       if (!inRange) { this.whiff(); return; }
       const sl = opp.slip, ducking = sl && sl.kind === 'duck';
@@ -413,9 +382,6 @@
         else if (Math.random() < 0.08) BK.audio.crowdShout();
         BK.cam.shake = Math.max(BK.cam.shake, counter ? 14 : p.power ? 9 : 4);
         BK.cam.jolt(from.dir, 0.3, counter ? 26 : p.power ? 16 : 6); // the camera takes the hit too
-        if (p.type === 'duster') { // brass on bone
-          BK.fx.impact(hx, hy, from.dir, this.sy, 'blocked', 2);
-        }
         this.grunt(p.clinch ? 'hurtSmall' : p.body ? 'hurtBody' : p.power || counter ? 'hurtBig' : 'hurt', p.power);
         if (this.damage > 0.5 && !p.body) from.blood = Math.min(1, from.blood + 0.012); // his blood on your hands and vest
         BK.audio.excite(dmg / 40);
@@ -497,9 +463,6 @@
         if (this.slip.kind === 'duck') { // dip under, roll across, come up the other side
           R.mixInto(T, PO.duck, Math.sin(PI * k), U);
           T.px += Math.sin(2 * PI * k) * 12; T.lean += Math.sin(2 * PI * k) * 8;
-        } else if (this.slip.kind === 'spit') { // head forward to spit, then the front hand claws across his eyes
-          R.mixInto(T, PO.spitA, Math.sin(PI * Math.min(1, k * 2)) * 0.9, U);
-          R.mixInto(T, PO.rakeX, Math.max(0, Math.sin(PI * (k - 0.35) / 0.65)), U);
         } else R.mixInto(T, PO.slip, Math.sin(PI * k), U);
       }
       if (this.grab) R.mixInto(T, PO.grab, BK.easeOut(this.grab.t / this.grab.dur), U);
@@ -544,7 +507,6 @@
       // Punches and hits snap straight to the target; everything else eases in.
       const snap = this.punch || this.hurtW > 0.25 || this.down;
       R.mixInto(this.pose, T, snap ? 1 : 1 - Math.exp(-dt * 20));
-      this.spitOn = Math.max(0, (this.spitOn || 0) - dt * 0.25);
       this.blinkT -= dt;
       if (this.blinkT < -0.12) this.blinkT = BK.rnd(1.5, 4.5);
     }
@@ -630,7 +592,7 @@
 
     drawState() {
       return { damage: this.damage, dazed: this.stun > 0 || this.down || this.stagger > 0, blink: this.blinkT < 0, sweat: this.sweat, blood: this.blood,
-        cuts: this.cuts.map(c => ({ ...c })), fistBlood: this.fistBlood || 0, blind: this.blind > 0, spitOn: this.spitOn > 0 };
+        cuts: this.cuts.map(c => ({ ...c })), fistBlood: this.fistBlood || 0 };
     }
 
     drawPortrait(x, y, scale, flip) {

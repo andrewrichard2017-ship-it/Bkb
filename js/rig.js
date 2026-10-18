@@ -53,9 +53,6 @@
   // dazed on his feet (standing count): hands hanging, head rolling, knees going, swaying side to side
   def('oofA', { lean: -12, head: -24, px: -12, py: 18, fX: 36, fY: -30, fB: 1, rX: 14, rY: -26, rB: 1, ffX: 26, rfX: -40 });
   def('oofB', { lean: 14, head: 20, px: 8, py: 22, fX: 42, fY: -36, fB: 1, rX: 22, rY: -30, rB: 1, ffX: 40, rfX: -26 });
-  // Gerry's spit and eye rake
-  def('spitA', { lean: 16, head: 18, px: 8, py: 6, fX: 40, fY: -104, rX: 24, rY: -100 });
-  def('rakeX', { fX: 112, fY: -122, fB: -0.5, fZ: 1.15, lean: 20, px: 14, head: 10, rX: 20, rY: -98 });
   // body shot reaction and the clinch
   def('hurtBody', { lean: 24, head: 18, px: -6, py: 14, fX: 40, fY: -44, fB: 1, rX: 26, rY: -38, rB: 1 });
   def('grab', { fX: 100, fY: -96, fB: 0.3, rX: 92, rY: -86, rB: 0.3, lean: 18, px: 10, head: 8 });
@@ -85,13 +82,13 @@
   def('supermanA', { rX: 22, rY: -98, rB: 0.8, rsh: -8, lean: -4, px: -6, py: 30, head: 0, fX: 48, fY: -110, ffX: 30, rfX: -12, rfY: -34 });
   def('supermanM', { rX: 30, rY: -118, rB: 0.6, rsh: 4, lean: 10, px: 10, py: -34, head: 2, fX: 40, fY: -104, ffX: 44, ffY: -26, rfX: -72, rfY: -44 });
   def('supermanX', { rX: 110, rY: -116, rB: 0.05, rZ: 1.25, rsh: 24, lean: 20, px: 30, py: -8, head: 6, fX: 18, fY: -96, fB: 1, ffX: 58, ffY: -6, rfX: -80, rfY: -30 });
-  // Overhand right (Gerry): loaded low by the hip, looped up and over and brought down on the jaw.
-  def('overhandA', { rX: -24, rY: -40, rB: 0.9, rZ: 1, rsh: -14, lean: -10, px: -12, py: 14, head: -4, fX: 44, fY: -110, ffX: 30, rfX: -46 });
-  def('overhandM', { rX: 10, rY: -150, rB: 0.6, rZ: 1.1, rsh: 6, lean: 2, px: 0, py: 6, head: 0, fX: 40, fY: -106, ffX: 36, rfX: -42, rTop: 1 });
-  def('overhandX', { rX: 104, rY: -126, rB: 0.1, rZ: 1.15, rsh: 26, lean: 22, px: 22, py: 8, head: 8, fX: 26, fY: -100, fB: 1, ffX: 52, rfX: -40, rfY: -6, rTop: 1 });
-  // Duster cross (Spade): brass knuckles loaded right back by the cheek, then everything behind a straight right.
-  def('dusterA', { rX: -30, rY: -104, rB: 0.9, rZ: 1, rsh: -18, lean: -16, px: -18, py: 14, head: -4, fX: 50, fY: -112, ffX: 30, rfX: -48 });
-  def('dusterX', { rX: 118, rY: -112, rB: 0.04, rZ: 1.35, rsh: 30, lean: 26, px: 26, py: 10, head: 8, fX: 26, fY: -110, fB: 0.9, ffX: 60, rfX: -40, rfY: -8 });
+  // Clubbing right (Gerry): loaded low by the hip, swung up and over and brought down on the jaw.
+  def('clubberA', { rX: -24, rY: -40, rB: 0.9, rZ: 1, rsh: -14, lean: -10, px: -12, py: 14, head: -4, fX: 44, fY: -110, ffX: 30, rfX: -46 });
+  def('clubberM', { rX: 10, rY: -150, rB: 0.6, rZ: 1.1, rsh: 6, lean: 2, px: 0, py: 6, head: 0, fX: 40, fY: -106, ffX: 36, rfX: -42, rTop: 1 });
+  def('clubberX', { rX: 104, rY: -126, rB: 0.1, rZ: 1.15, rsh: 26, lean: 22, px: 22, py: 8, head: 8, fX: 26, fY: -100, fB: 1, ffX: 52, rfX: -40, rfY: -6, rTop: 1 });
+  // Big right hand (Spade): loaded right back by the cheek, then everything behind a straight right.
+  def('bigrightA', { rX: -30, rY: -104, rB: 0.9, rZ: 1, rsh: -18, lean: -16, px: -18, py: 14, head: -4, fX: 50, fY: -112, ffX: 30, rfX: -48 });
+  def('bigrightX', { rX: 118, rY: -112, rB: 0.04, rZ: 1.35, rsh: 30, lean: 26, px: 26, py: 10, head: 8, fX: 26, fY: -110, fB: 0.9, ffX: 60, rfX: -40, rfY: -8 });
   def('cardHold', { fX: 26, fY: -168, fB: 0.5, rX: 8, rY: -166, rB: 0.5, head: -6, lean: -2, py: 0, ffX: 22, rfX: -22 });
   // falling and getting up
   def('hurtBig', { lean: -32, head: -38, px: -26, py: 4, fX: 30, fY: -48, fB: 1, rX: -8, rY: -56, rB: 1, ffX: 44, rfX: -62 });
@@ -541,10 +538,8 @@
       else { ctx.lineTo(37, -22); ctx.quadraticCurveTo(35, -18, 29, -19); }
       ctx.closePath();
     }, L.skin, { outline: 3, noRim: true });
-    if (st.spitOn) { ctx.fillStyle = 'rgba(190,225,120,0.75)'; ctx.beginPath(); ctx.ellipse(21, -31, 6, 4.5, 0.3, 0, PI * 2); ctx.fill(); ctx.beginPath(); ctx.ellipse(24, -22, 2, 5, 0.2, 0, PI * 2); ctx.fill(); }
     // eye
-    const swollen = st.damage > 0.8, blink = st.blink || st.blind;
-    if (st.blind && !st.dazed) { ctx.fillStyle = 'rgba(200,70,70,0.5)'; ctx.beginPath(); ctx.ellipse(19, -33, 9, 7, 0, 0, PI * 2); ctx.fill(); } // raked raw
+    const swollen = st.damage > 0.8, blink = st.blink;
     if (st.dazed && !swollen) {
       line(15, -37, 22, -30, INK, 3); line(22, -37, 15, -30, INK, 3);
     } else if (swollen || blink) {
@@ -751,12 +746,6 @@
       } });
       // thumb wrapped over the fingers
       ctx.strokeStyle = INK; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-2, 6); ctx.quadraticCurveTo(8, 4, 14, 8); ctx.stroke();
-      if (L.fist === 'dusters') { // brass knuckles across the front of the fist
-        cel(rrect(14, -15, 12, 30, 5), '#c9c3b0', { outline: 3, detail: () => {
-          ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.fillRect(16, -13, 3, 26);
-          for (let i = 0; i < 4; i++) { ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(24, -10 + i * 7, 3, -1.4, 1.4); ctx.stroke(); }
-        } });
-      }
     }
   }
 
