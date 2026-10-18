@@ -19,15 +19,18 @@
       this.role = cfg.role || 'solo'; this.authority = this.role !== 'guest';
       this.humans = cfg.humans.length + (cfg.thrasher ? 1 : 0);
       this.events = [];
-      this.world = new TT.World(cfg.level, renderer, quality);
+      const race = this.race = !!cfg.level.race;
+      this.world = race ? new TT.RaceWorld(cfg.level, renderer, quality) : new TT.World(cfg.level, renderer, quality);
+      if (race) this.world.makeGrid([...(cfg.ai || []).map((c, i) => 2 + i), ...cfg.humans.map(h => h.slot)]); // computer cars at the front
       this.players = cfg.humans.map(h => new TT.Car(this, h));
       (cfg.ai || []).forEach((car, i) => {
         const c = new TT.Car(this, { slot: 2 + i, car, name: TT.CARS[car].name, ai: true, remote: !this.authority });
-        if (this.authority) c.ai = new TT.CarAI(c);
+        if (this.authority) c.ai = race ? new TT.RaceAI(c, i === 0 ? 1.0 : 0.9 + (i % 3) * 0.03) : new TT.CarAI(c); // the track's champion drives best
         this.players.push(c);
       });
       this.tractors = this.world.tractorSpots.map((s, i) => new TT.Tractor(this, s, i));
-      this.thrasher = new TT.Thrasher(this);
+      this.thrasher = race ? new TT.ThrasherStub() : new TT.Thrasher(this);
+      if (race) { this.laps = cfg.level.laps; this.finishers = 0; this.firstFinish = -1; for (const p of this.players) this.raceInit(p); }
       if (cfg.thrasher) this.thrasher.pilotBy(cfg.thrasher);
       const hunt = this.mode === 'hunt';
       this.maxDents = hunt ? TT.HUNT_DENTS : TT.DENTS;
@@ -53,6 +56,7 @@
       if (this.state === 'play' && this.mode !== 'attract') this.clock += dt;
       for (const p of this.players) { if (p.ai) p.ai.think(dt); p.remote ? p.netStep(dt) : p.step(dt, canDrive); }
       this.collisions(dt);
+      if (this.race) this.raceTrack();
       if (this.authority) {
         for (const t of this.tractors) t.update(dt);
         if (this.state === 'play') this.rules(dt);
@@ -66,6 +70,7 @@
 
     // ---------------------------------------------------------------- the rules (host / single machine)
     rules(dt) {
+      if (this.race) return this.raceRules(dt);
       const th = this.thrasher, story = this.mode === 'story', hunt = this.mode === 'hunt';
       for (const p of this.players) {
         if (!p.active) continue;
@@ -174,9 +179,51 @@
       this.emit('escape', { p });
       if (!this.authority && this.net) this.net.sendEscape();
     }
+    // ---------------------------------------------------------------- races
+    raceInit(p) {
+      const n = this.world.nearest(p.x, p.z);
+      p.race = { i: n.i, s: n.s, lat: n.lat, lap: n.s > this.world.track.L / 2 ? -1 : 0, half: false, fin: false, place: 0, time: 0, wrong: 0 };
+    }
+    // where everyone is round the lap (every machine; the host decides who's finished)
+    raceTrack() {
+      const L = this.world.track.L;
+      for (const p of this.players) {
+        const R = p.race; if (!R) continue;
+        const n = this.world.nearest(p.x, p.z, R.i), prev = R.s;
+        R.i = n.i; R.s = n.s; R.lat = n.lat;
+        if (n.s > L * 0.4 && n.s < L * 0.6) R.half = true;
+        if (prev > L * 0.75 && n.s < L * 0.25 && (R.half || R.lap < 0)) { R.lap++; R.half = false; if (R.lap >= 1 && R.lap < this.laps && !p.isAI) this.emit('lap', { p, lap: R.lap }); }
+        else if (prev < L * 0.25 && n.s > L * 0.75 && R.lap >= 0) { R.lap--; R.half = true; }
+        // driving the wrong way round?
+        const fwd = Math.cos(wrapA(this.world.track.hs[n.i] - p.a));
+        R.wrong = fwd < -0.3 && Math.abs(p.vf) > 3 ? R.wrong + 1 : 0;
+      }
+    }
+    raceTotal(p) { return p.race.fin ? 1e9 - p.race.place : p.race.lap * this.world.track.L + p.race.s; }
+    racePlace(p) { const t = this.raceTotal(p); let k = 1; for (const o of this.players) if (o !== p && o.race && this.raceTotal(o) > t) k++; return k; }
+    // how far ahead of the best human this computer car is (metres)
+    raceLead(p) { let best = -1e9; for (const o of this.players) if (!o.isAI && o.race && !o.race.fin) best = Math.max(best, this.raceTotal(o)); return best < -1e8 ? 0 : this.raceTotal(p) - best; }
+    raceRules(dt) {
+      for (const p of this.players) {
+        const R = p.race; if (!R || R.fin || R.lap < this.laps) continue;
+        R.fin = true; R.place = ++this.finishers; R.time = this.clock;
+        if (this.firstFinish < 0) this.firstFinish = this.clock;
+        this.emit('finish', { p, place: R.place });
+      }
+      const humans = this.players.filter(p => !p.isAI);
+      if (humans.length && humans.every(p => p.race.fin)) { this.endT = (this.endT || 0) + dt; if (this.endT > 2.5) this.finish(); }
+      else if (this.firstFinish >= 0 && this.clock - this.firstFinish > 60) this.finish(); // don't wait for ever
+    }
     finish() {
       if (this.over) return;
       this.over = true; this.state = 'over';
+      if (this.race) {
+        const order = [...this.players].sort((a, b) => this.raceTotal(b) - this.raceTotal(a));
+        const standings = order.map((p, k) => ({ slot: p.slot, name: p.name, car: p.carId, place: k + 1, time: p.race.fin ? p.race.time : null, human: !p.isAI }));
+        this.results = { mode: 'race', level: this.level.id, race: standings, players: standings.filter(x => x.human), online: this.role !== 'solo', time: this.clock, win: standings[0].human };
+        this.emit('over', { results: this.results });
+        return;
+      }
       const L = this.level, story = this.mode === 'story';
       const pl = this.players.map(p => ({ slot: p.slot, name: p.name, car: p.carId, tips: p.tips, pumpkins: p.pumpkins, dents: p.dents, escaped: p.escaped, caught: p.caught }));
       const win = story ? this.players.some(p => p.escaped) : true;
@@ -253,7 +300,7 @@
       return {
         time: Math.round(this.time * 100) / 100, st: this.state, alarm: r(this.alarm), tips: this.teamTips, gate: this.gateOpen ? 1 : 0, gt: r(this.gateT), goal: this.goal, clock: r(this.clock),
         th: this.thrasher.netState(), tr: this.tractors.map(t => [t.code, r(t.t)]),
-        pl: this.players.map(p => [p.slot, p.tips, p.dents, p.escaped ? 1 : 0, p.caught ? 1 : 0, p.pumpkins, p.remote ? null : p.netState()]),
+        pl: this.players.map(p => [p.slot, p.tips, p.dents, p.escaped ? 1 : 0, p.caught ? 1 : 0, p.pumpkins, p.remote ? null : p.netState(), p.race ? [p.race.lap, p.race.fin ? 1 : 0, p.race.place, r(p.race.time)] : null]),
       };
     }
     applySnapshot(s) {
@@ -266,8 +313,13 @@
       const th = this.thrasher;
       if (th.controller !== 'local') { th.net = th.net || { cur: null, age: 0 }; th.net.cur = s.th; th.net.age = 0; }
       s.tr.forEach((x, i) => { const t = this.tractors[i]; if (t) t.netSet(x[0], x[1]); });
-      for (const [slot, tips, dents, esc, caught, pumpkins, st] of s.pl) {
+      for (const [slot, tips, dents, esc, caught, pumpkins, st, rc] of s.pl) {
         const p = this.players.find(q => q.slot === slot); if (!p) continue;
+        if (rc && p.race) { // the host decides laps and places
+          if (rc[1] && !p.race.fin) this.emit('finish', { p, place: rc[2] });
+          if (rc[0] > p.race.lap && rc[0] >= 1 && rc[0] < this.laps && !p.isAI && !p.remote) this.emit('lap', { p, lap: rc[0] });
+          p.race.lap = rc[0]; p.race.fin = !!rc[1]; p.race.place = rc[2]; p.race.time = rc[3];
+        }
         p.tips = tips; p.dents = dents; p.pumpkins = pumpkins;
         if (esc && !p.escaped) { p.escaped = true; p.happyT = 99; if (p.remote) this.emit('escape', { p }); }
         if (caught && !p.caught) { p.caught = true; }
@@ -285,5 +337,14 @@
     dispose() { for (const p of this.players) p.dispose(); this.world.dispose(); }
   }
 
+  // who else lines up for a race: the track's own champion first (beat them to unlock them), then the rest
+  TT.raceField = (humanCars, trackId) => {
+    const champ = TT.CAR_IDS.find(id => TT.CARS[id].unlock && TT.CARS[id].unlock.win === trackId);
+    const order = [champ, 'chatter', 'dash', 'sunny', 'ace', 'longhorn', 'blower', 'marshal', 'rusty', 'pepe', 'groovy', 'nippy', 'bigmo'];
+    const out = [];
+    for (const id of order) if (id && !humanCars.includes(id) && !out.includes(id) && out.length < TT.RACE_FIELD - humanCars.length) out.push(id);
+    return out;
+  };
+  const wrapA = a => { while (a > Math.PI) a -= Math.PI * 2; while (a < -Math.PI) a += Math.PI * 2; return a; };
   TT.Game = Game;
 })();

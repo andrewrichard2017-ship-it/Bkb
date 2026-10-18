@@ -21,7 +21,7 @@
       this.escaped = false; this.caught = false; this.tips = 0; this.pumpkins = 0; this.happyT = 0;
       this.pitch = 0; this.roll = 0; this.accel = 0; this.steerVis = 0; this.surf = 0; this.splashT = 0; this.bumpT = 0;
       // a coloured marker over each car when there's more than one to tell apart (and always in the hunt)
-      const tag = game.humans > 1 || game.mode === 'hunt' ? TT.PLAYER_COLORS[h.slot % TT.PLAYER_COLORS.length] : null;
+      const tag = game.mode === 'race' ? (h.ai ? null : TT.PLAYER_COLORS[h.slot % 2]) : game.humans > 1 || game.mode === 'hunt' ? TT.PLAYER_COLORS[h.slot % TT.PLAYER_COLORS.length] : null;
       this.rig = new TT.models.CarRig(h.car, { night: game.world.theme.night, halloween: !!game.level.halloween, tag, shadows: !!game.quality.shadows, headlight: game.world.theme.night ? 1600 : 700 });
       game.world.scene.add(this.rig.root);
       this.net = null; this.mood = 'normal'; this.lookX = 0; this.lookY = 0;
@@ -56,6 +56,7 @@
       if (surf === 1) top *= 0.8;
       else if (surf === 2) { top *= 0.5; accel *= 0.6; grip *= 0.45; }
       else if (surf === 3) { top *= 0.35; accel *= 0.5; grip *= 0.6; }
+      else if (surf === 4) { top *= 0.7; accel *= 0.8; grip *= 0.7; } // off the race track
       if (this.boosting) { top *= S.boostMul; accel *= 1.9; }
       // steering: rate grows with speed, flips in reverse
       const fx0 = fwdX(this.a), fz0 = fwdZ(this.a);
@@ -106,6 +107,7 @@
     }
     // the fence, and the gate when it's open
     bounds() {
+      if (this.game.world.bounds) return this.game.world.bounds(this); // race tracks: walls and verges
       const w = this.game.world, H = w.H, r = this.spec.radius, g = w.gate;
       const lane = (w.gateOpen || this.z < -H + 0.3) && Math.abs(this.x - g.x) < g.w / 2 - r * 0.5;
       if (this.z < -H + r && !(lane || this.escaped)) {
@@ -507,7 +509,7 @@
       const R = this.rig;
       const bounce = this.state === 'wake' && this.t > 0.5 && this.t < 2 ? Math.abs(Math.sin(this.t * 14)) * 0.15 : this.awake ? Math.abs(Math.sin(t * 9)) * 0.03 * Math.min(1, Math.abs(this.v) / 5) : Math.sin(t * 1.2) * 0.02;
       R.root.position.set(this.x, this.y, this.z); R.root.rotation.y = this.a;
-      R.update({ speed: this.v, reel: this.reel, awake: this.awake && !(this.state === 'wake' && this.t < 0.6), mood, lookX: this.lookX, lookY: 0.2, pitch: this.pitch, roll: this.roll, steer: this.steer, bounce, mouth: mood === 'sleep' ? 'sleep' : 'angry' }, dt);
+      R.update({ speed: this.v, reel: this.reel, charge: this.chargeT > 0 || this.boosting, awake: this.awake && !(this.state === 'wake' && this.t < 0.6), mood, lookX: this.lookX, lookY: 0.2, pitch: this.pitch, roll: this.roll, steer: this.steer, bounce, mouth: mood === 'sleep' ? 'sleep' : 'angry' }, dt);
     }
   }
 
@@ -592,6 +594,59 @@
     }
   }
 
-  TT.Car = Car; TT.Tractor = Tractor; TT.Thrasher = Thrasher; TT.CarAI = CarAI;
+  // ================================================================ races
+  // Thrasher sits races out: this stands in for him so everything that asks after him still gets an answer
+  class ThrasherStub {
+    constructor() {
+      const far = 1e5, v = new window.THREE.Vector3();
+      Object.assign(this, { x: far, z: far, y: 0, a: 0, v: 0, state: 'sleep', t: 0, target: null, controller: 'none', roarCD: 0, chargeT: 0, boosting: false, net: null, top: 0 });
+      this.rig = { exhaust: v, nostrils: [], world: (p, out) => out.set(far, -50, far) };
+    }
+    get awake() { return false; } get hunting() { return false; } get human() { return false; }
+    update() { } netStep() { } pilot() { } render() { } set() { } wake() { }
+    contact() { return null; }
+    netState() { return [0, 0, 0, 0, 0, 0, 0, -1]; }
+  }
+  // a computer racing driver: follows the track a little to one side, slows for the bends, goes round slower cars
+  class RaceAI {
+    constructor(car, skill) {
+      this.car = car; this.skill = skill; this.lane = ((car.slot % 3) - 1) * 0.22; this.stuckT = 0; this.sx = car.x; this.sz = car.z; this.revT = 0; this.boostT = 0;
+    }
+    think(dt) {
+      const p = this.car, g = p.game, w = g.world, inp = p.inp, R = p.race;
+      Object.assign(inp, { throttle: 0, brake: 0, steer: 0, boost: false, drift: false });
+      if (g.state !== 'play' || !R) return;
+      if (R.fin) { inp.throttle = 0.3; }
+      const n = w.nearest(p.x, p.z, R.i), W = w.W, sp = Math.abs(p.vf);
+      // pass anyone slow just ahead in my line
+      let lane = this.lane * W;
+      for (const o of g.players) {
+        if (o === p || !o.race) continue;
+        let ds = o.race.s - n.s; if (ds < -w.track.L / 2) ds += w.track.L;
+        if (ds > 0 && ds < 14 && Math.abs(o.race.lat - lane) < 2.6 && o.vf < p.vf + 1) lane = o.race.lat > 0 ? o.race.lat - 3.6 : o.race.lat + 3.6;
+      }
+      lane = clamp(lane, -W * 0.38, W * 0.38);
+      const tp = w.at(n.s + 7 + sp * 0.55, lane, {});
+      const diff = wrapAngle(Math.atan2(tp.x - p.x, tp.z - p.z) - p.a);
+      // how sharp is the road ahead?
+      const bend = Math.abs(wrapAngle(w.headingAt(n.s + 14 + sp * 1.1) - w.headingAt(n.s + 4)));
+      let want = p.spec.top * this.skill * (1 - clamp(bend * 0.75, 0, 0.5));
+      // keep it close: ease off when well clear of the humans, push when well behind
+      const lead = g.raceLead ? g.raceLead(p) : 0;
+      if (lead > 60) want *= 0.9; else if (lead < -40 && bend < 0.2) inp.boost = p.boost > 0.3;
+      this.boostT -= dt;
+      if (bend < 0.1 && this.boostT <= 0 && p.boost > p.spec.boostTime * 0.7 && Math.random() < 0.01) this.boostT = 1.5;
+      if (this.boostT > 0) inp.boost = true;
+      // stuck against something: back out
+      this.stuckT += dt;
+      if (this.stuckT > 1.5) { if (Math.hypot(p.x - this.sx, p.z - this.sz) < 3 && !R.fin) this.revT = 1; this.stuckT = 0; this.sx = p.x; this.sz = p.z; }
+      if (this.revT > 0) { this.revT -= dt; inp.brake = 1; inp.steer = Math.sign(diff || 1); inp.boost = false; return; }
+      inp.steer = clamp(-diff * 2.6, -1, 1);
+      if (p.vf > want + 1) { inp.brake = clamp((p.vf - want) / 6, 0.2, 1); inp.boost = false; }
+      else if (!R.fin) inp.throttle = 1;
+    }
+  }
+
+  TT.Car = Car; TT.Tractor = Tractor; TT.Thrasher = Thrasher; TT.CarAI = CarAI; TT.ThrasherStub = ThrasherStub; TT.RaceAI = RaceAI;
   TT.T_STATES = T_STATES; TT.TH_STATES = TH_STATES;
 })();

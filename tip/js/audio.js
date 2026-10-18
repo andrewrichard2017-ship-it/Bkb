@@ -94,6 +94,13 @@
     hornDash(t, d, v) { // beep beep
       for (const k of [0, 0.19]) for (const f of [523, 659]) tone(d, t + k, 'square', f, 0.14, v * 0.16, { sus: 0.08, filter: ['lowpass', 2600, 1] });
     },
+    hornToot(t, d, v) { for (const k of [0, 0.15]) tone(d, t + k, 'square', 880, 0.1, v * 0.13, { sus: 0.05, filter: ['lowpass', 3000, 1] }); },
+    hornTune(t, d, v) { // a cheeky five-note tune
+      [[67, 0], [67, 0.13], [67, 0.26], [72, 0.4], [76, 0.62]].forEach(([m, k]) => tone(d, t + k, 'square', mtof(m), k > 0.5 ? 0.3 : 0.11, v * 0.13, { sus: 0.04, filter: ['lowpass', 2600, 1] }));
+    },
+    hornSiren(t, d, v) { tone(d, t, 'sawtooth', 620, 1.3, v * 0.14, { to: 1200, gt: 0.55, sus: 0.6, a: 0.05, filter: ['bandpass', 1300, 2] }); tone(d, t + 0.65, 'sawtooth', 1200, 0.6, v * 0.12, { to: 650, gt: 0.55, filter: ['bandpass', 1100, 2] }); },
+    hornAir(t, d, v) { const g = shaped(d, v * 0.4); for (const f of [185, 233, 277]) tone(g, t, 'sawtooth', f, 1.1, 0.35, { a: 0.04, sus: 0.7, filter: ['lowpass', 1800, 1] }); },
+    hornLow(t, d, v) { for (const [f, k] of [[147, 0], [196, 0.32]]) tone(d, t + k, 'sawtooth', f, 0.42, v * 0.18, { a: 0.03, sus: 0.25, filter: ['lowpass', 1100, 1.5] }); },
     moo(t, d, v) { // startled tractor: half cow, half engine
       const g = shaped(d, v * 0.45);
       tone(g, t, 'sawtooth', 150, 0.95, 0.6, { to: 92, gt: 0.9, a: 0.05, vib: [5, 22], filter: ['bandpass', 420, 3, 950, 0.45] });

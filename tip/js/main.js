@@ -170,7 +170,7 @@
       switch (e.type) {
         case 'count': A.sfx('beep'); TT.hud.countdown(e.n); break;
         case 'go': A.sfx('go'); TT.hud.countdown(0); for (const v of G.views) TT.input.rumble(v.index, 0.3, 0.6, 200); break;
-        case 'horn': { const p = e.p; A.sfx(p.carId === 'rusty' ? 'hornRusty' : 'hornDash', { vol: pv ? 0.9 : Math.max(0.25, volAt(p.x, p.z, 120)), pan: pv ? 0 : panAt(p.x, p.z) }); if (pv) TT.input.rumble(pv.index, 0.1, 0.4, 120); p.rig.honk = 0.35; break; }
+        case 'horn': { const p = e.p; A.sfx({ aooga: 'hornRusty', beep: 'hornDash', toot: 'hornToot', tune: 'hornTune', siren: 'hornSiren', air: 'hornAir', low: 'hornLow' }[p.spec.horn] || (p.carId === 'rusty' ? 'hornRusty' : 'hornDash'), { vol: pv ? 0.9 : Math.max(0.25, volAt(p.x, p.z, 120)), pan: pv ? 0 : panAt(p.x, p.z) }); if (pv) TT.input.rumble(pv.index, 0.1, 0.4, 120); p.rig.honk = 0.35; break; }
         case 'honkResult': if (pv && e.n >= 2) msg(pv.index, TT.LINES.combo[Math.min(e.n, 5)], { big: true, color: '#ffd23a' }); break;
         case 'moo': { const t = e.tr, vol = volAt(t.x, t.z); if (vol > 0.02) A.sfx(t.ghost ? 'boo' : 'moo', { vol: 0.3 + vol * 0.7, pan: panAt(t.x, t.z) }); if (fx) fx.dust(tmp.v.set(t.x, t.y, t.z), 6, [0.5, 0.45, 0.35], 0.8, 1, 3); break; }
         case 'tipLand': {
@@ -256,6 +256,13 @@
         }
         case 'mow': if (fx && Math.random() < 0.7) fx.burst(tmp.v.set(e.x, w.height(e.x, e.z) + 1.2, e.z), 5, game.level.halloween ? [0.6, 0.48, 0.25] : [0.4, 0.62, 0.2], 6, 0.2, 9, 1); break;
         case 'gateOpen': A.sfx('gate'); if (!G.attract) for (const v of G.views) msg(v.index, v === tv ? 'THE GATE\'S OPEN! GUARD IT!' : 'GATE\'S OPEN! GET OUT!', { big: true, color: v === tv ? '#ff5a3a' : '#4dff7a', hold: 1 }); break;
+        case 'lap': if (pv) { const fin = e.lap === game.laps - 1; msg(pv.index, fin ? 'FINAL LAP!' : `LAP ${e.lap + 1}`, { big: true, color: fin ? '#ff5a3a' : '#ffd23a' }); A.sfx(fin ? 'go' : 'beep'); TT.input.rumble(pv.index, 0.2, 0.5, 150); } break;
+        case 'finish': {
+          const ordn = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+          if (pv) { msg(pv.index, `${ordn(e.place).toUpperCase()}!`, { big: true, color: e.place === 1 ? '#ffd23a' : '#ffffff', hold: 2 }); A.sfx(e.place <= 3 ? 'escape' : 'beep'); TT.input.rumble(pv.index, 0.5, 0.8, 400); }
+          else if (e.place === 1) for (const v of G.views) msg(v.index, `${e.p.name.toUpperCase()} WINS!`, { color: '#ffd23a' });
+          break;
+        }
         case 'gateClose': A.sfx('gate', { vol: 0.7 }); if (!G.attract) for (const v of G.views) if (!v.car.escaped) msg(v.index, v === tv ? 'THE GATE\'S SHUT!' : 'GATE\'S SHUT! TIP ANOTHER TO OPEN IT', { big: v !== tv, color: '#ffb13b', hold: 1 }); break;
         case 'escape': { const p = e.p; A.sfx('escape', { vol: pv ? 1 : 0.5 }); if (pv) { msg(pv.index, 'ESCAPED!', { big: true, color: '#4dff7a', hold: 2 }); TT.input.rumble(pv.index, 0.3, 0.8, 300); } for (const v of G.views) if (v !== pv) msg(v.index, v === tv ? `${p.name.toUpperCase()} GOT AWAY!` : `${p.name.toUpperCase()} GOT OUT!`, { color: v === tv ? '#ff5a3a' : '#4dff7a' }); break; }
         case 'over': if (!G.attract) { const g = game; setTimeout(() => { if (G.game === g) TT.menu.gameOver(e.results, g); }, game.mode === 'story' ? 1600 : 900); } break;
@@ -307,7 +314,8 @@
           const s = p.surf, back = tmp.v.set(p.x - Math.sin(p.a) * p.rig.halfL * 0.8, p.y, p.z - Math.cos(p.a) * p.rig.halfL * 0.8);
           if (s === 2) fx.burst(back, 2, [0.25, 0.18, 0.1], 3, 0.18, 10, 0.6);
           else if (s === 1) fx.burst(back.setY(p.y + 1), 1, hw(game) ? [0.6, 0.48, 0.25] : [0.4, 0.62, 0.2], 3, 0.18, 6, 0.8);
-          else if (Math.random() < 0.5) fx.dust(back, 1, hw(game) ? [0.35, 0.33, 0.38] : [0.5, 0.46, 0.38], 0.7, 0.6, 1);
+          else if (s === 4 || (game.race && game.level.style === 'desert')) { if (Math.random() < 0.6) fx.dust(back, 1, game.level.style === 'desert' ? [0.72, 0.52, 0.36] : [0.45, 0.4, 0.3], 0.5, 0.5, 1); } // dirt only, not tarmac
+          else if (!game.race && Math.random() < 0.5) fx.dust(back, 1, hw(game) ? [0.35, 0.33, 0.38] : [0.5, 0.46, 0.38], 0.7, 0.6, 1);
         }
         if (p.boosting) fx.sparkle(tmp.v.set(p.x - Math.sin(p.a) * p.rig.halfL, p.y + 0.6, p.z - Math.cos(p.a) * p.rig.halfL), 2, [0.5, 0.8, 1]);
       }
@@ -315,7 +323,7 @@
     }
     // music follows Thrasher
     const hunt = th.hunting || th.state === 'search';
-    const want = game.level.halloween ? (hunt && !G.attract ? 'spookyChase' : 'spooky') : (hunt && !G.attract ? 'chase' : 'calm');
+    const want = game.race ? (G.attract ? 'calm' : 'chase') : game.level.halloween ? (hunt && !G.attract ? 'spookyChase' : 'spooky') : (hunt && !G.attract ? 'chase' : 'calm');
     if (want !== musicKey) { musicKey = want; A.music(want); }
   }
   const hw = game => !!game.level.halloween;
@@ -423,7 +431,7 @@
         else { cam.position.set(wide ? -1.6 : 0, 2.4, 9.5); cam.lookAt(wide ? -1.6 : 0, 0.9, 0); }
         models.forEach((m, i) => {
           const x = two ? (i ? 2.9 : -2.9) : wide ? -2.9 : 0;
-          m.root.position.set(x, 0, two && wide ? -0.5 : 0); m.root.rotation.y = t * 0.5 + (i ? Math.PI : 0);
+          m.root.position.set(x, 0, two && wide ? -0.5 : 0); m.root.rotation.y = (this.fixedT !== undefined ? this.fixedT : t) * 0.5 + (i ? Math.PI : 0);
           m.update({ speed: 0, steer: Math.sin(t * 0.8) * 0.4, mood: 'happy', lookX: Math.sin(t * 0.7) * 0.6, lookY: 0 }, 1 / 60);
         });
       },

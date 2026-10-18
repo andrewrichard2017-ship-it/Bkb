@@ -58,9 +58,10 @@
 
   // ---- progress: stars per level, best Tip-Off score ----
   const SAVE_KEY = 'tractortippin.save';
-  const fresh = () => ({ stars: {}, best: {}, tipoff: 0 });
+  const fresh = () => ({ stars: {}, best: {}, tipoff: 0, tipsTotal: 0, races: 0, raceWins: {} });
   TT.save = fresh();
   try { Object.assign(TT.save, JSON.parse(localStorage.getItem(SAVE_KEY) || '{}')); } catch (e) { /* ignore */ }
+  TT.save.raceWins = TT.save.raceWins || {}; TT.save.tipsTotal = TT.save.tipsTotal || 0; TT.save.races = TT.save.races || 0;
   TT.saveProgress = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(TT.save)); } catch (e) { /* ignore */ } };
   TT.resetProgress = () => { TT.save = fresh(); TT.saveProgress(); };
 

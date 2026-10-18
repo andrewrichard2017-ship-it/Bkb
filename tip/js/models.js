@@ -177,6 +177,54 @@
       g.fillText('88', w * 0.5, h * 0.53);
     });
   }
+  // stock-car side decals: 'flames' (Blower), 'swoosh' (Chatter)
+  function sideDecal(style, num, flip, cols) {
+    return canvasTex(512, 160, (g, w, h) => {
+      g.save(); if (flip) { g.translate(w, 0); g.scale(-1, 1); }
+      if (style === 'flames') {
+        g.fillStyle = cols[0]; g.strokeStyle = cols[1]; g.lineWidth = 5;
+        g.beginPath(); g.moveTo(500, 60);
+        for (let i = 0; i < 6; i++) { const x = 470 - i * 70; g.quadraticCurveTo(x + 20, 20 + (i % 2) * 18, x - 30, 55); g.quadraticCurveTo(x - 10, 80, x - 40, 105); }
+        g.lineTo(500, 110); g.closePath(); g.fill(); g.stroke();
+      } else {
+        const gr = g.createLinearGradient(0, 0, w, 0); gr.addColorStop(0, cols[0]); gr.addColorStop(1, cols[1]);
+        g.fillStyle = gr; g.beginPath(); g.moveTo(0, 110); g.bezierCurveTo(150, 40, 330, 150, 512, 50); g.lineTo(512, 90); g.bezierCurveTo(330, 170, 150, 80, 0, 140); g.closePath(); g.fill();
+        g.fillStyle = cols[2]; g.beginPath(); g.moveTo(0, 90); g.bezierCurveTo(150, 20, 330, 120, 512, 25); g.lineTo(512, 45); g.bezierCurveTo(330, 140, 150, 50, 0, 108); g.closePath(); g.fill();
+      }
+      g.restore();
+      if (num) {
+        g.fillStyle = '#ffffff'; g.beginPath(); g.arc(w * 0.5, h * 0.5, 58, 0, Math.PI * 2); g.fill();
+        g.lineWidth = 7; g.strokeStyle = cols[1]; g.stroke();
+        g.fillStyle = '#111'; g.font = 'bold 78px Impact, Arial Black, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(num, w * 0.5, h * 0.53);
+      }
+    });
+  }
+  // a round number/badge sticker
+  function roundel(text, bg, fg, ring, font = 'bold 74px Impact, Arial Black, sans-serif') {
+    return canvasTex(160, 160, g => {
+      g.fillStyle = bg; g.beginPath(); g.arc(80, 80, 72, 0, Math.PI * 2); g.fill();
+      if (ring) { g.lineWidth = 8; g.strokeStyle = ring; g.stroke(); }
+      g.fillStyle = fg; g.font = font; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(text, 80, 86);
+    });
+  }
+  function starDecal(col) {
+    return canvasTex(128, 128, g => {
+      g.fillStyle = col; g.beginPath();
+      for (let i = 0; i < 10; i++) { const a = -Math.PI / 2 + i * Math.PI / 5, r = i % 2 ? 24 : 58; g.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r); }
+      g.closePath(); g.fill();
+    });
+  }
+  function flowerDecal(flip) {
+    return canvasTex(512, 96, g => {
+      const R = TT.rng(31);
+      for (let i = 0; i < 9; i++) {
+        const x = 30 + i * 55 + R.range(-10, 10), y = 48 + R.range(-18, 18), r = R.range(12, 20), c = R.pick(['#ffd23a', '#ff7ad9', '#ff8a3a', '#ffffff', '#b07aff']);
+        g.fillStyle = c; for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; g.beginPath(); g.arc(x + Math.cos(a) * r * 0.7, y + Math.sin(a) * r * 0.7, r * 0.5, 0, Math.PI * 2); g.fill(); }
+        g.fillStyle = '#5a3a1a'; g.beginPath(); g.arc(x, y, r * 0.35, 0, Math.PI * 2); g.fill();
+      }
+      const px = flip ? 120 : 392; g.strokeStyle = '#ffffff'; g.lineWidth = 5; g.beginPath(); g.arc(px, 48, 26, 0, Math.PI * 2); g.moveTo(px, 22); g.lineTo(px, 74); g.moveTo(px, 48); g.lineTo(px - 18, 66); g.moveTo(px, 48); g.lineTo(px + 18, 66); g.stroke();
+    });
+  }
   function textDecal(text, color, bg, w = 256, h = 64, font = 'bold 40px Impact, Arial Black, sans-serif') {
     return canvasTex(w, h, (g) => {
       if (bg) { g.fillStyle = bg; g.fillRect(0, 0, w, h); }
@@ -345,7 +393,8 @@
       this.id = id; this.o = o;
       this.root = new T.Group(); this.body = new T.Group(); this.root.add(this.body);
       this.wheels = []; this.mats = [];
-      if (id === 'rusty') this.buildRusty(o); else this.buildDash(o);
+      const L = TT.CARS[id] || TT.CARS.dash;
+      if (id === 'rusty') this.buildRusty(o); else this['build' + (L.body || 'stock')[0].toUpperCase() + (L.body || 'stock').slice(1)](o, L);
       // headlight beam
       if (o.headlight) {
         const L = this.light = new T.SpotLight(0xfff1d0, o.headlight, 55, 0.5, 0.55, 1.4);
@@ -368,8 +417,25 @@
       W.pivot.position.set(x, r, z); W.front = front; this.body.add(W.pivot); this.wheels.push(W);
       return W;
     }
-    buildDash(o) {
-      const red = o.halloween ? '#c4121a' : '#d4141c';
+    // the face: windshield eyes (centre, size, tilt back from vertical) and a bumper mouth
+    addFace(L, paintCol, eye, mouth, o, extra = {}) {
+      const face = this.face = new Face(Object.assign({ lid: paintCol, iris: L.iris, irisLight: L.irisLight || '#ffffff', mouth: true, night: o.night }, extra));
+      this.body.add(facePlane(face.mat, eye[0], eye[1], eye[2], eye[3]));
+      this.body.add(facePlane(face.mmat, mouth[0], mouth[1], mouth[2], mouth[3] || 0));
+    }
+    decal(tex, w, h, pos, rot) { const d = decalMesh(tex, w, h); d.position.set(...pos); d.rotation.set(...rot); this.body.add(d); return d; }
+    sides(texFn, w, h, x, y, z) { for (const s of [-1, 1]) this.decal(texFn(s > 0), w, h, [s * x, y, z], [0, s * Math.PI / 2, 0]); }
+    halloweenHat(y, z) { // a witch's hat for anyone without a costume of their own
+      const k = new Kit();
+      k.add('matte', CYL(20), '#1b1426', [0, y, z], [0, 0, 0], [0.6, 0.04, 0.6]);
+      k.add('matte', CONE(16), '#1b1426', [0, y + 0.45, z - 0.05], [0.18, 0, 0.1], [0.34, 0.9, 0.34]);
+      k.add('matte', CYL(16, 0.92), '#ff7a1a', [0, y + 0.13, z], [0.05, 0, 0.02], [0.33, 0.12, 0.33]);
+      this.body.add(k.build({}, false));
+    }
+
+    // ---- stock cars: Dash, Chatter, Blower
+    buildStock(o, L) {
+      const red = L.paint;
       const mat = paint(0.32, 0.2);
       const k = new Kit();
       // lower body: low nose, long hood, short tail with a lip
@@ -379,8 +445,14 @@
       // side skirts, splitter, spoiler
       k.pair('matte', BOX(), '#1a1a1a', [0.9, 0.3, 0], [0, 0, 0], [0.12, 0.14, 2.9]);
       k.add('matte', BOX(), '#1a1a1a', [0, 0.27, 2.12], [0, 0, 0], [1.6, 0.06, 0.25]);
-      k.add('paint', BOX(), red, [0, 1.06, -1.95], [0.12, 0, 0], [1.7, 0.05, 0.36]);
-      k.pair('paint', BOX(), red, [0.72, 0.94, -1.95], [0, 0, 0], [0.05, 0.26, 0.3]);
+      if (!L.blower) {
+        k.add('paint', BOX(), red, [0, 1.06, -1.95], [0.12, 0, 0], [1.7, 0.05, 0.36]);
+        k.pair('paint', BOX(), red, [0.72, 0.94, -1.95], [0, 0, 0], [0.05, 0.26, 0.3]);
+      } else { // a supercharger bursting out of the bonnet
+        k.add('chrome', BOX(), '#bbb', [0, 0.92, 1.05], [0, 0, 0], [0.6, 0.28, 0.75]);
+        for (const x of [-0.18, 0.18]) { k.add('chrome', CYL(12), '#ccc', [x, 1.22, 1.1], [0, 0, 0], [0.13, 0.35, 0.13]); k.add('matte', CYL(12), '#222', [x, 1.4, 1.1], [0, 0, 0], [0.1, 0.02, 0.1]); }
+        for (let i = 0; i < 4; i++) k.pair('chrome', CYL(8), '#999', [0.97, 0.38, 0.6 - i * 0.18], [0, 0, Math.PI / 2], [0.05, 0.25, 0.05]);
+      }
       // side windows and rear window (dark glass)
       k.pair('glass', BOX(), '#0d1726', [0.705, 0.98, -0.25], [0, 0, 0], [0.02, 0.26, 1.2]);
       k.add('glass', BOX(), '#0d1726', [0, 1.0, -0.98], [-0.95, 0, 0], [1.15, 0.02, 0.42]);
@@ -393,20 +465,13 @@
       const g = k.build({ paint: mat }, false);
       this.body.add(g); this.mats.push(mat);
       // decals
-      for (const s of [-1, 1]) {
-        const d = decalMesh(dashDecal(s > 0), 2.6, 0.8);
-        d.position.set(s * 0.945, 0.56, 0.05); d.rotation.y = s * Math.PI / 2; this.body.add(d);
-      }
-      const roof = decalMesh(textDecal('88', '#111', null, 128, 128, 'bold 90px Impact, Arial Black, sans-serif'), 0.55, 0.55);
-      roof.position.set(0, 1.235, -0.15); roof.rotation.x = -Math.PI / 2; this.body.add(roof);
-      const hood = decalMesh(textDecal('TIPPIN\' OIL', '#ffd23a', null, 256, 48, 'bold 30px Impact, Arial Black, sans-serif'), 1.0, 0.19);
-      hood.position.set(0, 0.79, 1.35); hood.rotation.x = -Math.PI / 2 + 0.12; this.body.add(hood);
-      // face
-      const face = this.face = new Face({ lid: red, iris: TT.CARS.dash.iris, irisLight: '#9ad0ff', mouth: true, night: o.night });
-      this.body.add(facePlane(face.mat, [0, 1.06, 0.63], 1.28, 0.8, 1.09));
-      this.body.add(facePlane(face.mmat, [0, 0.45, 2.31], 1.2, 0.4, 0.3));
-      for (const z of [1.33, -1.33]) for (const s of [-1, 1]) this.addWheel(0.36, 0.3, s * 0.84, z, { color: '#c8c8c8', mat: 'chrome', cap: '#d4141c' }, z > 0, 0.6);
-      if (o.halloween) { // little devil horns
+      this.sides(f => L.decal === 'bolt' ? dashDecal(f) : sideDecal(L.decal, L.num, f, L.decalCols), 2.6, 0.8, 0.945, 0.56, 0.05);
+      if (L.num) this.decal(textDecal(L.num, '#111', null, 128, 128, 'bold 90px Impact, Arial Black, sans-serif'), 0.55, 0.55, [0, 1.235, -0.15], [-Math.PI / 2, 0, 0]);
+      if (L.hood && !L.blower) this.decal(textDecal(L.hood, L.hoodCol || '#ffd23a', null, 256, 48, 'bold 30px Impact, Arial Black, sans-serif'), 1.0, 0.19, [0, 0.79, 1.35], [-Math.PI / 2 + 0.12, 0, 0]);
+      this.addFace(L, red, [[0, 1.06, 0.63], 1.28, 0.8, 1.09], [[0, 0.45, 2.31], 1.2, 0.4, 0.3], o);
+      for (const z of [1.33, -1.33]) for (const s of [-1, 1]) this.addWheel(L.blower && z < 0 ? 0.4 : 0.36, L.blower && z < 0 ? 0.38 : 0.3, s * 0.84, z, { color: L.rim || '#c8c8c8', mat: 'chrome', cap: red }, z > 0, 0.6);
+      if (o.halloween && this.id !== 'dash') this.halloweenHat(1.22, -0.2);
+      if (o.halloween && this.id === 'dash') { // little devil horns
         const hk = new Kit();
         hk.pair('paint', CONE(10), '#8a0a0a', [0.35, 1.37, 0.0], [0, 0, -0.35], [0.1, 0.38, 0.1]);
         this.body.add(hk.build({ paint: paint(0.3, 0.2) }, false));
@@ -476,8 +541,150 @@
       }
       Object.assign(this, { halfW: 1.05, halfL: 2.6, height: 2.1, lampY: 1.2, lampZ: 2.1 });
     }
+    // ---- Sunny: a rounded blue sports coupe
+    buildSports(o, L) {
+      const c = L.paint, k = new Kit();
+      k.add('paint', profile([['M', -2.1, 0.25], ['L', 1.95, 0.25], ['Q', 2.18, 0.27, 2.15, 0.45], ['Q', 2.08, 0.68, 1.55, 0.7], ['L', 0.8, 0.74], ['L', -1.55, 0.8], ['Q', -2.15, 0.8, -2.16, 0.55], ['Q', -2.17, 0.3, -2.1, 0.25]], 1.82, 0.14, 4), c);
+      k.add('paint', profile([['M', -1.95, 0.74], ['L', 0.85, 0.74], ['Q', 0.45, 0.98, 0.05, 1.12], ['Q', -0.35, 1.17, -0.75, 1.08], ['Q', -1.55, 0.9, -1.95, 0.8]], 1.34, 0.1, 3), c);
+      k.pair('paint', SPH(16, 10), c, [0.6, 0.72, 1.4], [0, 0, 0], [0.33, 0.17, 0.55]);
+      k.pair('paint', SPH(16, 10), c, [0.62, 0.74, -1.3], [0, 0, 0], [0.35, 0.17, 0.62]);
+      k.pair('glow', SPH(12, 8), '#fffbe0', [0.6, 0.76, 1.92], [0, 0, 0], [0.16, 0.13, 0.06]);
+      k.add('glow', BOX(), '#ff3030', [0, 0.62, -2.18], [0, 0, 0], [1.3, 0.06, 0.02]);
+      k.pair('glass', BOX(), '#0d1726', [0.68, 0.92, -0.35], [0, 0, 0], [0.02, 0.2, 1.1]);
+      k.add('matte', BOX(), '#1a1a1a', [0, 0.27, 2.1], [0, 0, 0], [1.4, 0.06, 0.2]);
+      for (const z of [1.3, -1.3]) k.pair('matte', ARCH(), '#111', [0.82, 0.35, z], [0, 0, 0], [0.41, 0.33, 0.41]);
+      this.body.add(k.build({ paint: paint(0.25, 0.3) }, false));
+      this.decal(textDecal('❧ ❦ ☙', '#1a3a6a', null, 256, 64, 'bold 46px Georgia, serif'), 0.8, 0.2, [0, 0.83, -1.72], [-Math.PI / 2 + 0.15, 0, 0]);
+      this.addFace(L, c, [[0, 1.15, 0.46], 1.22, 0.62, 1.13], [[0, 0.46, 2.3], 1.15, 0.38, 0.35], o);
+      for (const z of [1.3, -1.3]) for (const sd of [-1, 1]) this.addWheel(0.35, 0.28, sd * 0.83, z, { color: '#d8d8d8', mat: 'chrome', cap: '#333' }, z > 0, 0.62);
+      if (o.halloween) this.halloweenHat(1.18, -0.3);
+      Object.assign(this, { halfW: 0.92, halfL: 2.2, height: 1.2, lampY: 0.72, lampZ: 1.95 });
+    }
+    // ---- Pepe: a tiny round bubble car
+    buildBubble(o, L) {
+      const c = L.paint, k = new Kit();
+      k.add('paint', profile([['M', -1.45, 0.22], ['L', 1.4, 0.22], ['Q', 1.56, 0.25, 1.53, 0.5], ['Q', 1.46, 0.76, 1.05, 0.8], ['L', -1.2, 0.82], ['Q', -1.5, 0.8, -1.51, 0.5], ['Q', -1.52, 0.25, -1.45, 0.22]], 1.5, 0.15, 4), c);
+      k.add('paint', profile([['M', -1.25, 0.78], ['L', 0.95, 0.78], ['Q', 0.72, 1.25, 0.2, 1.42], ['Q', -0.6, 1.5, -1.0, 1.3], ['Q', -1.3, 1.12, -1.25, 0.78]], 1.3, 0.12, 3), c);
+      k.pair('chrome', CYL(14), '#ccc', [0.46, 0.64, 1.55], [Math.PI / 2, 0, 0], [0.16, 0.06, 0.16]);
+      k.pair('glow', CYL(14), '#fff6cc', [0.46, 0.64, 1.585], [Math.PI / 2, 0, 0], [0.12, 0.02, 0.12]);
+      k.add('chrome', BOX(), '#cfcfcf', [0, 0.33, 1.63], [0, 0, 0], [1.3, 0.08, 0.08]);
+      k.add('chrome', BOX(), '#cfcfcf', [0, 0.33, -1.63], [0, 0, 0], [1.3, 0.08, 0.08]);
+      k.pair('glass', BOX(), '#0d1726', [0.66, 1.08, -0.2], [0, 0, 0], [0.02, 0.26, 1.0]);
+      // a little luggage rack on the roof
+      k.add('chrome', BOX(), '#bbb', [0, 1.56, -0.45], [0, 0, 0], [0.8, 0.03, 0.7]);
+      k.add('matte', BOX(), '#7a4a2a', [0, 1.66, -0.45], [0, 0, 0], [0.6, 0.18, 0.45]);
+      this.body.add(k.build({ paint: paint(0.3, 0.15) }, false));
+      this.decal(canvasTex(96, 48, g => { g.fillStyle = '#1a9a3a'; g.fillRect(0, 0, 32, 48); g.fillStyle = '#fff'; g.fillRect(32, 0, 32, 48); g.fillStyle = '#d42020'; g.fillRect(64, 0, 32, 48); }), 0.42, 0.22, [0, 0.82, 1.15], [-Math.PI / 2 + 0.3, 0, 0]);
+      this.addFace(L, c, [[0, 1.19, 0.65], 1.1, 0.9, 0.86], [[0, 0.46, 1.66], 1.0, 0.34, 0.3], o);
+      for (const z of [0.98, -0.98]) for (const sd of [-1, 1]) this.addWheel(0.3, 0.22, sd * 0.66, z, { color: '#f2f2f2', mat: 'matte', cap: '#999' }, z > 0, 0.6);
+      if (o.halloween) this.halloweenHat(1.5, -0.4);
+      Object.assign(this, { halfW: 0.78, halfL: 1.55, height: 1.55, lampY: 0.64, lampZ: 1.55 });
+    }
+    // ---- Groovy: a flower-power camper van
+    buildVan(o, L) {
+      const k = new Kit(), lo = L.paint, hi = L.paint2;
+      k.add('paint', profile([['M', -2.1, 0.3], ['L', 2.05, 0.3], ['Q', 2.22, 0.32, 2.22, 0.6], ['L', 2.22, 1.02], ['L', -2.12, 1.02], ['L', -2.12, 0.38]], 1.9, 0.12, 3), lo);
+      k.add('paint', profile([['M', -2.1, 1.0], ['L', 2.2, 1.0], ['L', 2.12, 1.68], ['Q', 2.0, 2.0, 1.6, 2.02], ['L', -1.8, 2.02], ['Q', -2.1, 2.0, -2.12, 1.68]], 1.9, 0.12, 3), hi);
+      k.pair('chrome', CYL(14), '#ddd', [0.66, 0.84, 2.33], [Math.PI / 2, 0, 0], [0.17, 0.05, 0.17]);
+      k.pair('glow', CYL(14), '#fff6cc', [0.66, 0.84, 2.36], [Math.PI / 2, 0, 0], [0.13, 0.02, 0.13]);
+      k.add('chrome', BOX(), '#ccc', [0, 0.4, 2.36], [0, 0, 0], [1.9, 0.1, 0.1]);
+      k.pair('glass', BOX(), '#16243a', [0.965, 1.5, -0.35], [0, 0, 0], [0.02, 0.38, 2.7]);
+      k.add('matte', BOX(), '#6a4a2a', [0, 2.12, -0.4], [0, 0, 0], [1.5, 0.06, 2.3]);
+      k.add('matte', BOX(), '#c8762a', [0, 2.26, -0.6], [0, 0, 0], [0.9, 0.22, 0.8]);
+      this.body.add(k.build({ paint: paint(0.55, 0.05) }, false));
+      // flowers down the sides
+      this.sides(f => flowerDecal(f), 3.4, 0.62, 0.965, 0.66, -0.1);
+      this.addFace(L, hi, [[0, 1.43, 2.3], 1.55, 0.6, 0.12], [[0, 0.58, 2.36], 1.1, 0.36, 0], o);
+      for (const z of [1.45, -1.45]) for (const sd of [-1, 1]) this.addWheel(0.38, 0.26, sd * 0.86, z, { color: '#f1e6c8', mat: 'matte', cap: '#888' }, z > 0, 0.6);
+      if (o.halloween) this.halloweenHat(2.42, -0.6);
+      Object.assign(this, { halfW: 1.0, halfL: 2.25, height: 2.1, lampY: 0.84, lampZ: 2.3 });
+    }
+    // ---- Nippy: a tiny forklift with headphones on
+    buildForklift(o, L) {
+      const c = L.paint, k = new Kit();
+      k.add('paint', profile([['M', -1.0, 0.2], ['L', 0.85, 0.2], ['L', 0.9, 0.78], ['L', -1.0, 0.82]], 1.2, 0.12, 3), c);
+      k.add('paint', profile([['M', -0.75, 0.76], ['L', 0.55, 0.76], ['L', 0.45, 1.45], ['Q', 0.4, 1.56, 0.25, 1.56], ['L', -0.6, 1.56], ['Q', -0.76, 1.5, -0.75, 1.35]], 1.05, 0.1, 3), c);
+      k.add('matte', BOX(), '#333', [0, 0.45, -1.08], [0, 0, 0], [1.1, 0.45, 0.2]);
+      for (const x of [-0.36, 0.36]) k.add('metal', BOX(), '#555', [x, 0.9, 1.0], [0, 0, 0], [0.08, 1.5, 0.1]);
+      k.add('metal', BOX(), '#555', [0, 0.35, 1.06], [0, 0, 0], [0.8, 0.12, 0.1]);
+      for (const x of [-0.26, 0.26]) k.add('metal', BOX(), '#777', [x, 0.12, 1.5], [0, 0, 0], [0.12, 0.05, 0.9]);
+      // headphones
+      k.add('matte', TORUS(Math.PI, 0.12), '#2a2a2a', [0, 1.4, -0.1], [0, 0, 0], [0.62, 0.5, 0.5]);
+      k.pair('matte', CYL(14), '#2a2a2a', [0.6, 1.35, -0.1], [0, 0, Math.PI / 2], [0.2, 0.14, 0.2]);
+      k.pair('paint', CYL(14), '#ffd23a', [0.68, 1.35, -0.1], [0, 0, Math.PI / 2], [0.14, 0.03, 0.14]);
+      k.add('matte', CYL(8), '#2a2a2a', [0.55, 1.18, 0.25], [0.9, 0, 0], [0.02, 0.4, 0.02]);
+      this.body.add(k.build({ paint: paint(0.35, 0.15) }, false));
+      this.addFace(L, c, [[0, 1.12, 0.6], 0.9, 0.62, 0.14], [[0, 0.5, 0.97], 0.8, 0.3, 0], o);
+      for (const z of [0.6, -0.65]) for (const sd of [-1, 1]) this.addWheel(0.22, 0.18, sd * 0.55, z, { color: '#ddd', mat: 'matte', cap: '#666' }, z < 0, 0.6);
+      if (o.halloween) this.halloweenHat(1.6, -0.1);
+      Object.assign(this, { halfW: 0.62, halfL: 1.15, height: 1.7, lampY: 0.9, lampZ: 0.9 });
+    }
+    // ---- Big Mo: a big red truck cab (no trailer)
+    buildTruck(o, L) {
+      const c = L.paint, k = new Kit();
+      k.add('matte', BOX(), '#222', [0, 0.75, 0.3], [0, 0, 0], [1.2, 0.35, 5.6]);
+      k.add('paint', profile([['M', -0.3, 0.9], ['L', 1.9, 0.9], ['L', 2.0, 2.4], ['Q', 1.95, 3.0, 1.4, 3.05], ['L', -0.3, 3.05]], 2.3, 0.12, 3), c);
+      k.add('paint', profile([['M', 1.9, 0.9], ['L', 3.0, 0.9], ['Q', 3.12, 0.95, 3.12, 1.3], ['L', 3.06, 1.75], ['L', 1.9, 1.88]], 1.7, 0.1, 3), c);
+      k.add('paint', BOX(), c, [0, 2.0, -1.0], [0, 0, 0], [2.3, 2.2, 1.4]);
+      k.add('paint', BOX(), '#f2d25a', [0, 2.0, -0.3], [0, 0, 0], [2.32, 0.1, 2.75]);
+      k.add('chrome', BOX(), '#c8c8c8', [0, 1.3, 3.15], [0, 0, 0], [1.3, 0.8, 0.05]);
+      k.add('chrome', BOX(), '#c8c8c8', [0, 0.62, 3.22], [0, 0, 0], [2.3, 0.3, 0.22]);
+      k.pair('chrome', CYL(12), '#d8d8d8', [1.05, 2.5, 1.6], [0, 0, 0], [0.1, 2.4, 0.1]);
+      k.pair('chrome', CYL(14), '#d8d8d8', [1.05, 0.85, 0.6], [Math.PI / 2, 0, 0], [0.32, 1.1, 0.32]);
+      k.pair('paint', ARCH(), c, [1.05, 0.55, 2.4], [0, 0, 0], [0.7, 0.45, 0.7]);
+      k.pair('glow', BOX(), '#fff3c2', [0.75, 1.15, 3.13], [0, 0, 0], [0.32, 0.22, 0.03]);
+      k.pair('glow', SPH(8, 6), '#ffb030', [0.95, 3.12, 1.55], [0, 0, 0], 0.07);
+      k.pair('glass', BOX(), '#0d1726', [1.165, 2.2, 1.2], [0, 0, 0], [0.02, 0.6, 0.9]);
+      k.add('matte', BOX(), '#333', [0, 1.02, -2.2], [0, 0, 0], [1.6, 0.12, 1.2]);
+      this.body.add(k.build({ paint: paint(0.35, 0.25) }, false));
+      this.sides(() => textDecal('BIG MO', '#f2d25a', null, 256, 64, 'bold 46px Impact, Arial Black, sans-serif'), 1.3, 0.32, 1.165, 1.45, -1.0);
+      this.addFace(L, c, [[0, 2.27, 2.12], 2.0, 0.66, -0.07], [[0, 1.25, 3.18], 1.25, 0.5, 0], o);
+      this.addWheel(0.55, 0.4, 1.05, 2.4, { color: '#ccc', mat: 'chrome', cap: c }, true, 0.55);
+      this.addWheel(0.55, 0.4, -1.05, 2.4, { color: '#ccc', mat: 'chrome', cap: c }, true, 0.55);
+      for (const z of [-0.95, -2.15]) for (const sd of [-1, 1]) this.addWheel(0.55, 0.55, sd * 0.95, z, { color: '#ccc', mat: 'chrome', cap: '#333' }, false, 0.55, 10);
+      if (o.halloween) this.halloweenHat(3.1, 0.5);
+      Object.assign(this, { halfW: 1.25, halfL: 2.95, height: 3.2, lampY: 1.15, lampZ: 3.1 });
+    }
+    // ---- Ace, Marshal, Longhorn: rounded 1950s cars
+    buildVintage(o, L) {
+      const c = L.paint, len = L.len || 1, k = new Kit();
+      k.add('paint', profile([['M', -2.35, 0.3], ['L', 2.3, 0.3], ['Q', 2.45, 0.35, 2.42, 0.62], ['Q', 2.35, 0.86, 1.7, 0.88], ['L', 0.9, 0.92], ['L', -1.6, 0.92], ['Q', -2.4, 0.9, -2.42, 0.6], ['Q', -2.43, 0.35, -2.35, 0.3]], 1.95, 0.16, 4), c, [0, 0, 0], [0, 0, 0], [1, 1, len]);
+      k.add('paint', profile([['M', -1.5, 0.88], ['L', 0.95, 0.88], ['Q', 0.6, 1.2, 0.2, 1.33], ['L', -0.7, 1.34], ['Q', -1.2, 1.3, -1.5, 0.95]], 1.5, 0.1, 3), L.roof || c);
+      k.add('chrome', BOX(), '#d8d8d8', [0, 0.42, 2.62 * len], [0, 0, 0], [2.0, 0.14, 0.16]);
+      k.add('chrome', BOX(), '#d8d8d8', [0, 0.42, -2.62 * len], [0, 0, 0], [2.0, 0.14, 0.16]);
+      k.add('chrome', BOX(), '#cfcfcf', [0, 0.6, 2.6 * len], [0, 0, 0], [1.45, 0.24, 0.05]);
+      k.pair('chrome', CYL(12), '#ddd', [0.7, 0.74, 2.55 * len], [Math.PI / 2, 0, 0], [0.14, 0.06, 0.14]);
+      k.pair('glow', CYL(12), '#fff6cc', [0.7, 0.74, 2.58 * len], [Math.PI / 2, 0, 0], [0.1, 0.02, 0.1]);
+      k.pair('glow', BOX(), '#ff3030', [0.75, 0.7, -2.6 * len], [0, 0, 0], [0.22, 0.12, 0.03]);
+      k.pair('glass', BOX(), '#0d1726', [0.755, 1.1, -0.3], [0, 0, 0], [0.02, 0.2, 1.3]);
+      k.pair('chrome', BOX(), '#ccc', [0.99, 0.6, 0], [0, 0, 0], [0.02, 0.04, 4.2 * len]);
+      if (L.fins) k.pair('paint', BOX(), c, [0.85, 1.0, -2.1 * len], [0.3, 0, 0], [0.06, 0.32, 0.7]);
+      if (L.siren) { k.add('chrome', BOX(), '#bbb', [0, 1.4, -0.2], [0, 0, 0], [0.3, 0.06, 0.2]); }
+      this.body.add(k.build({ paint: paint(L.metal ? 0.22 : 0.28, L.metal ? 0.6 : 0.25) }, false));
+      if (L.siren) { // a red light on the roof that flashes
+        const fl = this.flasher = new T.Mesh(SPH(12, 8), new T.MeshBasicMaterial({ color: 0xff2020, toneMapped: false }));
+        fl.scale.set(0.16, 0.14, 0.16); fl.position.set(0, 1.5, -0.2); this.body.add(fl);
+        this.sides(() => canvasTex(256, 96, g => { g.fillStyle = '#f4f4f4'; g.beginPath(); g.ellipse(128, 48, 124, 44, 0, 0, Math.PI * 2); g.fill(); }), 2.0, 0.6, 0.985, 0.62, 0.1);
+        this.sides(() => starDecal('#e8b830'), 0.42, 0.42, 0.99, 0.66, 0.35);
+      }
+      if (L.num) this.sides(() => roundel(L.num, '#ffffff', '#111', L.ring || '#c8a848'), 0.6, 0.6, 0.99, 0.64, 0.1);
+      if (L.badge) this.decal(textDecal(L.badge, L.badgeCol || '#f2d25a', null, 256, 64, 'italic bold 42px Georgia, serif'), 0.9, 0.22, [0, 0.93, 1.6 * len], [-Math.PI / 2 + 0.1, 0, 0]);
+      if (L.horns) { // longhorns on the grille
+        const hk = new Kit();
+        for (const sd of [-1, 1]) hk.add('bone', taperTube([[sd * 0.25, 0.95, 2.58 * len], [sd * 0.8, 1.03, 2.72 * len], [sd * 1.35, 1.15, 2.62 * len], [sd * 1.6, 1.35, 2.42 * len]], 0.08, 0.015, 14, 8), '#f0e6cc');
+        this.body.add(hk.build({ bone: std({ roughness: 0.5 }) }, false));
+      }
+      this.addFace(L, L.roof || c, [[0, 1.31, 0.6], 1.34, 0.55, Math.atan2(0.75, 0.45)], [[0, 0.6, 2.63 * len], 1.3, 0.42, 0.15], o);
+      for (const z of [1.5 * len, -1.45 * len]) for (const sd of [-1, 1]) {
+        this.addWheel(0.38, 0.28, sd * 0.86, z, { color: '#f4f4f4', mat: 'matte', cap: '#bbb' }, z > 0, 0.72); // whitewalls
+      }
+      if (o.halloween) this.halloweenHat(1.4, -0.3);
+      Object.assign(this, { halfW: 1.0, halfL: 2.6 * len, height: 1.4, lampY: 0.74, lampZ: 2.55 * len });
+    }
     // s: { speed, steer, pitch, roll, hop, dt, accel, mood, lookX, lookY, flash }
     update(s, dt) {
+      if (this.flasher) this.flasher.material.color.setHex(Math.floor(performance.now() / 300) % 2 ? 0xff2020 : 0x2050ff);
+      if (s.mood === 'normal' && TT.CARS[this.id] && TT.CARS[this.id].mood) s.mood = TT.CARS[this.id].mood;
       this.spinAng += s.speed * dt;
       for (const W of this.wheels) {
         W.spin.rotation.x = this.spinAng / W.r;
@@ -606,9 +813,13 @@
       k.pair('paint', BOX(), red, [3.28, 0.95, 3.45], [0, 0, 0], [0.12, 1.15, 1.75]);
       for (let x = -3.15; x <= 3.16; x += 0.3) k.add('chrome', CONE(4), '#d8d8d8', [x, 0.42, 4.42], [Math.PI / 2, 0, 0], [0.09, 0.3, 0.05]);
       // bull horns curling up from the ends of the header
+      this.horns = [];
       for (const s of [-1, 1]) {
-        k.add('bone', taperTube([[s * 3.3, 0.9, 4.15], [s * 3.65, 1.45, 4.85], [s * 3.95, 2.45, 5.05], [s * 3.8, 3.2, 4.65]], 0.26, 0.03, 18, 10), bone);
         k.add('paint', CYL(12), red, [s * 3.3, 0.95, 4.1], [Math.PI / 2 - 0.5, 0, 0], [0.3, 0.3, 0.3]);
+        // each horn on its own pivot at its root so it can spin like a drill when he charges
+        const hk = new Kit(), px = s * 3.3, py = 0.9, pz = 4.15;
+        hk.add('bone', taperTube([[0, 0, 0], [s * 0.35, 0.55, 0.7], [s * 0.65, 1.55, 0.9], [s * 0.5, 2.3, 0.5]], 0.26, 0.03, 18, 10), bone);
+        const h = hk.build({ bone: std({ roughness: 0.5, metalness: 0 }) }, !!o.shadows); h.position.set(px, py, pz); this.horns.push(h);
       }
       // reel arms
       for (const s of [-1, 1]) k.rod('paint', [s * 2.95, 2.75, 1.3], [s * 2.95, 1.85, 3.75], 0.09, red);
@@ -625,6 +836,8 @@
       const pmat = paint(hw ? 0.35 : 0.45, hw ? 0.4 : 0.25);
       const g = k.build({ paint: pmat, bone: std({ roughness: 0.5, metalness: 0 }) }, !!o.shadows);
       this.body.add(g);
+      for (const h of this.horns) this.body.add(h);
+      this.hornSpin = 0;
       const lk = new Kit();
       for (const x of [-0.75, -0.3, 0.3, 0.75]) lk.add('glow', BOX(), '#fff5cf', [x, 4.6, 2.62], [0, 0, 0], [0.26, 0.16, 0.02]);
       lk.pair('glow', CYL(12), '#fff5cf', [1.3, 2.9, 1.38], [Math.PI / 2, 0, 0], [0.16, 0.02, 0.16]);
@@ -673,6 +886,10 @@
       this.spinAng += s.speed * dt;
       for (const W of this.wheels) { W.spin.rotation.x = this.spinAng / W.r; if (W.rear) W.pivot.rotation.y = s.steer * 0.5; }
       this.reel.rotation.x -= (s.reel || 0) * dt;
+      // horns spin while he charges, then settle back upright
+      if (s.charge) this.hornSpin += dt * 16;
+      else { const rest = Math.round(this.hornSpin / (Math.PI * 2)) * Math.PI * 2; this.hornSpin += (rest - this.hornSpin) * Math.min(1, dt * 5); }
+      this.horns.forEach((h, i) => { h.rotation.z = (i ? 1 : -1) * this.hornSpin; });
       this.lamps.visible = !!s.awake;
       if (this.light) this.light.intensity = s.awake ? 2600 : 0;
       this.body.rotation.set(s.pitch || 0, 0, s.roll || 0);

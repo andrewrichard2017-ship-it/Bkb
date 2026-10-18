@@ -131,6 +131,7 @@
       const r = 1 - thrasher, car = cars[r];
       cfg = { humans: [Object.assign({ slot: r, car }, who(r))], thrasher: Object.assign({ slot: thrasher }, who(thrasher)), ai: [car === 'rusty' ? 'dash' : 'rusty'] };
     } else cfg = { humans: [Object.assign({ slot: 0, car: cars[0] }, who(0)), Object.assign({ slot: 1, car: cars[1] }, who(1))] };
+    if (mode === 'race') cfg.ai = TT.raceField(cars, level); // same field worked out on both machines
     N.guestReady = false; N.pendingGo = false;
     TT.menu.startOnline(Object.assign({ mode, level: TT.level(level), role: N.role }, cfg)).then(game => {
       N.game = game; game.net = N; game.hold = true; N.holdT = 0;

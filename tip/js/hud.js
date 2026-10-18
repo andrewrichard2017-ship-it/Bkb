@@ -16,6 +16,7 @@
     mapBg = drawMapBg(game);
     const story = game.mode === 'story', hunt = game.mode === 'hunt';
     for (const v of views) {
+      if (game.race) { racePanel(v, game); continue; }
       const isTh = !!v.car.isThrasher, team = story || (hunt && !isTh);
       const p = el('div', 'view' + (isTh ? ' th' : '') + (team && !story ? ' both' : ''), root);
       const tl = el('div', 'tl', p);
@@ -45,6 +46,39 @@
     const hb = document.querySelector('#touch [data-k=honk]');
     if (hb) hb.textContent = views.length === 1 && views[0].car.isThrasher ? 'ROAR' : 'HONK';
   };
+  // races: position, lap and time, boost, map
+  function racePanel(v, game) {
+    const p = el('div', 'view race', root);
+    const tl = el('div', 'tl', p);
+    const tips = el('div', 'tips', tl, '<b>-</b><i></i>');
+    el('label', '', tl, 'POSITION');
+    const mine = el('div', 'mine', tl);
+    const tr = el('div', 'tr', p);
+    const clock = el('div', 'clock', tr);
+    const bl = el('div', 'bl', p);
+    const boost = el('div', 'boost', bl, '<label>BOOST</label><div><i></i></div>');
+    const prompt = el('div', 'prompt', p);
+    const map = el('canvas', 'map', p);
+    const msgs = el('div', 'msgs', p), count = el('div', 'count', p), flash = el('div', 'hitflash', p);
+    const who = game.humans > 1 ? el('div', 'who', p, v.car.name) : null;
+    if (who) who.style.color = TT.PLAYER_COLORS[v.car.slot % 2];
+    panels.push({ v, race: true, p, tips, tipsB: tips.querySelector('b'), tipsI: tips.querySelector('i'), mine, clock, boost: boost.querySelector('i'), boostBox: boost, prompt, map, mctx: map.getContext('2d'), msgs, count, flash, last: {} });
+  }
+  const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? 'th' : ['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+  function raceUpdate(P, game) {
+    const car = P.v.car, R = car.race, place = R.fin ? R.place : game.racePlace(car), n = game.players.length;
+    set(P, 'pos', place, x => { P.tipsB.textContent = ord(x).replace(/\D+$/, ''); P.tipsI.textContent = ord(x).replace(/^\d+/, '') + ' / ' + n; bump(P); });
+    const lap = clamp(R.lap + 1, 1, game.laps);
+    set(P, 'lap', R.fin ? 'FINISHED' : `LAP ${lap} / ${game.laps}`, x => { P.clock.textContent = x; P.clock.classList.toggle('low', !R.fin && lap === game.laps); });
+    set(P, 'time', TT.fmtTime(R.fin ? R.time : game.clock), x => { P.mine.textContent = x; });
+    set(P, 'boost', Math.round(car.boost / car.spec.boostTime * 40), x => { P.boost.style.width = (x * 2.5) + '%'; });
+    set(P, 'boosting', car.boosting, x => P.boostBox.classList.toggle('on', x));
+    let pr = '', cls = '';
+    if (R.fin) { pr = `${ord(R.place).toUpperCase()} PLACE!`; cls = 'good'; }
+    else if (R.wrong > 40) { pr = 'WRONG WAY!'; cls = 'bad'; }
+    else if (game.state === 'play' && car.surf === 4) { pr = 'BACK ON THE ROAD!'; cls = 'warn'; }
+    set(P, 'prompt', pr + '|' + cls, () => { P.prompt.textContent = pr; P.prompt.className = 'prompt ' + cls + (pr ? ' show' : ''); });
+  }
   H.layout = views => {
     panels.forEach(P => {
       const R = P.v.rect;
@@ -112,6 +146,7 @@
     mapT -= dt; const drawMap = mapT <= 0; if (drawMap) mapT = 0.08;
     for (const P of panels) {
       const v = P.v, car = v.car;
+      if (P.race) { raceUpdate(P, game); if (drawMap) map(P, game); continue; }
       if (P.isTh) { thrasherPanel(P, game, th); if (drawMap) map(P, game); continue; }
       // tips
       if (P.team) {
@@ -162,6 +197,7 @@
 
   // ---- minimap ----
   function drawMapBg(game) {
+    if (game.race) return drawTrackBg(game);
     const w = game.world, S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S;
     const g = cv.getContext('2d'), ext = w.H + 6, k = S / (ext * 2), X = x => (x + ext) * k, Z = z => (ext - z) * k;
     g.fillStyle = 'rgba(28,40,22,0.85)'; g.fillRect(0, 0, S, S);
@@ -180,7 +216,23 @@
     g.strokeStyle = '#c9a26b'; g.lineWidth = 2; g.strokeRect(X(-w.H), Z(w.H), w.H * 2 * k, w.H * 2 * k);
     return { cv, ext, k, S };
   }
+  function drawTrackBg(game) {
+    const w = game.world, S = 256, cv = document.createElement('canvas'); cv.width = cv.height = S;
+    const g = cv.getContext('2d'), ext = w.H + 6, k = S / (ext * 2), X = x => (x + ext) * k, Z = z => (ext - z) * k, T2 = w.track;
+    g.fillStyle = 'rgba(20,24,30,0.85)'; g.fillRect(0, 0, S, S);
+    g.lineJoin = 'round';
+    for (const [col, wd] of [['#111', w.W * k + 4], ['#9aa0aa', w.W * k]]) { g.strokeStyle = col; g.lineWidth = wd; g.beginPath(); for (let i = 0; i <= T2.N; i++) { const j = i % T2.N; i ? g.lineTo(X(T2.xs[j]), Z(T2.zs[j])) : g.moveTo(X(T2.xs[j]), Z(T2.zs[j])); } g.stroke(); }
+    const s0 = w.at(0, 0, {}); g.fillStyle = '#fff'; g.beginPath(); g.arc(X(s0.x), Z(s0.z), 4, 0, Math.PI * 2); g.fill();
+    return { cv, ext, k, S };
+  }
   function map(P, game) {
+    if (game.race) {
+      const c = P.mctx, s = P.mapS, B = mapBg, f = s / B.S, X = x => (x + B.ext) * B.k * f, Z = z => (B.ext - z) * B.k * f;
+      c.clearRect(0, 0, s, s); c.drawImage(B.cv, 0, 0, s, s);
+      for (const p of game.players) if (p !== P.v.car) tri(c, X(p.x), Z(p.z), p.a, 4.5 * f, p.isAI ? '#dddddd' : TT.PLAYER_COLORS[p.slot % 2], f);
+      tri(c, X(P.v.car.x), Z(P.v.car.z), P.v.car.a, 6 * f, TT.PLAYER_COLORS[P.v.car.slot % 2], f);
+      return;
+    }
     const c = P.mctx, s = P.mapS, B = mapBg, w = game.world, f = s / B.S;
     const X = x => (x + B.ext) * B.k * f, Z = z => (B.ext - z) * B.k * f, t = performance.now() / 1000;
     c.clearRect(0, 0, s, s);
