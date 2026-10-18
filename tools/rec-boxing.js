@@ -1,5 +1,5 @@
 // Plays the boxing game for tools/record.js: the CPU fights both corners (the blue corner's AI drives the red
-// corner too), straight into round 1 in the fight-night hall. Options in the URL: ?p1=michael&p2=bigjoe&hp=45&clean=1
+// corner too), straight into round 1 in the fight-night hall. Options in the URL: ?p1=michael&p2=bigjoe&hp=45&clean=1&zoom=2
 // (hp: the blue corner's starting health, lower for an earlier knockdown).
 (() => {
   const BK = window.BK, g = BK.game, R = window.__rec, q = new URLSearchParams(location.search);
@@ -8,6 +8,9 @@
   g.isHuman = () => false;                            // red corner gets up on its own, no get-up minigame
   BK.input.draw = () => {};                           // no touch buttons in the footage
   if (q.get('clean')) for (const k of ['draw', 'banner', 'count']) BK.hud[k] = () => {};   // ?clean=1: no HUD, for cover art
+  if (q.get('clean')) BK.fx.popup = () => {};
+  // ?zoom=2: hold the camera in close on the fighters (cover art)
+  if (q.get('zoom')) { const z = +q.get('zoom'); Object.defineProperty(BK.cam, 'tz', { get: () => z, set: () => {} }); }
   let ai1 = null, dt1 = 1 / 60;
   const setup = g.setupFighters;
   g.setupFighters = k => {
