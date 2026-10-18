@@ -8,6 +8,7 @@
 // window.__step(ms) moves the fake clock on; await window.__sleep(ms) waits real time (for loads).
 // Usage (serve the repo first: python3 -m http.server 8123):
 //   node tools/record.js --url=bubble/ --driver=bubble/tools/rec-driver.js --w=1920 --h=1080 --secs=20 --out=bubble/promo/preview-landscape.mp4
+// --upscale=1920x1080 renders at --w/--h and scales the video up (for the 3D games, which are slow without a GPU).
 // Needs Playwright (npm i -g playwright) and ffmpeg.
 const fs = require('fs'), path = require('path'), os = require('os'), { execFileSync } = require('child_process');
 const { chromium } = require('playwright');
@@ -16,6 +17,7 @@ const arg = (k, d) => { const a = process.argv.find(x => x.startsWith(`--${k}=`)
 const url = `http://127.0.0.1:${arg('port', '8123')}/${arg('url', '')}`;
 const W = +arg('w', 1920), H = +arg('h', 1080), secs = +arg('secs', 20), FPS = 30;
 const out = path.resolve(arg('out', 'preview.mp4')), driver = fs.readFileSync(arg('driver'), 'utf8');
+const upscale = arg('upscale', '');                  // e.g. 1920x1080: render smaller (3D is slow in software), scale up at the end
 
 // the fake clock: requestAnimationFrame, timers, performance.now and Date.now all follow window.__step()
 const CLOCK = `(() => {
@@ -57,12 +59,12 @@ const CLOCK = `(() => {
   const frames = Math.round(secs * FPS);
   for (let f = 0; f < frames; f++) {
     await page.evaluate(([ms, t]) => { if (window.__rec.tick) window.__rec.tick(t); window.__step(ms); }, [step, f / FPS]);
-    await page.screenshot({ path: path.join(dir, `${String(f).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 92 });
+    await page.screenshot({ path: path.join(dir, `${String(f).padStart(5, '0')}.jpg`), type: 'jpeg', quality: 92, timeout: 0 });   // software 3D can take a while
     if (f % 60 === 0) process.stdout.write(`\rframe ${f}/${frames}`);
   }
   await browser.close();
   fs.mkdirSync(path.dirname(out), { recursive: true });
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(dir, '%05d.jpg'), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', out]);
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', path.join(dir, '%05d.jpg'), ...(upscale ? ['-vf', `scale=${upscale.replace('x', ':')}:flags=lanczos`] : []), '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '20', '-preset', 'slow', '-movflags', '+faststart', out]);
   fs.rmSync(dir, { recursive: true, force: true });
   console.log(`\r${path.relative(process.cwd(), out)}  ${(fs.statSync(out).size / 1e6).toFixed(1)} MB`);
 })();
