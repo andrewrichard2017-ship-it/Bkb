@@ -103,3 +103,5 @@ In the CrazyGames build:
 - There are no break ads in online co-op, so the other player is never left waiting.
 
 To try it locally, add `?portal=crazygames` to the URL; the SDK shows demo ads on localhost.
+
+Store covers (CrazyGames needs 1920×1080, 800×1200 and 800×800) are in `promo/`. They're drawn from the game's own art by `tools/cover.html`; to redo them, serve the repo (`python3 -m http.server 8123` from the root) and run `node bubble/tools/covers.js` (`--world=reef` etc. for another backdrop).
