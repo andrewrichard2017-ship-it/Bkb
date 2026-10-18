@@ -65,7 +65,7 @@
   // lost a tournament fight: one rematch with the same man for watching an ad (ads.js), on 60 health
   g.tourRetry = () => { const t = g.tour; if (!t || t.continued) return; t.continued = true; t.hp = 60; g.toTape(); };
   g.startFight = () => {
-    g.totalRounds = BK.settings.rounds; g.round = 1; g.roundLog = []; g.result = null; g.recorded = false; g.aftermathDone = false;
+    g.totalRounds = BK.settings.rounds; g.round = 1; g.roundLog = []; g.result = null; g.recorded = false;
     g.p1.resetFight(); g.p2.resetFight(); g.ai.reset(); BK.fx.clear();
     if (g.tour) { g.p1.hp = g.p1.ghostHp = g.tour.hp; } // tournament: carry your health in
     BK.replay.clear(); g.pendingReplay = null;
@@ -402,8 +402,6 @@
         }
         break;
       }
-      case 'aftermath':
-        if (BK.aftermath.update(dt)) setState('result');
         break;
       case 'cornerGame':
         BK.corner.update(dt);
@@ -414,11 +412,6 @@
       case 'fightOver':
         p1.update(dt, IDLE, p2); p2.update(dt, IDLE, p1); ref.update(dt, p1, p2);
         if (g.state === 'decision' && g.stateT > 2.8) setState('result');
-        if (g.state === 'fightOver' && g.stateT > 2.4 && !g.aftermathDone && g.result && g.result.winner && !BK.replay.active) {
-          const w = g.result.winner, l = w === p1 ? p2 : p1;
-          g.aftermathDone = true;
-          if (l.down) { setState('aftermath'); BK.aftermath.start(g, w, l); break; } // he's on the floor: the winner won't leave it
-        }
         if (g.state === 'fightOver' && g.stateT > 3.4) setState('result');
         break;
     }
@@ -432,7 +425,7 @@
     else if (s === 'knockdown' && g.kd) {
       const v = g.kd.victim;
       c.tx = v.sx - v.dir * 100 * v.fs; c.ty = v.sy - 120; c.tz = g.kd.t < 1.4 ? 1.5 : 1.25;
-    } else if (s === 'aftermath') BK.aftermath.camera(c);
+    }
     else if (s === 'fightOver' && g.result) {
       const w = g.result.winner; c.tx = w.sx; c.ty = w.sy - 170; c.tz = 1.4;
     } else if (s === 'corner' || s === 'cornerGame' || s === 'result' || s === 'decision') { c.tx = W / 2; c.ty = H / 2; c.tz = 1; }
@@ -441,7 +434,7 @@
       c.tx = (p1.sx + p2.sx) / 2; c.ty = (p1.sy + p2.sy) / 2 - 150;
       c.tz = clamp(1.34 - dist / 1100, 1.0, 1.28);
     }
-    c.hand = ['fight', 'knockdown', 'walkout', 'aftermath', 'roundIntro', 'roundEnd', 'fightOver'].includes(s) ? 1 : 0.25; // steadier on menus
+    c.hand = ['fight', 'knockdown', 'walkout', 'roundIntro', 'roundEnd', 'fightOver'].includes(s) ? 1 : 0.25; // steadier on menus
     // Rocked: a clean hit on the brink rocks the view for a moment; a standing count holds it until he clears his head.
     g.rockT = Math.max(0, (g.rockT || 0) - dt);
     const standing = s === 'knockdown' && g.kd && g.kd.standing && !g.kd.rising && !g.kd.tko;
@@ -480,7 +473,6 @@
     BK.audio.init();
     if (BK.replay.active) { BK.replay.skip(); return true; }
     if (g.state === 'walkout') { BK.walkout.skip(); return true; }
-    if (g.state === 'aftermath') { BK.aftermath.skip(); return true; }
     if (g.state === 'title') goFullscreen();
     if (BK.ui.tap(x, y)) return true;
     if (g.state === 'knockdown' && !g.paused) { BK.getup.tap(x, y, false); return true; }
@@ -491,7 +483,6 @@
     BK.audio.init();
     if (BK.replay.active) { BK.replay.skip(); return; }
     if (g.state === 'walkout') { BK.walkout.skip(); return; }
-    if (g.state === 'aftermath') { BK.aftermath.skip(); return; }
     if (k === 'escape' || k === 'p') { if (g.showControls && !g.paused) { g.showControls = false; return; } g.togglePause(); return; }
     if (g.paused) { if (k === 'enter') g.resume(); return; }
     if (g.state === 'knockdown' && (k === ' ' || k === 'enter')) { BK.getup.tap(0, 0, true); return; }
@@ -569,7 +560,6 @@
       BK.fx.drawParticles();
     }, () => snaps.filter(e => e.z < 0).forEach(e => BK.drawFigure(e))); // walking the aisle, behind the ropes
     if (g.state === 'walkout') BK.walkout.drawWorld();
-    if (g.state === 'aftermath') BK.aftermath.drawWorld();
     BK.fx.drawPopups();
     ctx.restore();
     if (g.daze > 0.01) { // double vision: a blurred copy of the world drifting over itself
@@ -596,7 +586,6 @@
     BK.ui.begin();
     const s = g.state, T = g.stateT;
     if (s === 'walkout') BK.walkout.drawHud();
-    else if (s === 'aftermath') BK.aftermath.drawHud();
     else if (s === 'title') hud.title(g);
     else if (s === 'tape') hud.tape(g);
     else if (s === 'corner') hud.corner(g);

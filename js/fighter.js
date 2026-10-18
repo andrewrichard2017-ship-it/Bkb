@@ -49,7 +49,7 @@
       this.buffer = []; this.chainHits = 0;
       this.dazedStand = false; this.dazeW = 0; // taking a standing count; dazeW eases the wobble in and out
       this.scald = 0; this.blind = 0; this.lurchT = 0; this.lurch = 0; // scalded (no right hand), eye raked (blind), Gerry's stumble
-      this.ropeDuck = 0; this.extraPose = null; this.extraW = 1; this.cutPose = null; this.cutW = 0;
+      this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make(); this.tmp2 = BK.rig.make();
       this.blockW = 0; this.hurtW = 0; this.hurtKind = 'head'; this.sq = 0; this.sqV = 0;
@@ -547,7 +547,6 @@
         R.mix(this.tmp, PO.victoryA, PO.victoryB, (Math.sin(this.t * 7) + 1) / 2, U);
         R.mixInto(T, this.tmp, 1, U);
       }
-      if (this.cutPose && this.cutW > 0) R.mixInto(T, this.cutPose, this.cutW, R.SUPER); // cut-scene moves (aftermath.js)
       if (this.down) this.downPose(T);
 
       // squash & stretch spring, fist swelling on contact
@@ -558,7 +557,7 @@
       this.hurtW = Math.max(0, this.hurtW - dt * 3.4);
 
       // Punches and hits snap straight to the target; everything else eases in.
-      const snap = this.punch || this.hurtW > 0.25 || this.down || this.cutW > 0;
+      const snap = this.punch || this.hurtW > 0.25 || this.down;
       R.mixInto(this.pose, T, snap ? 1 : 1 - Math.exp(-dt * 20));
       this.spitOn = Math.max(0, (this.spitOn || 0) - dt * 0.25);
       this.blinkT -= dt;
