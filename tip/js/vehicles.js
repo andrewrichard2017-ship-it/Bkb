@@ -107,7 +107,7 @@
     // the fence, and the gate when it's open
     bounds() {
       const w = this.game.world, H = w.H, r = this.spec.radius, g = w.gate;
-      const lane = w.gateOpen && Math.abs(this.x - g.x) < g.w / 2 - r * 0.5;
+      const lane = (w.gateOpen || this.z < -H + 0.3) && Math.abs(this.x - g.x) < g.w / 2 - r * 0.5;
       if (this.z < -H + r && !(lane || this.escaped)) {
         if (this.z > -H - 1) { this.z = -H + r; if (this.vz < 0) this.vz *= -0.3; }
       }
@@ -254,14 +254,14 @@
     constructor(game) {
       this.game = game; const h = game.world.home;
       Object.assign(this, { x: h.x, z: h.z, a: h.a, v: 0, state: 'sleep', t: 0, target: null, lostT: 0, lastX: h.x, lastZ: h.z, chargeT: 0, chargeCD: 3, stuckT: 0, revT: 0, mowT: 0, snortT: 2, steer: 0, avoidSide: 1, sx: h.x, sz: h.z });
-      this.top = game.mode === 'tipoff' ? 14.5 : game.level.tSpeed;
+      this.top = game.mode === 'tipoff' ? 17 : game.level.tSpeed;
       this.rig = new TT.models.ThrasherRig({ halloween: !!game.level.halloween, shadows: !!game.quality.shadows, headlight: true });
       game.world.scene.add(this.rig.root);
       this.y = game.world.height(this.x, this.z); this.pitch = 0; this.roll = 0; this.reel = 0; this.mood = 'sleep'; this.lookX = 0; this.lookY = 0; this.net = null;
       // who's driving: 'ai', 'local' (a player on this machine) or 'remote' (the other machine, online)
       this.controller = 'ai'; this.isThrasher = true; this.carId = 'thrasher'; this.name = 'Thrasher'; this.slot = -1; this.view = null;
       this.inp = { throttle: 0, brake: 0, steer: 0, honk: false, boost: false, drift: false, look: false };
-      this.spec = { top: 15, boostTime: 2.6, radius: 3 }; this.boost = this.spec.boostTime; this.boosting = false; this.roarCD = 0;
+      this.spec = { top: 18, boostTime: 2.6, radius: 3 }; this.boost = this.spec.boostTime; this.boosting = false; this.roarCD = 0;
       Object.assign(this, { escaped: false, caught: false, tips: 0, pumpkins: 0, dents: 0, hop: 0, stunT: 0, surf: 0, invuln: 0 });
     }
     // a player takes the wheel (Thrasher Hunt)
@@ -365,12 +365,12 @@
       const surf = this.surf = g.world.surface(this.x, this.z);
       const top = this.spec.top * (want ? 1.4 : 1) * (surf === 3 ? 0.6 : 1), rev = 5;
       let v = this.v;
-      if (thr > 0) { if (v < -0.3) v += 12 * thr * dt; else if (v < top) v += (want ? 11 : 6.5) * thr * (1 - Math.pow(Math.max(0, v) / top, 2) * 0.8) * dt; }
+      if (thr > 0) { if (v < -0.3) v += 12 * thr * dt; else if (v < top) v += (want ? 12 : 8) * thr * (1 - Math.pow(Math.max(0, v) / top, 2) * 0.8) * dt; }
       if (brk > 0) { if (v > 0.3) v -= 12 * brk * dt; else if (v > -rev) v -= 4 * brk * dt; }
       if (!thr && !brk) { v *= Math.exp(-0.6 * dt); v -= Math.sign(v) * Math.min(Math.abs(v), 2 * dt); }
       if (v > top) v = damp(v, top, 2, dt);
       this.v = v;
-      const turnMax = 1.35 - clamp(Math.abs(v) / 30, 0, 0.45);
+      const turnMax = 1.5 - clamp(Math.abs(v) / 30, 0, 0.45);
       this.a = wrapAngle(this.a - st * turnMax * clamp(Math.abs(v) / 3 + 0.2, 0, 1) * (v < -0.3 ? -1 : 1) * dt);
       this.steer = damp(this.steer, -st, 8, dt);
       this.x += fwdX(this.a) * v * dt; this.z += fwdZ(this.a) * v * dt;
@@ -407,7 +407,7 @@
       // charge when lined up and close
       if (aim && this.state === 'chase' && d < 30 && Math.abs(diff) < 0.22 && this.chargeCD <= 0) { this.chargeT = 2.2; this.chargeCD = g.mode === 'tipoff' ? 5 : 6.5; g.emit('charge', {}); }
       let tgt = want * (Math.abs(diff) > 1.3 ? 0.45 : Math.abs(diff) > 0.6 ? 0.72 : 1);
-      if (this.chargeT > 0) tgt = want * 1.38;
+      if (this.chargeT > 0) tgt = want * 1.4;
       // stuck against something: back up and turn
       if (this.revT > 0) { this.revT -= dt; this.v = damp(this.v, -5, 3, dt); this.a += -Math.sign(diff || 1) * 0.9 * dt; this.steer = -Math.sign(diff); return; }
       // stuck: wants to go but has hardly moved in 1.2 s (wedged on a tree or a building)
@@ -417,11 +417,11 @@
         if (tgt > 4 && moved < 4) { this.revT = 1.3; this.avoidSide = -this.avoidSide; }
         this.stuckT = 0; this.sx = this.x; this.sz = this.z;
       }
-      const turnMax = 1.25 - clamp(Math.abs(this.v) / 30, 0, 0.5);
+      const turnMax = 1.45 - clamp(Math.abs(this.v) / 30, 0, 0.5);
       const turn = clamp(diff * 2.2, -1, 1) * turnMax;
       this.steer = damp(this.steer, clamp(diff * 2, -1, 1), 6, dt);
       this.a = wrapAngle(this.a + turn * dt * clamp(Math.abs(this.v) / 3 + 0.25, 0, 1));
-      this.v = this.v < tgt ? Math.min(tgt, this.v + 6.5 * dt) : Math.max(tgt, this.v - 10 * dt);
+      this.v = this.v < tgt ? Math.min(tgt, this.v + 8 * dt) : Math.max(tgt, this.v - 10 * dt);
     }
     // body circles: rear, middle, header
     circles() {
@@ -529,7 +529,10 @@
         // line up with the gate, then straight out
         const g2 = w.gate, lined = Math.abs(p.x - g2.x) < 2.5 && p.z < -H + 12;
         tx = g2.x; tz = lined ? -H - 15 : -H + 7;
-        if (danger && dTh < 14) inp.boost = true;
+        inp.boost = Math.hypot(tx - p.x, tz - p.z) > 12; // it shuts in a few seconds
+      } else if (!danger && g.teamTips >= g.goal - 1 && g.players.some(o => o !== p && o.active && (!o.isAI || o.slot < p.slot))) {
+        // one tip from the gate opening and someone else can do it: wait near the gate, ready to go
+        tx = w.gate.x + (p.slot % 2 ? 6 : -6); tz = -H + 16; want = Math.hypot(tx - p.x, tz - p.z) > 6 ? 10 : 0;
       } else if (danger) {
         // run: away from him, swinging round towards the middle when the fence gets close
         let ax = p.x - th.x, az = p.z - th.z; const n = Math.hypot(ax, az) || 1; ax /= n; az /= n;
@@ -546,7 +549,9 @@
           this.pickT = 1.5; let best = null, bc = 1e9;
           for (const t of g.tractors) {
             if (t.state !== 'sleep') continue;
-            const c = Math.hypot(t.x - p.x, t.z - p.z) + (th.awake ? Math.max(0, 40 - Math.hypot(t.x - th.x, t.z - th.z)) * 1.6 : 0);
+            // the tip that opens the gate should be one near it: it only stays open a few seconds
+            const last = g.teamTips >= g.goal - 1 ? Math.hypot(t.x - w.gate.x, t.z - w.gate.z) * 2 : 0;
+            const c = Math.hypot(t.x - p.x, t.z - p.z) + last + (th.awake ? Math.max(0, 40 - Math.hypot(t.x - th.x, t.z - th.z)) * 1.6 : 0);
             if (c < bc) { bc = c; best = t; }
           }
           this.tr = best;

@@ -256,6 +256,7 @@
         }
         case 'mow': if (fx && Math.random() < 0.7) fx.burst(tmp.v.set(e.x, w.height(e.x, e.z) + 1.2, e.z), 5, game.level.halloween ? [0.6, 0.48, 0.25] : [0.4, 0.62, 0.2], 6, 0.2, 9, 1); break;
         case 'gateOpen': A.sfx('gate'); if (!G.attract) for (const v of G.views) msg(v.index, v === tv ? 'THE GATE\'S OPEN! GUARD IT!' : 'GATE\'S OPEN! GET OUT!', { big: true, color: v === tv ? '#ff5a3a' : '#4dff7a', hold: 1 }); break;
+        case 'gateClose': A.sfx('gate', { vol: 0.7 }); if (!G.attract) for (const v of G.views) if (!v.car.escaped) msg(v.index, v === tv ? 'THE GATE\'S SHUT!' : 'GATE\'S SHUT! TIP ANOTHER TO OPEN IT', { big: v !== tv, color: '#ffb13b', hold: 1 }); break;
         case 'escape': { const p = e.p; A.sfx('escape', { vol: pv ? 1 : 0.5 }); if (pv) { msg(pv.index, 'ESCAPED!', { big: true, color: '#4dff7a', hold: 2 }); TT.input.rumble(pv.index, 0.3, 0.8, 300); } for (const v of G.views) if (v !== pv) msg(v.index, v === tv ? `${p.name.toUpperCase()} GOT AWAY!` : `${p.name.toUpperCase()} GOT OUT!`, { color: v === tv ? '#ff5a3a' : '#4dff7a' }); break; }
         case 'over': if (!G.attract) { const g = game; setTimeout(() => { if (G.game === g) TT.menu.gameOver(e.results, g); }, game.mode === 'story' ? 1600 : 900); } break;
       }

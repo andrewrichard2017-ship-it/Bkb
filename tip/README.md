@@ -17,7 +17,7 @@ All three have their eyes in the windshield and a mouth on the front bumper.
 - **Creep up** on a sleeping tractor. Go faster than a crawl near one and it wakes up grumpy, and you don't get a tip.
 - **Honk** when you're close (a HONK! prompt shows). Everything asleep in range of your horn jumps, moos and goes over on its back. Rusty's horn reaches further, so he can tip a whole herd at once.
 - Honks, tips, boosting and driving fast near the barn all make noise. When **Thrasher's meter** fills he wakes up and comes for you. He's quick in a straight line but can't turn tight. Hide in the corn and keep still and he loses you, though he can mow straight through it. Hay bales don't stop him either.
-- Tip enough tractors to open the **gate**, then drive out through it. Thrasher hits you 3 times and you're caught.
+- Tip enough tractors to open the **gate**, then drive out through it. It only stays open for **6 seconds**: if you're not out by then it shuts, and you have to tip another tractor to open it again. Thrasher hits you 3 times and you're caught.
 - Stars: ★ escape · ★ tip the bonus number · ★ don't get hit at all. Each farm unlocks the next.
 
 ## Modes
@@ -31,12 +31,12 @@ All three have their eyes in the windshield and a mouth on the front bumper.
 
 | | Farm | Tractors | Gate opens at | Notes |
 |---|---|---|---|---|
-| 1 | Sundown Pasture | 6 | 4 | Dusk, gentle start |
-| 2 | Moonlit Cornfield | 8 | 6 | Lots of corn to hide in |
-| 3 | Hay Bale Hollow | 10 | 7 | Bales everywhere (Thrasher smashes them) |
-| 4 | Muddy Bottoms | 10 | 8 | Fog, mud patches and a duck pond slow you down |
-| 5 | Thrasher's Barn | 14 | 11 | Harvest moon, biggest herd, Thrasher wakes easily |
-| 🎃 | Haunted Harvest | 10 | 7 | Halloween special, always unlocked |
+| 1 | Sundown Pasture | 8 | 6 | Dusk, gentle start |
+| 2 | Moonlit Cornfield | 10 | 8 | Lots of corn to hide in |
+| 3 | Hay Bale Hollow | 12 | 9 | Bales everywhere (Thrasher smashes them) |
+| 4 | Muddy Bottoms | 12 | 10 | Fog, mud patches and a duck pond slow you down |
+| 5 | Thrasher's Barn | 16 | 13 | Harvest moon, biggest herd, Thrasher wakes easily |
+| 🎃 | Haunted Harvest | 12 | 9 | Halloween special, always unlocked |
 
 Each farm is generated from a fixed seed (`TT.LEVELS` in `js/data.js`), so it's the same every time and the same on both machines online.
 

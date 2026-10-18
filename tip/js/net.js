@@ -155,7 +155,7 @@
       case 'me': if (game) { const p = game.players.find(x => x.remote); if (p) { p.net = p.net || { cur: null, age: 0 }; p.net.cur = m.st; p.net.age = 0; } } break;
       case 'honk': if (game) { const p = game.players.find(x => x.remote); if (p && p.active) { game.emit('horn', { p, net: true }); game.honk(p, typeof m.x === 'number' ? { x: m.x, z: m.z } : null); } } break;
       case 'smash': if (game) { const pk = game.world.pumpkins[m.i], p = game.players.find(x => x.remote); if (pk && pk.alive) { game.world.smashPumpkin(pk); if (p) p.pumpkins++; game.emit('pumpkin', { pk, p, net: true }); } else if (p) p.pumpkins++; } break;
-      case 'esc': if (game) { const p = game.players.find(x => x.remote); if (p && game.gateOpen) game.escape(p); } break;
+      case 'esc': if (game) { const p = game.players.find(x => x.remote); if (p) game.escape(p); } break;
       case 'thr': if (game && game.thrasher.controller === 'remote') { const th = game.thrasher; th.net = th.net || { cur: null, age: 0 }; th.net.cur = m.st; th.net.age = 0; } break;
       case 'roar': if (game && game.thrasher.controller === 'remote') game.roar(game.thrasher); break;
       case 'knock': if (game) { const p = game.players.find(x => !x.remote); if (p) p.knock(m.nx, m.nz, m.pw); } break;

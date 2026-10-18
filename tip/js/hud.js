@@ -97,7 +97,7 @@
     else if (game.state === 'play') {
       const tipping = loose.some(p => game.tractors.some(t => t.state === 'sleep' && Math.hypot(t.x - p.x, t.z - p.z) < 14 && Math.hypot(t.x - th.x, t.z - th.z) < 24));
       if (ready && tipping) { pr = honkLabel('ROAR'); cls = 'honk'; }
-      else if (game.gateOpen) { pr = 'THE GATE\'S OPEN! STOP THEM!'; cls = 'bad'; }
+      else if (game.gateOpen) { pr = `THE GATE'S OPEN! STOP THEM! ${Math.ceil(game.gateT)}`; cls = 'bad'; }
     }
     set(P, 'prompt', pr + '|' + cls, () => { P.prompt.textContent = pr; P.prompt.className = 'prompt ' + cls + (pr ? ' show' : ''); });
     // arrow to the nearest runner
@@ -149,7 +149,7 @@
         }
         if (inRange) { pr = honkLabel(); cls = 'honk'; }
         else if (close && Math.abs(car.vf) > TT.SNEAK) { pr = 'EASY… SNEAK UP SLOWLY'; cls = 'warn'; }
-        else if (game.gateOpen && P.team) { pr = 'GATE\'S OPEN · GET OUT!'; cls = 'good'; }
+        else if (game.gateOpen && P.team) { pr = `GATE SHUTS IN ${Math.ceil(game.gateT)} · GET OUT!`; cls = 'good'; }
       }
       set(P, 'prompt', pr + '|' + cls, () => { P.prompt.textContent = pr; P.prompt.className = 'prompt ' + cls + (pr ? ' show' : ''); });
       // arrow to the gate

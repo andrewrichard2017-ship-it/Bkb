@@ -35,7 +35,7 @@
       this.recoverTime = this.mode === 'tipoff' ? 9 : this.mode === 'attract' ? 7 : cfg.level.recover;
       this.state = this.mode === 'attract' ? 'play' : 'countdown';
       this.time = this.mode === 'attract' ? 0 : -3.6; this.clock = 0; this.lastCount = 9;
-      this.gateOpen = false; this.over = false; this.hold = false; this.demoT = 3;
+      this.gateOpen = false; this.gateT = 0; this.over = false; this.hold = false; this.demoT = 3;
       this.net = null;
     }
     emit(type, e = {}) { e.type = type; this.events.push(e); return e; }
@@ -81,7 +81,7 @@
           if (!th.awake && Math.hypot(th.x - p.x, th.z - p.z) < 30 && sp > TT.SNEAK) this.alarm += 22 * dt;
         }
         // remote cars escape by where the guest says they are
-        if (p.remote && !p.escaped && this.gateOpen && p.z < -this.world.H - 3) this.escape(p);
+        if (p.remote && !p.escaped && p.z < -this.world.H - 3) this.escape(p);
       }
       if (story) {
         if ((th.state === 'sleep' || th.state === 'home') && this.alarm >= this.threshold) { this.alarm = this.threshold; th.wake(); }
@@ -105,7 +105,12 @@
           if (th.contact(p.x, p.z, p.spec.radius + 0.35)) this.hitPlayer(p); // reaches past the solid push-out in collisions()
         }
       }
-      if ((story || hunt) && !this.gateOpen && this.teamTips >= this.goal) { this.gateOpen = true; this.emit('gateOpen'); }
+      // the gate opens for GATE_TIME seconds; if anyone's still inside when it shuts, tip another to open it again
+      if ((story || hunt) && !this.gateOpen && this.teamTips >= this.goal) { this.gateOpen = true; this.gateT = TT.GATE_TIME; this.emit('gateOpen'); }
+      else if (this.gateOpen && (story || hunt)) {
+        this.gateT -= dt;
+        if (this.gateT <= 0 && this.players.some(p => p.active)) { this.gateOpen = false; this.goal = this.teamTips + 1; this.emit('gateClose'); }
+      }
       if ((story || hunt) && this.players.length && this.players.every(p => !p.active)) this.finish();
       if (hunt && this.clock >= TT.HUNT_TIME) this.finish();
       if (this.mode === 'tipoff' && this.clock >= TT.TIPOFF_TIME) this.finish();
@@ -246,7 +251,7 @@
     snapshot() {
       const r = v => Math.round(v * 10) / 10;
       return {
-        time: Math.round(this.time * 100) / 100, st: this.state, alarm: r(this.alarm), tips: this.teamTips, gate: this.gateOpen ? 1 : 0, clock: r(this.clock),
+        time: Math.round(this.time * 100) / 100, st: this.state, alarm: r(this.alarm), tips: this.teamTips, gate: this.gateOpen ? 1 : 0, gt: r(this.gateT), goal: this.goal, clock: r(this.clock),
         th: this.thrasher.netState(), tr: this.tractors.map(t => [t.code, r(t.t)]),
         pl: this.players.map(p => [p.slot, p.tips, p.dents, p.escaped ? 1 : 0, p.caught ? 1 : 0, p.pumpkins, p.remote ? null : p.netState()]),
       };
@@ -256,7 +261,8 @@
       if (Math.abs(diff) > 0.4) this.time = s.time; else this.time += diff * 0.1;
       if (s.st === 'play' && this.state === 'countdown') { this.state = 'play'; this.emit('go'); }
       this.clock = s.clock; this.alarm = s.alarm; this.teamTips = s.tips;
-      if (s.gate && !this.gateOpen) { this.gateOpen = true; this.emit('gateOpen'); }
+      if (s.gate && !this.gateOpen) { this.gateOpen = true; this.emit('gateOpen'); } else if (!s.gate && this.gateOpen) { this.gateOpen = false; this.emit('gateClose'); }
+      this.gateT = s.gt || 0; if (s.goal) this.goal = s.goal;
       const th = this.thrasher;
       if (th.controller !== 'local') { th.net = th.net || { cur: null, age: 0 }; th.net.cur = s.th; th.net.age = 0; }
       s.tr.forEach((x, i) => { const t = this.tractors[i]; if (t) t.netSet(x[0], x[1]); });

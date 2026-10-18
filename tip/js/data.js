@@ -38,18 +38,18 @@
   // size: half-width of the fenced farm in metres. goal: tips to open the gate. bonus: tips for the second star.
   // wake: how much noise Thrasher sleeps through. tSpeed: Thrasher's top speed.
   TT.LEVELS = [
-    { id: 'pasture', name: 'Sundown Pasture', theme: 'dusk', seed: 1101, size: 75, tractors: 6, goal: 4, bonus: 6, wake: 110, tSpeed: 11.5, corn: 1, bales: 10, mud: 2, trees: 10, pond: false, recover: 40,
+    { id: 'pasture', name: 'Sundown Pasture', theme: 'dusk', seed: 1101, size: 75, tractors: 8, goal: 6, bonus: 8, wake: 110, tSpeed: 14.5, corn: 1, bales: 10, mud: 2, trees: 10, pond: false, recover: 40,
       blurb: 'Your first time out. Creep up slowly, honk, and the tractors go right over. Then get back out the gate before Thrasher wakes up.' },
-    { id: 'cornfield', name: 'Moonlit Cornfield', theme: 'night', seed: 2207, size: 85, tractors: 8, goal: 6, bonus: 8, wake: 100, tSpeed: 12.5, corn: 5, bales: 10, mud: 3, trees: 12, pond: false, recover: 40,
+    { id: 'cornfield', name: 'Moonlit Cornfield', theme: 'night', seed: 2207, size: 85, tractors: 10, goal: 8, bonus: 10, wake: 100, tSpeed: 15.5, corn: 5, bales: 10, mud: 3, trees: 12, pond: false, recover: 40,
       blurb: 'Tall corn everywhere. Hide in it if Thrasher comes looking, but he can mow straight through.' },
-    { id: 'haybale', name: 'Hay Bale Hollow', theme: 'night', seed: 3319, size: 90, tractors: 10, goal: 7, bonus: 10, wake: 95, tSpeed: 13.5, corn: 2, bales: 45, mud: 3, trees: 14, pond: false, recover: 35,
+    { id: 'haybale', name: 'Hay Bale Hollow', theme: 'night', seed: 3319, size: 90, tractors: 12, goal: 9, bonus: 12, wake: 95, tSpeed: 16.5, corn: 2, bales: 45, mud: 3, trees: 14, pond: false, recover: 35,
       blurb: 'Bales stacked all over the place. Duck behind them; Thrasher smashes straight through.' },
-    { id: 'mud', name: 'Muddy Bottoms', theme: 'mist', seed: 4421, size: 90, tractors: 10, goal: 8, bonus: 10, wake: 90, tSpeed: 14, corn: 2, bales: 14, mud: 12, trees: 16, pond: true, recover: 35,
+    { id: 'mud', name: 'Muddy Bottoms', theme: 'mist', seed: 4421, size: 90, tractors: 12, goal: 10, bonus: 12, wake: 90, tSpeed: 17, corn: 2, bales: 14, mud: 12, trees: 16, pond: true, recover: 35,
       blurb: 'Fog, a duck pond and mud everywhere. Mud slows you right down, and Thrasher\'s big wheels don\'t care.' },
-    { id: 'barn', name: "Thrasher's Barn", theme: 'harvest', seed: 5531, size: 105, tractors: 14, goal: 11, bonus: 14, wake: 80, tSpeed: 15, corn: 4, bales: 24, mud: 5, trees: 18, pond: true, recover: 30,
+    { id: 'barn', name: "Thrasher's Barn", theme: 'harvest', seed: 5531, size: 105, tractors: 16, goal: 13, bonus: 16, wake: 80, tSpeed: 18, corn: 4, bales: 24, mud: 5, trees: 18, pond: true, recover: 30,
       blurb: 'The big one. Harvest moon, the biggest herd in the county, and Thrasher sleeps with one eye open.' },
   ];
-  TT.HALLOWEEN = { id: 'haunted', name: 'Haunted Harvest', theme: 'halloween', seed: 3110, size: 90, tractors: 10, goal: 7, bonus: 10, wake: 95, tSpeed: 13.5, corn: 2, bales: 8, mud: 3, trees: 6, pond: false, recover: 30,
+  TT.HALLOWEEN = { id: 'haunted', name: 'Haunted Harvest', theme: 'halloween', seed: 3110, size: 90, tractors: 12, goal: 9, bonus: 12, wake: 95, tSpeed: 16.5, corn: 2, bales: 8, mud: 3, trees: 6, pond: false, recover: 30,
     pumpkins: 46, ghosts: true, halloween: true,
     blurb: 'Halloween special! Ghost tractors in the pumpkin patch, bats round the moon, and Pumpkin Thrasher on the prowl. Smash pumpkins for treats.' };
   TT.ALL_LEVELS = [...TT.LEVELS, TT.HALLOWEEN];
@@ -59,6 +59,7 @@
   TT.DENTS = 3;          // hits from Thrasher before you're caught (story)
   TT.HUNT_TIME = 180;    // seconds the runners have to escape in Thrasher Hunt
   TT.HUNT_DENTS = 2;     // hits before a runner is caught in Thrasher Hunt
+  TT.GATE_TIME = 6;      // seconds the gate stays open; miss it and you have to tip another to open it again
 
   TT.LINES = {
     tip: ['TIPPED!', 'OVER SHE GOES!', 'TIMBER!', 'GOTCHA!', 'BOOM!'],
