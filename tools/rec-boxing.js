@@ -10,7 +10,11 @@
   if (q.get('clean')) for (const k of ['draw', 'banner', 'count']) BK.hud[k] = () => {};   // ?clean=1: no HUD, for cover art
   if (q.get('clean')) BK.fx.popup = () => {};
   // ?zoom=2: hold the camera in close on the fighters (cover art)
-  if (q.get('zoom')) { const z = +q.get('zoom'); Object.defineProperty(BK.cam, 'tz', { get: () => z, set: () => {} }); }
+  if (q.get('zoom')) {
+    const z = +q.get('zoom'), lift = +(q.get('lift') || 230);   // lift: how far above their feet to centre
+    Object.defineProperty(BK.cam, 'tz', { get: () => z, set: () => {} });
+    Object.defineProperty(BK.cam, 'ty', { get: () => (g.p1 ? (g.p1.sy + g.p2.sy) / 2 - lift : BK.H / 2), set: () => {} });
+  }
   let ai1 = null, dt1 = 1 / 60;
   const setup = g.setupFighters;
   g.setupFighters = k => {
