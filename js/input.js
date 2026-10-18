@@ -29,7 +29,7 @@
     const buttons = BTNS
       .filter(b => !(b.id === 'slip' && L.sway === 'none') && !(b.id === 'clinch' && L.noClinch))
       .map(b => ({ ...b, label: b.id === 'slip' ? swayLabel : b.label, weak: b.id === 'slip' && L.sway === 'combo' && me.stamina < 40, x: right - (3 - b.col) * gap, y: bottom - (1 - b.row) * gap * 0.95 }));
-    if (BK.game.koReady()) buttons.push({ id: 'ko', label: L.super === 'duster' ? 'DUSTER' : L.super === 'kettle' ? 'KETTLE' : 'SUPER', color: L.super === 'duster' ? '#8d8f96' : L.super === 'kettle' ? '#c4562a' : '#c98a1e', x: right - gap * 1.5, y: bottom - gap * 2.1, big: 1.3 });
+    if (BK.game.koReady()) buttons.push({ id: 'ko', label: L.super === 'duster' ? 'DUSTER' : 'SUPER', color: L.super === 'duster' ? '#8d8f96' : '#c98a1e', x: right - gap * 1.5, y: bottom - gap * 2.1, big: 1.3 });
     return {
       r,
       buttons,

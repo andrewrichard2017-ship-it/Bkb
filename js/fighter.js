@@ -48,7 +48,7 @@
       this.grab = null; this.clinch = null; this.combo = []; this.superUsed = false; this.clinchSaved = false;
       this.buffer = []; this.chainHits = 0;
       this.dazedStand = false; this.dazeW = 0; // taking a standing count; dazeW eases the wobble in and out
-      this.scald = 0; this.blind = 0; this.lurchT = 0; this.lurch = 0; // scalded (no right hand), eye raked (blind), Gerry's stumble
+      this.blind = 0; this.lurchT = 0; this.lurch = 0; // eye raked (blind), Gerry's stumble
       this.ropeDuck = 0; this.extraPose = null; this.extraW = 1;
       // animation state
       this.pose = BK.rig.make(); this.tpose = BK.rig.make(); this.tmp = BK.rig.make(); this.tmp2 = BK.rig.make();
@@ -141,7 +141,7 @@
       }
       const staggered = this.stagger > 0;
       if (staggered) this.stagger -= dt;
-      this.scald = Math.max(0, this.scald - dt); this.blind = Math.max(0, this.blind - dt);
+      this.blind = Math.max(0, this.blind - dt);
       if (this.look.stumble) { // Gerry: a heavy, uneven gait, every few steps a lurch to one side
         this.lurchT -= dt;
         if (this.lurchT <= 0 && this.moving > 0.3) { this.lurch = BK.pick([-1, 1]); this.lurchT = BK.rnd(0.9, 1.8); }
@@ -200,10 +200,6 @@
       // A tap is remembered briefly (buffered) and thrown as soon as it can be, so combos flow
       const superReady = input.ko && this.superAvailable(opp);
       let want = superReady ? (this.look.super || 'ko') : ['jab', 'cross', 'hook', 'upper'].find(k => input[k]);
-      if (this.scald > 0 && want && P[want].hand === 'rear') { // scalded: the right hand won't close
-        if (!this.scaldWarned || this.t - this.scaldWarned > 1.2) { this.scaldWarned = this.t; BK.fx.popup('RIGHT HAND\'S GONE', this.headX, this.headY - 70, '#e2584f', 30); }
-        want = null;
-      }
       // Up to three taps queue up in order, so mashing jab-cross-hook throws exactly that.
       if (want && this.buffer.length < 3) this.buffer.push({ type: want, body: !!input.body && !P[want].super, t: 0.9 });
       for (const q of this.buffer) q.t -= dt;
@@ -235,11 +231,6 @@
       const p = this.punch;
       if (!p) return;
       p.t += dt;
-      if (p.type === 'kettle' && !p.poured && p.t >= p.hitAt * 0.72) { // the water leaves the spout just before it lands
-        p.poured = true;
-        BK.fx.water(this.sx + this.dir * 70 * this.fs, this.sy - 190 * this.fs, this.dir, opp.sy, 1);
-        BK.audio.whoosh();
-      }
       if (!p.resolved && p.t >= p.hitAt) { p.resolved = true; this.resolve(opp, p); }
       if (p.t >= p.dur) this.punch = null;
     }
@@ -434,12 +425,6 @@
           BK.fx.popup('HURT!', this.headX, this.headY - 90, BK.PAL.blood, 40);
           BK.audio.roar(0.3);
         }
-      }
-      if (p.scald && !blocked) { // the kettle: scalded down the right side, the hand's no use for a while
-        this.scald = Math.max(this.scald, 14); this.scaldW = 1;
-        BK.fx.popup('SCALDED!', this.headX, this.headY - 120, '#ff9a3c', 52);
-        BK.fx.steam(this.headX, this.headY, from.dir, this.sy);
-        BK.audio.sizzle(); this.grunt('hurtBig', true); BK.audio.crowdJeer();
       }
       if (this.hp <= 0 && !p.clinch) BK.game.onZeroHp(this, from, p.type);
       else if (!blocked && !p.clinch && this.hp <= 15) BK.game.rockHit(p, this); // on the brink: every clean one rocks the picture
@@ -644,10 +629,8 @@
     draw() { BK.drawFigure(this.snapshot()); }
 
     drawState() {
-      const kp = this.punch && this.punch.type === 'kettle' ? this.punch : null;
       return { damage: this.damage, dazed: this.stun > 0 || this.down || this.stagger > 0, blink: this.blinkT < 0, sweat: this.sweat, blood: this.blood,
-        cuts: this.cuts.map(c => ({ ...c })), fistBlood: this.fistBlood || 0, scald: this.scald > 0, blind: this.blind > 0, spitOn: this.spitOn > 0,
-        kettle: !!kp, kettleTip: kp ? clamp((kp.t - kp.hitAt * 0.6) / (kp.hitAt * 0.5), 0, 1) : 0 };
+        cuts: this.cuts.map(c => ({ ...c })), fistBlood: this.fistBlood || 0, blind: this.blind > 0, spitOn: this.spitOn > 0 };
     }
 
     drawPortrait(x, y, scale, flip) {
